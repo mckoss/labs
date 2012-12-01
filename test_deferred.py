@@ -74,5 +74,30 @@ class TestDeferred(unittest.TestCase):
         self.assertTrue(self.after_ran)
 
 
+class TestChain(unittest.TestCase):
+    def test_plus(self):
+        result = []
+
+        def get_value():
+            return 42
+
+        def got_value(value):
+            self.assertEqual(value, 42)
+            return value * 2
+
+        def got_value2(value):
+            self.assertEqual(value, 84)
+            result.append(value)
+
+        d = Deferred()
+        d.then(get_value)\
+            .then(got_value)\
+            .then(got_value2)
+
+        self.assertEqual(result, [])
+        d.resolve()
+        self.assertEqual(result, [84])
+
+
 if __name__ == '__main__':
     unittest.main()

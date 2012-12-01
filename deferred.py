@@ -14,6 +14,7 @@ class Deferred(object):
         self.args = []
         self.kwargs = {}
         self.after = None
+        self.after_args = []
 
     def then(self, callback=None, error=None, always=None):
         if self.after is None:
@@ -28,30 +29,32 @@ class Deferred(object):
                 self.always_callbacks.append(always)
             return self.after
 
-        then_value = None
         if self.is_resolved:
             if callback is not None:
                 try:
-                    then_value = callback(*self.args, **self.kwargs)
+                    value = callback(*self.args, **self.kwargs)
+                    if value is not None:
+                        self.after_args.append(value)
                 except:
                     pass
         else:
             if error is not None:
                 try:
-                    then_value = error(*self.args, **self.kwargs)
+                    value = error(*self.args, **self.kwargs)
+                    if value is not None:
+                        self.after_args.append(value)
                 except:
                     pass
 
         if always is not None:
             try:
                 value = always(*self.args, **self.kwargs)
-                if then_value is None:
-                    then_value = value
+                if value is not None:
+                    self.after_args.append(value)
             except:
                 pass
 
-        if not self.after.finished:
-            self.after.resolve(then_value)
+        self._check_after()
 
         return self.after
 
@@ -65,6 +68,7 @@ class Deferred(object):
         self.kwargs = kwargs
         self._do_calls('resolved')
         self._do_calls('always')
+        self._check_after()
 
     def reject(self, *args, **kwargs):
         if self.finished:
@@ -75,20 +79,22 @@ class Deferred(object):
         self.kwargs = kwargs
         self._do_calls('error')
         self._do_calls('always')
+        self._check_after()
 
     def _do_calls(self, name):
         callbacks = getattr(self, name + '_callbacks')
-        then_value = None
         for callback in callbacks:
             try:
                 value = callback(*self.args, **self.kwargs)
-                if then_value is None:
-                    then_value = value
+                if value is not None:
+                    self.after_args.append(value)
             except:
                 pass
         setattr(self, name + '_callbacks', None)
+
+    def _check_after(self):
         if self.after is not None and not self.after.finished:
-            self.after.resolve(then_value)
+            self.after.resolve(*self.after_args)
 
 
 class When(Deferred):
