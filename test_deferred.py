@@ -15,21 +15,22 @@ class AsyncObject(object):
         self.d.resolve(value)
 
 
-class TestDeffered(unittest.TestCase):
+class TestDeferred(unittest.TestCase):
+    def setUp(self):
+        def on_resolve(*args, **kwargs):
+            self.assertEqual(args, ['resolve'])
+            self.assertEqual(kwargs, {'finish_type': 'resolve'})
+
+        self.d = Deferred()
+        self.d.then(on_resolve)
+
     def test_create(self):
-        x = Deferred()
-        self.assertIsNotNone(x)
+        self.assertIsNotNone(self.d)
 
     def test_resolve(self):
-        returns = []
-        def on_resolve(value):
-            self.assertEqual(value, 'resolve')
-            returns.append(value)
-
-        d = Deferred()
-        d.then(on_resolve)
-        d.resolve('resolve')
-        self.assertEqual(returns[0], 'resolve')
+        self.d.resolve('resolve', finish_type='resolve')
+        self.assertTrue(self.d.finished)
+        self.assertTrue(self.d.is_resolved)
 
 
 if __name__ == '__main__':
