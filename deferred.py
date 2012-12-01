@@ -13,8 +13,12 @@ class Deferred(object):
         self.always_callbacks = []
         self.args = []
         self.kwargs = {}
+        self.after = None
 
     def then(self, callback=None, error=None, always=None):
+        if self.after is None:
+            self.after = Deferred()
+
         if not self.finished:
             if callback is not None:
                 self.resolved_callbacks.append(callback)
@@ -22,28 +26,34 @@ class Deferred(object):
                 self.error_callbacks.append(error)
             if always is not None:
                 self.always_callbacks.append(always)
-            return self
+            return self.after
 
+        then_value = None
         if self.is_resolved:
             if callback is not None:
                 try:
-                    callback(*self.args, **self.kwargs)
+                    then_value = callback(*self.args, **self.kwargs)
                 except:
                     pass
         else:
             if error is not None:
                 try:
-                    error(*self.args, **self.kwargs)
+                    then_value = error(*self.args, **self.kwargs)
                 except:
                     pass
 
         if always is not None:
             try:
-                always(*self.args, **self.kwargs)
+                value = always(*self.args, **self.kwargs)
+                if then_value is None:
+                    then_value = value
             except:
                 pass
 
-        return self
+        if not self.after.finished:
+            self.after.resolve(then_value)
+
+        return self.after
 
     def resolve(self, *args, **kwargs):
         if self.finished:
@@ -68,12 +78,17 @@ class Deferred(object):
 
     def _do_calls(self, name):
         callbacks = getattr(self, name + '_callbacks')
+        then_value = None
         for callback in callbacks:
             try:
-                callback(*self.args, **self.kwargs)
+                value = callback(*self.args, **self.kwargs)
+                if then_value is None:
+                    then_value = value
             except:
                 pass
         setattr(self, name + '_callbacks', None)
+        if self.after is not None and not self.after.finished:
+            self.after.resolve(then_value)
 
 
 class When(Deferred):

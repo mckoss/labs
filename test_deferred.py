@@ -34,11 +34,17 @@ class TestDeferred(unittest.TestCase):
             self.assertEqual(len(kwargs), 1)
             self.assertIn(kwargs['finish_type'], ('resolve', 'error'))
 
+        def on_after(*args, **kwargs):
+            self.after_ran = True
+
         self.d = Deferred()
-        self.d.then(on_resolve, error=on_error, always=on_always)
+        self.d\
+            .then(on_resolve, error=on_error, always=on_always)\
+            .then(on_after)
         self.resolve_ran = False
         self.error_ran = False
         self.always_ran = False
+        self.after_ran = False
 
     def test_create(self):
         self.assertIsNotNone(self.d)
@@ -50,6 +56,7 @@ class TestDeferred(unittest.TestCase):
         self.assertTrue(self.resolve_ran)
         self.assertFalse(self.error_ran)
         self.assertTrue(self.always_ran)
+        self.assertTrue(self.after_ran)
 
     def test_error(self):
         self.d.reject('error', finish_type='error')
@@ -58,6 +65,7 @@ class TestDeferred(unittest.TestCase):
         self.assertFalse(self.resolve_ran)
         self.assertTrue(self.error_ran)
         self.assertTrue(self.always_ran)
+        self.assertTrue(self.after_ran)
 
 
 if __name__ == '__main__':
