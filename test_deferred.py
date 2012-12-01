@@ -21,11 +21,13 @@ class TestDeferred(unittest.TestCase):
             self.resolve_ran = True
             self.assertEqual(args, ['resolve'])
             self.assertEqual(kwargs, {'finish_type': 'resolve'})
+            return 'ran_resolved'
 
         def on_error(*args, **kwargs):
             self.error_ran = True
             self.assertEqual(args, ['error'])
             self.assertEqual(kwargs, {'finish_type': 'error'})
+            return 'ran_error'
 
         def on_always(*args, **kwargs):
             self.always_ran = True
@@ -33,9 +35,13 @@ class TestDeferred(unittest.TestCase):
             self.assertIn(args[0], ('resolve', 'error'))
             self.assertEqual(len(kwargs), 1)
             self.assertIn(kwargs['finish_type'], ('resolve', 'error'))
+            return 'ran_always'
 
         def on_after(*args, **kwargs):
             self.after_ran = True
+            self.assertEqual(len(args), 1)
+            self.assertEqual(len(kwargs), 0)
+            self.assertIn(args[0], ('ran_resolved', 'ran_error'))
 
         self.d = Deferred()
         self.d\
