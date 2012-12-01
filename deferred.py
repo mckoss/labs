@@ -3,6 +3,7 @@
   http://wiki.commonjs.org/wiki/Promises/A
 """
 
+
 class Deferred(object):
     def __init__(self):
         self.finished = False
@@ -52,8 +53,8 @@ class Deferred(object):
         self.is_resolved = True
         self.args = args
         self.kwargs = kwargs
-        self._do_calls(self.resolved_callbacks, *args, **kwargs)
-        self._do_calls(self.always_callbacks, *args, **kwargs)
+        self._do_calls('resolved')
+        self._do_calls('always')
 
     def reject(self, *args, **kwargs):
         if self.finished:
@@ -62,15 +63,17 @@ class Deferred(object):
         self.finished = True
         self.args = args
         self.kwargs = kwargs
-        self._do_calls(self.error_callbacks, *args, **kwargs)
-        self._do_calls(self.always_callbacks, *args, **kwargs)
+        self._do_calls('error')
+        self._do_calls('always')
 
-    def _do_calls(self, callbacks, *args, **kwargs):
+    def _do_calls(self, name):
+        callbacks = getattr(self, name + '_callbacks')
         for callback in callbacks:
             try:
-                callback(*args, **kwargs)
+                callback(*self.args, **self.kwargs)
             except:
                 pass
+        setattr(self, name + '_callbacks', None)
 
 
 class When(Deferred):
