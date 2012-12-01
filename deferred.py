@@ -130,3 +130,17 @@ class When(Deferred):
 
 class DeferredError(Exception):
     pass
+
+
+def deferred(fn):
+    """ Decorator - transforms an async function with callback keyword argument. """
+    def wrapper(*args, **kwargs):
+        d = Deferred()
+
+        def on_complete(*args, **kwargs):
+            d.resolve(*args, **kwargs)
+
+        fn(*args, callback=on_complete, **kwargs)
+        return d
+
+    return wrapper

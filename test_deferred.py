@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import unittest
 
-from deferred import Deferred, When
+from deferred import Deferred, When, deferred
 
 
 class AsyncObject(object):
@@ -126,6 +126,20 @@ class TestWhen(unittest.TestCase):
 
         d1.resolve(1)
         self.assertEqual(result, [2, 1, 2, 3, 1])
+
+
+class TestDecorator(unittest.TestCase):
+    def test_decorator(self):
+        @deferred
+        def async_func(value, callback=None):
+            callback(value + 1)
+
+        result = []
+
+        def on_done(value):
+            result.append(value)
+
+        async_func(1).then(on_done)
 
 
 if __name__ == '__main__':
