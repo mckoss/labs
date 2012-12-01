@@ -110,8 +110,19 @@ class When(Deferred):
 
     def on_resolved(self, *args, **kwargs):
         self.satisfied += 1
-        if self.satisfied == len(self.prereqs):
-            self.resolve()
+        if self.satisfied < len(self.prereqs):
+            return
+
+        args = []
+        kwargs = {}
+
+        for deferred in self.prereqs:
+            args.extend(deferred.args)
+            for key in deferred.kwargs:
+                if key not in kwargs:
+                    kwargs[key] = deferred.kwargs[key]
+
+        self.resolve(*args, **kwargs)
 
     def on_error(self, *args, **kwargs):
         self.reject(*args, **kwargs)

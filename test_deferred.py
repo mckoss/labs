@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import unittest
 
-from deferred import Deferred
+from deferred import Deferred, When
 
 
 class AsyncObject(object):
@@ -97,6 +97,35 @@ class TestChain(unittest.TestCase):
         self.assertEqual(result, [])
         d.resolve()
         self.assertEqual(result, [84])
+
+
+class TestWhen(unittest.TestCase):
+    def test_when(self):
+        result = []
+
+        def on_done(value):
+            result.append(value)
+
+        def on_all(*args):
+            result.extend(args)
+            return(sum(args))
+
+        d1 = Deferred()
+        d2 = Deferred()
+        d3 = When(d1, d2)
+
+        d1.then(on_done)
+        d2.then(on_done)
+        d3.then(on_all)\
+            .then(on_done)
+
+        self.assertEqual(result, [])
+
+        d2.resolve(2)
+        self.assertEqual(result, [2])
+
+        d1.resolve(1)
+        self.assertEqual(result, [2, 1, 2, 3, 1])
 
 
 if __name__ == '__main__':
