@@ -180,13 +180,17 @@ def serialize(fn):
     def wrapper(*args, **kwargs):
         gen = fn(*args, **kwargs)
         try:
+            d = gen.next()
+
             def on_complete(*args, **kwargs):
-                gen.send((args, kwargs))
+                d = gen.send((args, kwargs))
+                d.then(on_complete, on_error)
 
             def on_error(*args, **kwargs):
-                gen.exception(Error((args, kwargs)))
+                d = gen.exception(Error((args, kwargs)))
+                d.then(on_complete, on_error)
 
-            d = gen.next().then(on_complete, on_error)
+            d.then(on_complete, on_error)
         except StopIteration:
             return
 
