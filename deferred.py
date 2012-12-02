@@ -133,7 +133,22 @@ class DeferredError(Exception):
 
 
 def deferred(fn):
-    """ Decorator - transforms an async function with callback keyword argument. """
+    """
+    Decorator - transforms an async function with callback keyword argument.
+
+    Usage:
+
+        @deferred
+        def async_func(arg1, arg2, callback=None):
+            ...
+            callback(value)
+
+       def on_complete(value):
+           ...
+
+       async_func.then(on_complete)
+    """
+
     def wrapper(*args, **kwargs):
         d = Deferred()
 
@@ -142,5 +157,37 @@ def deferred(fn):
 
         fn(*args, callback=on_complete, **kwargs)
         return d
+
+    return wrapper
+
+
+def serialize(fn):
+    """
+    Decorator - enables writing serial style or asynchronous programming.
+
+    Yielding a Deffered object, returns the value of the Deffered when it
+    is resolved (as (args, kwargs)).
+
+        @serialize
+        def my_function():
+            ...
+            d = Deferred()
+            ...
+
+            (args, kwargs) = yield d;
+            ...
+    """
+    def wrapper(*args, **kwargs):
+        gen = fn(*args, **kwargs)
+        try:
+            def on_complete(*args, **kwargs):
+                gen.send((args, kwargs))
+
+            def on_error(*args, **kwargs):
+                gen.exception(Error((args, kwargs)))
+
+            d = gen.next().then(on_complete, on_error)
+        except StopIteration:
+            return
 
     return wrapper
