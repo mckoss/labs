@@ -1,8 +1,10 @@
 CC=gcc
-CFLAGS := -std=c99 -g
-# CFLAGS := -std=c99 -g
+CFLAGS := -std=c99 -g -lm
 
-difference: difference.o
+all: difference
+
+difference : difference.o
+	$(CC) -o difference difference.o -lm
 
 clean:
 	rm -f difference *.o

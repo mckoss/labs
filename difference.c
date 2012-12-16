@@ -1,10 +1,45 @@
 #include <stdio.h>
+#include <math.h>
 
 typedef enum {false, true} bool;
 
 #define MAX_SET 20
 #define MAX_DIFFS (MAX_SET * (MAX_SET - 1) + 1)
 #define FOREVER for (;;)
+
+int primes[MAX_DIFFS];
+int pcount = 0;
+
+void sieve(int n) {
+    /// Return all primes less than or equal to n in primes[]
+    int s[MAX_DIFFS];
+    for (int i = 0; i < MAX_DIFFS; i++) {
+        s[i] = 0;
+    }
+
+    int sq = (int) sqrt((float) n);
+    primes[pcount++] = 2;
+
+    for (int i = 3; i <= n; i += 2) {
+        if (s[i]) continue;
+        primes[pcount++] = i;
+        if (i > sq) continue;
+        for (int j = i * 8; j <= n; j += 2 * i) {
+            s[j] = true;
+        }
+    }
+}
+
+/*
+def is_power_of(n, primes):
+    """ Return true iff n is a prime power of one of the given primes. """
+    log_n = math.log(n)
+    for prime in primes:
+        root = int(log_n / math.log(prime))
+        if prime ** root == n or prime ** (root + 1) == n:
+            return True
+    return False
+*/
 
 void remove_diffs(int d[], int *dFirst, int *dMax) {
     while (dFirst < dMax) {
