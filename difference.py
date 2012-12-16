@@ -1,13 +1,20 @@
 #!/usr/bin/env python
+import math
 from itertools import combinations
 
 from progress import Progress
 
-def main():
-    p = Progress(name="Searching")
+MAX_SET = 103
 
-    for k in range(2, 103):
+def main():
+    primes = sieve(MAX_SET)
+
+    p = Progress(name="Searching")
+    for k in range(2, MAX_SET):
         print "Difference set (%d, %d, 1)" % (k * (k -1) + 1, k)
+
+        if not is_power_of(k - 1, primes):
+            print "Theorom: set k = %d does not exists (since %d is not a prime power)." % (k, k - 1)
 
         if k in (7, 11):
             print "These is no cyclic difference set with k = %d." % k
@@ -73,6 +80,34 @@ def slow_find_difference_set(k):
         else:
             return s
     return ()
+
+
+def sieve(n):
+    """ Return all primes less than or equal to n. """
+    sqrt = int(n ** 0.5)
+    s = set()
+    primes = [2]
+
+    for i in range(3, n + 1, 2):
+        if i in s:
+            continue
+        primes.append(i);
+        if i > sqrt:
+            continue
+        for j in range(i * i, n + 1, 2 * i):
+            s.add(j)
+
+    return primes
+
+
+def is_power_of(n, primes):
+    """ Return true iff n is a prime power of one of the given primes. """
+    log_n = math.log(n)
+    for prime in primes:
+        root = int(log_n / math.log(prime))
+        if prime ** root == n or prime ** (root + 1) == n:
+            return True
+    return False
 
 
 if __name__ == '__main__':
