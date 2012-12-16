@@ -63,7 +63,7 @@ bool find_difference_set(int k, int s[]) {
     int next = 1;
     int n;
     int i;
-    int trials = 0;
+    long trials = 0;
 
     s[0] = 0; s[1] = 1;
     stack[0] = 0;
@@ -117,12 +117,8 @@ int main(int argc, char *argv[]) {
 
     sieve(MAX_DIFFS);
 
-    for (int i = 0; i < pcount; i++) {
-        printf("%d, ", primes[i]);
-    }
-
     for (int k = 2; k < MAX_SET; k++) {
-        printf("Search for difference set k = %d\n", k);
+        printf("Difference set (v = %d, k = %d, 1):\n", k * (k -1) + 1, k);
         if (!is_prime_power(k - 1)) {
             printf("No set since k - 1 is not prime power!\n");
             continue;
@@ -137,7 +133,7 @@ int main(int argc, char *argv[]) {
             }
             printf("]\n");
         }
-        printf("Elapsed time: %ds.\n", (int) (time(NULL) - start));
+        printf("Elapsed time: %ds.\n\n", (int) (time(NULL) - start));
     }
 
     return 0;
