@@ -1,5 +1,7 @@
 #!/usr/bin/env python
+import sys
 import time
+
 
 class Progress(object):
     units = (('sec', 1),
@@ -18,7 +20,7 @@ class Progress(object):
         self.count = 0
         self.start_time = time.time()
 
-    def report(self):
+    def report(self, status=None):
         self.count += 1
         if self.count < self.increment:
             return
@@ -30,5 +32,7 @@ class Progress(object):
             if rate >= 1:
                 break
 
-        print "{:s}: {:0,.2f}/{:s} ...".format(self.name, rate, unit[0])
+        sys.stderr.write("{:s}: {:0,.2f}/{:s} ...\n".format(self.name, rate, unit[0]))
+        if status is not None:
+            sys.stderr.write("%r\n" % status)
         self.reset()

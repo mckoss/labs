@@ -5,9 +5,8 @@ from progress import Progress
 
 def main():
     p = Progress(name="Searching")
-    while True:
-        p.report()
-    for k in range(98, 103):
+
+    for k in range(2, 103):
         print "Difference set (%d, %d, 1)" % (k * (k -1) + 1, k)
 
         ds = find_difference_set(k)
@@ -22,7 +21,7 @@ def find_difference_set(k):
     progress = Progress()
 
     def test_number(n):
-        progress.report()
+        progress.report(s)
 
         d = stack[-1].copy()
         for i in range(next):
