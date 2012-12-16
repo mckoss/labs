@@ -11,42 +11,28 @@ typedef enum {false, true} bool;
 int primes[MAX_DIFFS];
 int pcount = 0;
 
-void sieve(int n) {
-    /// Return all primes less than or equal to n in primes[]
-    int s[MAX_DIFFS];
-    for (int i = 0; i < MAX_DIFFS; i++) {
+void sieve() {
+    /// Return all prime powers less than or equal to n in primes[]
+    int s[MAX_SET];
+    for (int i = 0; i < MAX_SET; i++) {
         s[i] = 0;
     }
 
-    int sq = (int) sqrt((float) n);
-    primes[pcount++] = 2;
+    int sq = (int) sqrt((float) MAX_SET);
 
-    for (int i = 3; i <= n; i += 2) {
+    for (int i = 2; i <= MAX_SET; i++) {
         if (s[i]) continue;
         primes[pcount++] = i;
         if (i > sq) continue;
-        for (int j = i * i; j <= n; j += 2 * i) {
+        for (int j = i * i; j <= MAX_SET; j += i) {
             s[j] = true;
         }
-    }
-}
-
-bool is_prime_power(int n) {
-    if (n == 1) {
-        return true;
-    }
-    for (int i = 0; i < pcount; i++) {
-        if (primes[i] > n) {
-            return false;
-        }
-        int power = primes[i];
-        for (power = primes[i]; power <= n; power *= primes[i]) {
-            if (power == n) {
-                return true;
-            }
+        int power = i * i;
+        while (power <= MAX_SET) {
+            s[power] = false;
+            power *= i;
         }
     }
-    return false;
 }
 
 void remove_diffs(int d[], int *dFirst, int *dMax) {
@@ -91,7 +77,7 @@ bool find_difference_set(int k, int s[]) {
         // s[next] is feasible
         if (i == next) {
             if (next == k - 1) {
-                printf("Trials: %d\n", trials);
+                printf("Trials: %ld\n", trials);
                 return true;
             }
             s[++next] = n + 2;
@@ -103,7 +89,7 @@ bool find_difference_set(int k, int s[]) {
         if (s[next] + 2 * (k - next - 1) >= m) {
             s[--next]++;
             if (next == 1) {
-                printf("Trials: %d\n", trials);
+                printf("Trials: %ld\n", trials);
                 return false;
             }
             remove_diffs(d, &hist[stack[next - 1]], &hist[stack[next]]);
@@ -115,14 +101,14 @@ int main(int argc, char *argv[]) {
     int s[MAX_SET];
     time_t start;
 
-    sieve(MAX_DIFFS);
+    sieve();
+    for (int x = 0; x < pcount; x++) {
+        printf("%d ", primes[x]);
+    }
 
-    for (int k = 2; k < MAX_SET; k++) {
-        printf("Difference set (v = %d, k = %d, 1):\n", k * (k -1) + 1, k);
-        if (!is_prime_power(k - 1)) {
-            printf("No set since k - 1 is not prime power!\n");
-            continue;
-        }
+    for (int k1 = 0; k1 < pcount; k1++) {
+        int k = primes[k1] + 1;
+        printf("Difference set (v = %d, k = %d, 1):\n", k * (k - 1) + 1, k);
         start = time(NULL);
         if (find_difference_set(k, s)) {
             printf("[");
