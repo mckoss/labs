@@ -24,22 +24,29 @@ void sieve(int n) {
         if (s[i]) continue;
         primes[pcount++] = i;
         if (i > sq) continue;
-        for (int j = i * 8; j <= n; j += 2 * i) {
+        for (int j = i * i; j <= n; j += 2 * i) {
             s[j] = true;
         }
     }
 }
 
-/*
-def is_power_of(n, primes):
-    """ Return true iff n is a prime power of one of the given primes. """
-    log_n = math.log(n)
-    for prime in primes:
-        root = int(log_n / math.log(prime))
-        if prime ** root == n or prime ** (root + 1) == n:
-            return True
-    return False
-*/
+bool is_prime_power(int n) {
+    if (n == 1) {
+        return true;
+    }
+    for (int i = 0; i < pcount; i++) {
+        if (primes[i] > n) {
+            return false;
+        }
+        int power = primes[i];
+        for (power = primes[i]; power <= n; power *= primes[i]) {
+            if (power == n) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
 
 void remove_diffs(int d[], int *dFirst, int *dMax) {
     while (dFirst < dMax) {
@@ -106,8 +113,18 @@ bool find_difference_set(int k, int s[]) {
 int main(int argc, char *argv[]) {
     int s[MAX_SET];
 
+    sieve(MAX_DIFFS);
+
+    for (int i = 0; i < pcount; i++) {
+        printf("%d, ", primes[i]);
+    }
+
     for (int k = 2; k < MAX_SET; k++) {
         printf("Search for difference set k = %d\n", k);
+        if (!is_prime_power(k - 1)) {
+            printf("No set since k - 1 is not prime power!\n");
+            continue;
+        }
         if (find_difference_set(k, s)) {
             printf("[");
             char *sep = "";
