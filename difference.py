@@ -1,8 +1,13 @@
 #!/usr/bin/env python
 from itertools import combinations
 
+from progress import Progress
+
 def main():
-    for k in range(2, 20):
+    p = Progress(name="Searching")
+    while True:
+        p.report()
+    for k in range(98, 103):
         print "Difference set (%d, %d, 1)" % (k * (k -1) + 1, k)
 
         ds = find_difference_set(k)
@@ -14,7 +19,11 @@ def find_difference_set(k):
     stack = [set()]
     next = 1
 
+    progress = Progress()
+
     def test_number(n):
+        progress.report()
+
         d = stack[-1].copy()
         for i in range(next):
             if (n - s[i]) % m in d or (s[i] - n) % m in d:
