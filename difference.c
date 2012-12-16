@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 
 typedef enum {false, true} bool;
 
@@ -112,6 +113,7 @@ bool find_difference_set(int k, int s[]) {
 
 int main(int argc, char *argv[]) {
     int s[MAX_SET];
+    time_t start;
 
     sieve(MAX_DIFFS);
 
@@ -125,6 +127,7 @@ int main(int argc, char *argv[]) {
             printf("No set since k - 1 is not prime power!\n");
             continue;
         }
+        start = time(NULL);
         if (find_difference_set(k, s)) {
             printf("[");
             char *sep = "";
@@ -134,6 +137,7 @@ int main(int argc, char *argv[]) {
             }
             printf("]\n");
         }
+        printf("Elapsed time: %ds.\n", (int) (time(NULL) - start));
     }
 
     return 0;
