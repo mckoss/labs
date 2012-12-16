@@ -1,5 +1,6 @@
 CC=gcc
-CFLAGS := -std=c99
+CFLAGS := -std=c99 -g
+# CFLAGS := -std=c99 -g
 
 difference: difference.o
 
