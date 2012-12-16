@@ -10,7 +10,7 @@ def main():
         print "Difference set (%d, %d, 1)" % (k * (k -1) + 1, k)
 
         if k in (7, 11):
-            print "No known difference set with k = %d." % k
+            print "These is no cyclic difference set with k = %d." % k
             continue
 
         ds = find_difference_set(k)
