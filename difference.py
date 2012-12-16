@@ -9,6 +9,10 @@ def main():
     for k in range(2, 103):
         print "Difference set (%d, %d, 1)" % (k * (k -1) + 1, k)
 
+        if k in (7, 11):
+            print "No known difference set with k = %d." % k
+            continue
+
         ds = find_difference_set(k)
         print ds
 
@@ -21,7 +25,7 @@ def find_difference_set(k):
     progress = Progress()
 
     def test_number(n):
-        progress.report(s)
+        progress.report((k, s[:next + 1]))
 
         d = stack[-1].copy()
         for i in range(next):
@@ -35,6 +39,7 @@ def find_difference_set(k):
         d = test_number(s[next])
         if d is not None:
             if next == k - 1:
+                progress.report(final=True)
                 return s
             stack.append(d)
             s[next + 1] = s[next] + 2
@@ -46,6 +51,7 @@ def find_difference_set(k):
             stack.pop()
             next -= 1
             if next == 1:
+                progress.report(final=True)
                 return ()
 
 def slow_find_difference_set(k):
