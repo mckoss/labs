@@ -46,7 +46,7 @@ def find_difference_set(k):
             next += 1
             continue
         s[next] += 1
-        if s[next] >= m:
+        if s[next] + 2 * (k - next - 1) >= m:
             s[next - 1] += 1
             stack.pop()
             next -= 1
