@@ -41,4 +41,4 @@ class Progress(object):
             sys.stderr.write("%r\n" % (status,))
         self.reset()
         if final:
-            sys.stderr.write("Total progress count: {:0,d}\n".format(self.total_count))
+            sys.stdout.write("Total progress count: {:0,d}\n".format(self.total_count))
