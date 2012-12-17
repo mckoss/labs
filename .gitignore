@@ -1,4 +1,6 @@
 *.pyc
 *.o
 difference
+difference_ocl
+
 

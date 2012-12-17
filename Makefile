@@ -1,10 +1,13 @@
 CC=gcc
 CFLAGS := -std=c99 -g
 
-all: difference
+all: difference difference_ocl
+
+difference_ocl : difference_ocl.o
+	$(CC) -o difference_ocl difference_ocl.o -lc -framework OpenCL
 
 difference : difference.o
 	$(CC) -o difference difference.o -lm
 
 clean:
-	rm -f difference *.o
+	rm -f difference difference_ocl *.o
