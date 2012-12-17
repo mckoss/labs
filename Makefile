@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS := -std=c99 -g -lm
+CFLAGS := -std=c99 -g
 
 all: difference
 

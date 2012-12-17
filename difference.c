@@ -8,7 +8,7 @@ typedef enum {false, true} bool;
 #define MAX_DIFFS (MAX_SET * (MAX_SET - 1) + 1)
 #define FOREVER for (;;)
 
-int primes[MAX_DIFFS];
+int primes[MAX_SET];
 int pcount = 0;
 
 void sieve() {
@@ -20,15 +20,15 @@ void sieve() {
 
     int sq = (int) sqrt((float) MAX_SET);
 
-    for (int i = 2; i <= MAX_SET; i++) {
+    for (int i = 2; i < MAX_SET; i++) {
         if (s[i]) continue;
         primes[pcount++] = i;
         if (i > sq) continue;
-        for (int j = i * i; j <= MAX_SET; j += i) {
+        for (int j = i * i; j < MAX_SET; j += i) {
             s[j] = true;
         }
         int power = i * i;
-        while (power <= MAX_SET) {
+        while (power < MAX_SET) {
             s[power] = false;
             power *= i;
         }
@@ -101,6 +101,7 @@ int main(int argc, char *argv[]) {
     int s[MAX_SET];
     time_t start;
 
+    printf("Args: %d", argc);
     sieve();
     for (int x = 0; x < pcount; x++) {
         printf("%d ", primes[x]);
