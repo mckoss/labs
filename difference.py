@@ -65,35 +65,31 @@ class DiffState(object):
         if start is None:
             start = [0, 1]
         self.current = []
-        self.diff_map = [True] + [False] * ((self.m + 1) / 2)
-        self.diffs = []
+        self.diff_map = [True] + [False] * (self.m / 2)
 
         for a in start:
-            self.push(a)
+            if not self.try_push(a):
+                raise ValueError("Illegal start.")
 
         if end is None:
             end = list(start)
             end[-1] += 1
         self.end = end
 
-    def can_push(self, a):
+    def try_push(self, a):
+        diffs = []
         for b in self.current:
             d = a - b
             if d > self.m / 2:
                 d = self.m - d
             if self.diff_map[d]:
+                for d in diffs:
+                    self.diff_map[d] = False
                 return False
-        return True
-
-    def push(self, a):
-        for b in self.current:
-            d = a - b
-            if d > self.m / 2:
-                d = self.m - d
-            if self.diff_map[d]:
-                raise ValueError("Infeasible set.")
             self.diff_map[d] = True
+            diffs.append(d)
         self.current.append(a)
+        return True
 
     def pop(self):
         a = self.current.pop()

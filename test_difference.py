@@ -6,7 +6,16 @@ from difference import DiffState, find_difference_set
 
 class TestDiffSet(unittest.TestCase):
     def test_create(self):
-        d = DiffState(12)
+        d = DiffState(3)
+        self.assertEqual(d.current, [0, 1])
+        self.assertEqual(d.end, [0, 2])
+        self.assertEqual(d.diff_map, [True, True, False, False])
+        self.assertFalse(d.try_push(2))
+        self.assertEqual(d.current, [0, 1])
+        self.assertEqual(d.diff_map, [True, True, False, False])
+        self.assertTrue(d.try_push(3))
+        self.assertEqual(d.current, [0, 1, 3])
+        self.assertEqual(d.diff_map, [True, True, True, True])
 
 
 class DifferenceSet(unittest.TestCase):
