@@ -57,6 +57,54 @@ def find_difference_set(k):
                 progress.report(final=True)
                 return ()
 
+
+class DiffState(object):
+    def __init__(self, k, start=None, end=None):
+        self.k = k
+        self.m = k * (k - 1) + 1
+        if start is None:
+            start = [0, 1]
+        self.current = []
+        self.diff_map = [True] + [False] * ((self.m + 1) / 2)
+        self.diffs = []
+
+        for a in start:
+            self.push(a)
+
+        if end is None:
+            end = list(start)
+            end[-1] += 1
+        self.end = end
+
+    def can_push(self, a):
+        for b in self.current:
+            d = a - b
+            if d > self.m / 2:
+                d = self.m - d
+            if self.diff_map[d]:
+                return False
+        return True
+
+    def push(self, a):
+        for b in self.current:
+            d = a - b
+            if d > self.m / 2:
+                d = self.m - d
+            if self.diff_map[d]:
+                raise ValueError("Infeasible set.")
+            self.diff_map[d] = True
+        self.current.append(a)
+
+    def pop(self):
+        a = self.current.pop()
+        for b in self.current:
+            d = a - b
+            if d > self.m / 2:
+                d = self.m - d
+            self.diff_map[d] = False
+        return a
+
+
 def slow_find_difference_set(k):
     """ This one is concise, and expressive - but SLOW """
     if k in (7,):
