@@ -8,16 +8,20 @@ MAX_SET = 103
 
 def main():
     primes = sieve(MAX_SET, prime_power=True)
+    print primes
 
     p = Progress(name="Searching")
     for k in range(2, MAX_SET):
         print "\nDifference set (v = %d, k = %d, 1)" % (k * (k -1) + 1, k)
 
         if k - 1 not in primes:
-            print "Theorom: set k = %d does not exists (since %d is not a prime power)." % (k, k - 1)
+            print "Theorem: set k = %d does not exists (since %d is not a prime power)." % (k, k - 1)
+            continue
 
-        ds = find_difference_set(k)
+        ds = DiffState(k)
+        ds.search()
         print ds
+        ds.progress.report(final=True)
 
 def find_difference_set(k):
     m = k * (k - 1) + 1
@@ -68,7 +72,7 @@ class DiffState(object):
         self.diff_map = [True] + [False] * (self.m / 2)
 
         for a in start:
-            if not self.try_push(a):
+            if not self.push(a):
                 raise ValueError("Illegal start.")
 
         if end is None:
@@ -76,7 +80,45 @@ class DiffState(object):
             end[-1] += 1
         self.end = end
 
-    def try_push(self, a):
+        self.candidate = self.current[-1] + 2
+        self.progress = Progress()
+
+    def __str__(self):
+        return str(self.current)
+
+    def search(self):
+        while not self.at_end():
+            if self.is_solved():
+                return
+            self.next()
+
+    def is_solved(self):
+        return len(self.current) == self.k
+
+    def next(self):
+        self.progress.report(str(self))
+
+        if self.candidate + 2 * (self.k - len(self.current)) >= self.m:
+            self.candidate = self.pop() + 1
+            return
+
+        if self.push(self.candidate):
+            if self.is_solved():
+                return
+            self.candidate += 2
+            return
+
+        self.candidate += 1
+
+    def at_end(self):
+        for i in range(min(len(self.end), len(self.current))):
+            if self.end[i] < self.current[i]:
+                return True
+            if self.end[i] > self.current[i]:
+                return False
+        return False
+
+    def push(self, a):
         diffs = []
         for b in self.current:
             d = a - b
@@ -134,7 +176,7 @@ def sieve(n, prime_power=False):
         primes.append(i);
         if i > sqrt:
             continue
-        for j in range(i * i, n + 1, 2 * i):
+        for j in range(i * i, n + 1, i):
             s.add(j)
         if prime_power:
             power = i * i

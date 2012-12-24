@@ -38,7 +38,7 @@ class Progress(object):
 
         sys.stderr.write("{:s}: {:0,.2f}/{:s} ...\n".format(self.name, rate, unit[0]))
         if status is not None:
-            sys.stderr.write("%r\n" % (status,))
+            sys.stderr.write("%s\n" % (status,))
         self.reset()
         if final:
             sys.stdout.write("Total progress count: {:0,d}\n".format(self.total_count))
