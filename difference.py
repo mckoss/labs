@@ -106,17 +106,22 @@ class DiffState(object):
         return len(self.current) == self.k
 
     def push(self, a):
-        diffs = []
         for b in self.current:
             d = a - b
             if d > self.m / 2:
                 d = self.m - d
-            if self.diff_map[d]:
-                for d in diffs:
-                    self.diff_map[d] = False
-                return False
-            self.diff_map[d] = True
-            diffs.append(d)
+            if not self.diff_map[d]:
+                self.diff_map[d] = True
+                continue
+            # Unwind differences
+            for c in self.current:
+                if c == b:
+                    return False
+                d = a - c
+                if d > self.m / 2:
+                    d = self.m - d
+                self.diff_map[d] = False
+
         self.current.append(a)
 
         # Update highest consecutive difference from zero
