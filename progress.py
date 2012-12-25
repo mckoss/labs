@@ -10,9 +10,9 @@ class Progress(object):
              ('day', 24),
              ('wk', 7),
              ('month', 4))
-    def __init__(self, increment=10000, name='Progress', report_rate=5):
+    def __init__(self, name='Progress', report_rate=5):
         self.name = name
-        self.increment = increment
+        self.increment = 1
         self.report_rate = report_rate
         self.count = 0
         self.total_count = 0
