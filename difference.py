@@ -82,8 +82,9 @@ class DiffState(object):
         return str(self.current)
 
     def search(self):
-        while not self.at_end():
-            if self.is_solved():
+        while True:
+            soln = len(self.current)
+            if soln == self.k or soln < self.min_length:
                 return
             self.next()
 
@@ -104,9 +105,6 @@ class DiffState(object):
             return
 
         self.candidate += 1
-
-    def at_end(self):
-        return len(self.current) < self.min_length
 
     def push(self, a):
         diffs = []
