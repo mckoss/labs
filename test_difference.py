@@ -10,19 +10,6 @@ class TestSieve(unittest.TestCase):
         prefix = [2, 3, 4, 5, 7, 8, 9, 11]
         self.assertEqual(pp[:len(prefix)], prefix)
 
-class TestDiffSet(unittest.TestCase):
-    def test_create(self):
-        d = DiffState(3)
-        self.assertEqual(d.current, [0, 1])
-        self.assertEqual(d.end, [0, 2])
-        self.assertEqual(d.diff_map, [True, True, False, False])
-        self.assertFalse(d.push(2))
-        self.assertEqual(d.current, [0, 1])
-        self.assertEqual(d.diff_map, [True, True, False, False])
-        self.assertTrue(d.push(3))
-        self.assertEqual(d.current, [0, 1, 3])
-        self.assertEqual(d.diff_map, [True, True, True, True])
-
 
 class DifferenceSet(unittest.TestCase):
     def setUp(self):
