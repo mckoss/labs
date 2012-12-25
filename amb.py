@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 
-class AmbRun(object):
+class Runner(object):
     def __init__(self, func):
         self.func = func
         self.options = []
@@ -11,9 +11,9 @@ class AmbRun(object):
         while True:
             try:
                 self.call_number = 0
-                result = self.func(self.amb, self.fail)
+                result = self.func(self.amb)
                 break
-            except AmbError:
+            except Fail:
                 self.next_choice()
                 continue
         return result
@@ -27,9 +27,6 @@ class AmbRun(object):
         choice = self.choices[self.call_number]
         return self.options[self.call_number][choice]
 
-    def fail(self):
-        raise AmbError
-
     def next_choice(self):
         self.options = self.options[:self.call_number + 1]
         self.choices = self.choices[:self.call_number + 1]
@@ -41,7 +38,7 @@ class AmbRun(object):
             self.choices[-1] += 1
 
 
-class AmbError(Exception):
+class Fail(Exception):
     pass
 
 

@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 import unittest
 
-from amb import AmbRun
+from amb import Runner, Fail
 
 
 class TestAmb(unittest.TestCase):
     def test_basic(self):
-        def test(amb, fail):
+        def test(amb):
             x = amb()
             if not x:
-                fail()
+                raise Fail
             return x
 
-        ar = AmbRun(test)
+        ar = Runner(test)
         result = ar.run()
         self.assertEqual(result, True)
 
