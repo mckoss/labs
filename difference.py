@@ -8,7 +8,6 @@ MAX_SET = 103
 
 def main():
     primes = sieve(MAX_SET, prime_power=True)
-    print primes
 
     p = Progress(name="Searching")
     for k in range(2, MAX_SET):
@@ -71,16 +70,12 @@ class DiffState(object):
         self.current = []
         self.diff_map = [True] + [False] * (self.m / 2)
 
-        for a in start:
+        for a in start[:-1]:
             if not self.push(a):
                 raise ValueError("Illegal start.")
+        self.candidate = start[-1]
+        self.min_length = len(self.current)
 
-        if end is None:
-            end = list(start)
-            end[-1] += 1
-        self.end = end
-
-        self.candidate = self.current[-1] + 2
         self.progress = Progress()
 
     def __str__(self):
@@ -111,12 +106,7 @@ class DiffState(object):
         self.candidate += 1
 
     def at_end(self):
-        for i in range(min(len(self.end), len(self.current))):
-            if self.end[i] < self.current[i]:
-                return True
-            if self.end[i] > self.current[i]:
-                return False
-        return False
+        return len(self.current) < self.min_length
 
     def push(self, a):
         diffs = []
