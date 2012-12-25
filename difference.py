@@ -69,6 +69,7 @@ class DiffState(object):
             start = [0, 1]
         self.current = []
         self.diff_map = [True] + [False] * (self.m / 2)
+        self.low = 0
 
         for a in start[:-1]:
             if not self.push(a):
@@ -94,14 +95,14 @@ class DiffState(object):
     def next(self):
         self.progress.report(str(self))
 
-        if self.candidate + 2 * (self.k - len(self.current)) >= self.m:
+        if self.candidate + (self.low + 1) * (self.k - len(self.current) - 1) >= self.m - self.low:
             self.candidate = self.pop() + 1
             return
 
         if self.push(self.candidate):
             if self.is_solved():
                 return
-            self.candidate += 2
+            self.candidate += self.low + 1
             return
 
         self.candidate += 1
@@ -119,6 +120,11 @@ class DiffState(object):
             self.diff_map[d] = True
             diffs.append(d)
         self.current.append(a)
+
+        # Update highest consecutive difference from zero
+        while self.low <= self.m / 2 - 1 and self.diff_map[self.low + 1]:
+            self.low += 1
+
         return True
 
     def pop(self):
@@ -128,6 +134,11 @@ class DiffState(object):
             if d > self.m / 2:
                 d = self.m - d
             self.diff_map[d] = False
+
+            # Update highest consecutive difference from zero
+            if d <= self.low:
+                self.low = d - 1
+
         return a
 
 
