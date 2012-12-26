@@ -49,9 +49,11 @@ def amb_diff(amb, k):
         for j in range(0, i):
             d1 = (s[j] - s[i]) % m
             d2 = (s[i] - s[j]) % m
-            if d1 in diffs or d2 in diffs:
+            if d1 in diffs:
                 raise Fail
             diffs.add(d1)
+            if d2 in diffs:
+                raise Fail
             diffs.add(d2)
 
     return s
