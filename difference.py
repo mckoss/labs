@@ -4,6 +4,7 @@ import argparse
 from itertools import combinations
 
 from progress import Progress
+from amb import Runner, Fail
 
 MAX_SET = 103
 
@@ -31,7 +32,30 @@ def main():
         elif args.version == 'find':
             find_difference_set(k)
         else:
-            raise ValueError("NYI")
+            ar = Runner(amb_diff)
+            print "Result: %s" % ar.run(k)
+
+
+def amb_diff(amb, k):
+    m = k * (k - 1) + 1
+    last = 1
+    s = []
+
+    diffs = set()
+    diffs.add(0)
+
+    for i in range(k):
+        s.append(amb(m))
+        for j in range(0, i):
+            d1 = (s[j] - s[i]) % m
+            d2 = (s[i] - s[j]) % m
+            if d1 in diffs or d2 in diffs:
+                raise Fail
+            diffs.add(d1)
+            diffs.add(d2)
+
+    return s
+
 
 def find_difference_set(k):
     m = k * (k - 1) + 1

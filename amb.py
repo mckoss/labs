@@ -9,12 +9,12 @@ class Runner(object):
         self.choices = []
         self.progress = Progress(report_rate=1)
 
-    def run(self):
+    def run(self, *args):
         while True:
             try:
                 self.progress.report(self.choices)
                 self.call_number = 0
-                result = self.func(self.amb)
+                result = self.func(self.amb, *args)
                 break
             except Fail:
                 self.next_choice()
@@ -23,21 +23,30 @@ class Runner(object):
         return result
 
     def amb(self, choices=None):
-        if self.call_number >= len(self.options):
+        if self.call_number == len(self.options):
             if choices is None:
                 choices = [False, True]
             self.options.append(choices)
             self.choices.append(0)
-        choice = self.choices[self.call_number]
-        option = self.options[self.call_number][choice]
         self.call_number += 1
-        return option
+        choice = self.choices[self.call_number - 1]
+        if isinstance(choices, (int, long)):
+            if choices == 0:
+                raise Fail
+            return choice
+        return self.options[self.call_number - 1][choice]
 
     def next_choice(self):
         self.options = self.options[:self.call_number + 1]
         self.choices = self.choices[:self.call_number + 1]
         self.choices[-1] += 1
-        while self.choices[-1] == len(self.options[-1]):
+        while True:
+            if isinstance(self.options[-1], (int, long)):
+                if self.choices[-1] < self.options[-1]:
+                    break
+            elif self.choices[-1] < len(self.options[-1]):
+                break
+
             self.choices.pop()
             self.options.pop()
             self.choices[-1] += 1

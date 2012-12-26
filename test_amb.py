@@ -16,6 +16,17 @@ class TestAmb(unittest.TestCase):
         result = ar.run()
         self.assertEqual(result, True)
 
+    def test_args(self):
+        def test(amb, k):
+            x = amb()
+            if not x:
+                raise Fail
+            return k
+
+        ar = Runner(test)
+        result = ar.run(123)
+        self.assertEqual(result, 123)
+
     def test_eight(self):
         ar = Runner(eight_queens)
         result = ar.run()
@@ -42,7 +53,7 @@ def eight_queens(amb):
     queens = []
 
     for i in range(8):
-        place = [i, amb(range(8))]
+        place = [i, amb(8)]
         check(place[0], place[1])
         queens.append(place)
 

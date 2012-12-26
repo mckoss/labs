@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 import unittest
 
-from difference import DiffState, find_difference_set, sieve
+from difference import DiffState, find_difference_set, sieve, amb_diff
+from amb import Runner
 
 
 class TestSieve(unittest.TestCase):
@@ -31,7 +32,12 @@ class DifferenceSet(unittest.TestCase):
             k = len(s)
             ds = DiffState(k)
             ds.search()
-            self.assertEqual(s, ds.current)
+            self.assertEqual(ds.current, s)
+
+    def test_amb(self):
+        for s in self.dsets[:-1]:
+            ar = Runner(amb_diff)
+            self.assertEqual(ar.run(len(s)), s)
 
 
 if __name__ == '__main__':
