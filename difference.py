@@ -4,14 +4,14 @@ import argparse
 from itertools import combinations
 
 from progress import Progress
-from amb import Runner, Fail
+from amb import Runner, Fail, MonteCarloRunner
 
 MAX_SET = 103
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", default="diffstate",
-                        help="Select function version to use (find, diffstate, amb).")
+                        help="Select function version to use (find, diffstate, amb, monte).")
     args = parser.parse_args()
 
     primes = sieve(MAX_SET, prime_power=True)
@@ -31,9 +31,14 @@ def main():
             ds.progress.report(final=True)
         elif args.version == 'find':
             find_difference_set(k)
-        else:
+        elif args.version == 'amb':
             ar = Runner(amb_diff)
             print "Result: %s" % ar.run(k)
+        elif args.version == 'monte':
+            ar = MonteCarloRunner(amb_diff)
+            print "Result: %s" % ar.run(k)
+        else:
+            raise ValueError("No such version: %s" % args.version)
 
 
 def amb_diff(amb, k):

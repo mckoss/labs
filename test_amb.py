@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import unittest
 
-from amb import Runner, Fail
+from amb import Runner, Fail, MonteCarloRunner
 
 
 class TestAmb(unittest.TestCase):
@@ -13,6 +13,17 @@ class TestAmb(unittest.TestCase):
             return x
 
         ar = Runner(test)
+        result = ar.run()
+        self.assertEqual(result, True)
+
+    def test_monte_carlo(self):
+        def test(amb):
+            x = amb()
+            if not x:
+                raise Fail
+            return x
+
+        ar = MonteCarloRunner(test)
         result = ar.run()
         self.assertEqual(result, True)
 
@@ -32,6 +43,12 @@ class TestAmb(unittest.TestCase):
         result = ar.run()
         self.assertEqual(result,
                          [[0, 0], [1, 4], [2, 7], [3, 5], [4, 2], [5, 6], [6, 1], [7, 3]])
+
+    def test_eight_monte(self):
+        ar = MonteCarloRunner(eight_queens)
+        result = ar.run()
+        self.assertEqual(len(result), 8)
+
 
 def eight_queens(amb):
     rows = set()

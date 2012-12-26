@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+import random
+
 from progress import Progress
 
 
@@ -19,7 +21,7 @@ class Runner(object):
             except Fail:
                 self.next_choice()
                 continue
-        self.progress.report(final=True)
+        self.progress.report(self.choices, final=True)
         return result
 
     def amb(self, choices=None):
@@ -31,7 +33,7 @@ class Runner(object):
         self.call_number += 1
         choice = self.choices[self.call_number - 1]
         if isinstance(choices, (int, long)):
-            if choices == 0:
+            if choices <= 0:
                 raise Fail
             return choice
         return self.options[self.call_number - 1][choice]
@@ -50,6 +52,38 @@ class Runner(object):
             self.choices.pop()
             self.options.pop()
             self.choices[-1] += 1
+
+
+class MonteCarloRunner(object):
+    def __init__(self, func):
+        self.func = func
+        self.progress = Progress(report_rate=1)
+        self.choices = []
+
+    def run(self, *args):
+        while True:
+            try:
+                self.progress.report(self.choices)
+                self.choices = []
+                result = self.func(self.amb, *args)
+                break
+            except Fail:
+                continue
+        self.progress.report(self.choices, final=True)
+        return result
+
+    def amb(self, choices=None):
+        if choices is None:
+            choices = [False, True]
+        if isinstance(choices, (int, long)):
+            size = choices
+        else:
+            size = len(choices)
+        if size <= 0:
+            raise Fail
+        value = random.randrange(size)
+        self.choices.append(value)
+        return value
 
 
 class Fail(Exception):

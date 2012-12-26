@@ -2,7 +2,7 @@
 import unittest
 
 from difference import DiffState, find_difference_set, sieve, amb_diff
-from amb import Runner
+from amb import Runner, MonteCarloRunner
 
 
 class TestSieve(unittest.TestCase):
@@ -39,6 +39,10 @@ class DifferenceSet(unittest.TestCase):
             ar = Runner(amb_diff)
             self.assertEqual(ar.run(len(s)), s)
 
+    def test_amb_monte(self):
+        for s in self.dsets[:-3]:
+            ar = MonteCarloRunner(amb_diff)
+            self.assertEqual(len(ar.run(len(s))), len(s))
 
 if __name__ == '__main__':
     unittest.main()
