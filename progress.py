@@ -16,18 +16,19 @@ class Progress(object):
         self.report_rate = report_rate
         self.count = 0
         self.total_count = 0
+        self.start_time = time.time()
         self.reset()
 
     def reset(self):
         self.total_count += self.count
         self.count = 0
-        self.start_time = time.time()
+        self.interval_start = time.time()
 
     def report(self, status=None, final=False):
         self.count += 1
         if not final and self.count < self.increment:
             return
-        dt = time.time() - self.start_time
+        dt = time.time() - self.interval_start
         rate = float(self.increment) / dt
         if not final:
             self.increment = int(self.count * self.report_rate / dt)
@@ -36,9 +37,12 @@ class Progress(object):
             if rate >= 1:
                 break
 
-        sys.stderr.write("{:s}: {:0,.2f}/{:s} ...\n".format(self.name, rate, unit[0]))
-        if status is not None:
-            sys.stderr.write("%s\n" % (status,))
+        sys.stderr.write("{:s}: {:,.2f}/{:s} @ {:s}\n".format(self.name,
+                                                             rate,
+                                                             unit[0],
+                                                             status if status is not None else ''
+                                                             ))
         self.reset()
         if final:
-            sys.stdout.write("Total progress count: {:0,d}\n".format(self.total_count))
+            sys.stdout.write("Total time {:,.2f} secs (count: {:,d})\n".format(time.time() - self.start_time,
+                                                                           self.total_count))

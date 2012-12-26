@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import math
+import argparse
 from itertools import combinations
 
 from progress import Progress
@@ -7,6 +8,11 @@ from progress import Progress
 MAX_SET = 103
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--version", default="diffstate",
+                        help="Select function version to use (find, diffstate, amb).")
+    args = parser.parse_args()
+
     primes = sieve(MAX_SET, prime_power=True)
 
     p = Progress(name="Searching")
@@ -14,13 +20,18 @@ def main():
         print "\nDifference set (v = %d, k = %d, 1)" % (k * (k -1) + 1, k)
 
         if k - 1 not in primes:
-            print "Theorem: set k = %d does not exists (since %d is not a prime power)." % (k, k - 1)
+            print "Theorem: set k = %d does not exist (since %d is not a prime power)." % (k, k - 1)
             continue
 
-        ds = DiffState(k)
-        ds.search()
-        print ds
-        ds.progress.report(final=True)
+        if args.version == 'diffstate':
+            ds = DiffState(k)
+            ds.search()
+            print ds
+            ds.progress.report(final=True)
+        elif args.version == 'find':
+            find_difference_set(k)
+        else:
+            raise ValueError("NYI")
 
 def find_difference_set(k):
     m = k * (k - 1) + 1
