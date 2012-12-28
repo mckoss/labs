@@ -33,12 +33,13 @@ def main():
         center = (CENTER[0] + R * sin(ang), CENTER[1] - R * cos(ang))
         points.append(Point(center[0], center[1]))
 
-    for i in range(m):
-        for j in range(i, m):
-            if not (i in ds.current and j in ds.current):
-                l = Line(points[i], points[j])
-                l.draw(win)
-                l.setOutline(all_color)
+    if m < 20:
+        for i in range(m):
+            for j in range(i, m):
+                if not (i in ds.current and j in ds.current):
+                    l = Line(points[i], points[j])
+                    l.draw(win)
+                    l.setOutline(all_color)
 
     for i in range(m):
         for j in range(i, m):
