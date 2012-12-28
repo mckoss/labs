@@ -13,8 +13,41 @@ typedef enum {false, true} bool;
 int primes[MAX_SET];
 int pcount = 0;
 
+void sieve(void);
+bool find_difference_set(int k, int s[]);
+void remove_diffs(int d[], int *dFirst, int *dMax);
 void commas(long, char *);
 void insert_string(char *, char *);
+
+int main(int argc, char *argv[]) {
+    int s[MAX_SET];
+    int start;
+
+    sieve();
+
+    start = 2;
+    if (argc > 1) {
+        sscanf(argv[1], "%d", &start);
+    }
+
+    for (int i = 0; i < pcount; i++) {
+        int k = primes[i] + 1;
+        if (k < start) {
+            continue;
+        }
+        printf("\nDifference set (k = %d, m = %d):\n", k, k * (k - 1) + 1);
+        if (find_difference_set(k, s)) {
+            char *sep = "";
+            for (int i = 0; i < k; i++) {
+                printf("%s%d", sep, s[i]);
+                sep = ", ";
+            }
+            printf("\n");
+        }
+    }
+
+    return 0;
+}
 
 void sieve() {
     /// Return all prime powers less than or equal to n in primes[]
@@ -38,12 +71,6 @@ void sieve() {
             s[power] = false;
             power *= i;
         }
-    }
-}
-
-void remove_diffs(int d[], int *dFirst, int *dMax) {
-    while (dFirst < dMax) {
-        d[*dFirst++] = 0;
     }
 }
 
@@ -119,35 +146,10 @@ bool find_difference_set(int k, int s[]) {
     }
 }
 
-int main(int argc, char *argv[]) {
-    int s[MAX_SET];
-    int start;
-
-    sieve();
-
-    start = 2;
-    if (argc > 1) {
-        printf("Arg: '%s'\n", argv[1]);
-        sscanf(argv[1], "%d", &start);
+void remove_diffs(int d[], int *dFirst, int *dMax) {
+    while (dFirst < dMax) {
+        d[*dFirst++] = 0;
     }
-
-    for (int i = 0; i < pcount; i++) {
-        int k = primes[i] + 1;
-        if (k < start) {
-            continue;
-        }
-        printf("\nDifference set (k = %d, m = %d):\n", k, k * (k - 1) + 1);
-        if (find_difference_set(k, s)) {
-            char *sep = "";
-            for (int i = 0; i < k; i++) {
-                printf("%s%d", sep, s[i]);
-                sep = ", ";
-            }
-            printf("\n");
-        }
-    }
-
-    return 0;
 }
 
 void commas(long l, char *buff) {
