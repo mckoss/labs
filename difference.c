@@ -1,15 +1,20 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include <string.h>
 
 typedef enum {false, true} bool;
 
-#define MAX_SET 20
+#define MAX_SET 30
 #define MAX_DIFFS (MAX_SET * (MAX_SET - 1) + 1)
 #define FOREVER for (;;)
+#define PROGRESS 50000000
 
 int primes[MAX_SET];
 int pcount = 0;
+
+void commas(long, char *);
+void insert_string(char *, char *);
 
 void sieve() {
     /// Return all prime powers less than or equal to n in primes[]
@@ -20,6 +25,7 @@ void sieve() {
 
     int sq = (int) sqrt((float) MAX_SET);
 
+    primes[pcount++] = 1;
     for (int i = 2; i < MAX_SET; i++) {
         if (s[i]) continue;
         primes[pcount++] = i;
@@ -50,6 +56,10 @@ bool find_difference_set(int k, int s[]) {
     int n;
     int i;
     long trials = 0;
+    time_t start = time(NULL);
+    char buff[16];
+
+    start = time(NULL);
 
     s[0] = 0; s[1] = 1;
     stack[0] = 0;
@@ -60,6 +70,20 @@ bool find_difference_set(int k, int s[]) {
 
     FOREVER {
         trials++;
+        if (trials % PROGRESS == 0) {
+            commas(trials, buff);
+            printf("Progress (%s): ", buff);
+            char *sep = "";
+            for (i = 0; i < next; i++) {
+                printf("%s%d", sep, s[i]);
+                sep = ", ";
+            }
+            time_t now = time(NULL);
+            int elapsed = (int) (now - start);
+            commas(PROGRESS / elapsed, buff);
+            printf(" (%s per sec)\n", buff);
+            start = now;
+        }
         n = s[next];
         stack[next] = stack[next - 1];
         // Test s[next] against previous elements.
@@ -77,7 +101,6 @@ bool find_difference_set(int k, int s[]) {
         // s[next] is feasible
         if (i == next) {
             if (next == k - 1) {
-                printf("Trials: %ld\n", trials);
                 return true;
             }
             s[++next] = n + 2;
@@ -89,7 +112,6 @@ bool find_difference_set(int k, int s[]) {
         if (s[next] + 2 * (k - next - 1) >= m) {
             s[--next]++;
             if (next == 1) {
-                printf("Trials: %ld\n", trials);
                 return false;
             }
             remove_diffs(d, &hist[stack[next - 1]], &hist[stack[next]]);
@@ -99,29 +121,54 @@ bool find_difference_set(int k, int s[]) {
 
 int main(int argc, char *argv[]) {
     int s[MAX_SET];
-    time_t start;
+    int start;
 
-    printf("Args: %d", argc);
     sieve();
-    for (int x = 0; x < pcount; x++) {
-        printf("%d ", primes[x]);
+
+    start = 2;
+    if (argc > 1) {
+        printf("Arg: '%s'\n", argv[1]);
+        sscanf(argv[1], "%d", &start);
     }
 
-    for (int k1 = 0; k1 < pcount; k1++) {
-        int k = primes[k1] + 1;
-        printf("Difference set (v = %d, k = %d, 1):\n", k * (k - 1) + 1, k);
-        start = time(NULL);
+    for (int i = 0; i < pcount; i++) {
+        int k = primes[i] + 1;
+        if (k < start) {
+            continue;
+        }
+        printf("\nDifference set (k = %d, m = %d):\n", k, k * (k - 1) + 1);
         if (find_difference_set(k, s)) {
-            printf("[");
             char *sep = "";
             for (int i = 0; i < k; i++) {
                 printf("%s%d", sep, s[i]);
                 sep = ", ";
             }
-            printf("]\n");
+            printf("\n");
         }
-        printf("Elapsed time: %ds.\n\n", (int) (time(NULL) - start));
     }
 
     return 0;
+}
+
+void commas(long l, char *buff) {
+    sprintf(buff, "%ld", l);
+    char *end = buff + strlen(buff) - 3;
+    while (end > buff) {
+        insert_string(end, ",");
+        end -= 3;
+    }
+}
+
+void insert_string(char *buff, char *s) {
+    int cch = strlen(s);
+
+    char *pchFrom = buff + strlen(buff);
+    char *pchTo = pchFrom + cch;
+    while (pchFrom >= buff) {
+        *pchTo-- = *pchFrom--;
+    }
+    pchFrom = s + cch - 1;
+    while (pchTo >= buff) {
+        *pchTo-- = *pchFrom--;
+    }
 }
