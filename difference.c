@@ -8,7 +8,7 @@ typedef enum {false, true} bool;
 #define MAX_SET 30
 #define MAX_DIFFS (MAX_SET * (MAX_SET - 1) + 1)
 #define FOREVER for (;;)
-#define PROGRESS 50000000
+#define PROGRESS 100000000L
 
 int primes[MAX_SET];
 int pcount = 0;
@@ -26,8 +26,10 @@ void sieve(void);
 bool find_difference_set(int k);
 bool push(int a);
 int pop();
+
 void reset_progress();
 void progress();
+void print_trace();
 
 void commas(long, char *);
 void insert_string(char *, char *);
@@ -57,13 +59,13 @@ int main(int argc, char *argv[]) {
             continue;
         }
         if (find_difference_set(k)) {
-            char *sep = "";
-            for (int i = 0; i < k; i++) {
-                printf("%s%d", sep, s[i]);
-                sep = ", ";
-            }
-            printf("\n");
+            print_trace();
+        } else {
+            printf("No solution.");
         }
+        char buff[20];
+        commas(trials, buff);
+        printf("\nTrials: %s\n", buff);
     }
 
     return 0;
@@ -176,7 +178,7 @@ int pop() {
             d = m - d;
         }
         diffs[d] = false;
-        if (d < low) {
+        if (d <= low) {
             low = d - 1;
         }
     }
@@ -197,17 +199,22 @@ void progress() {
     }
 
     commas(trials, buff);
-    printf("Progress (%s): ", buff);
-    char *sep = "";
-    for (int i = 0; i < current; i++) {
-        printf("%s%d", sep, s[i]);
-        sep = ", ";
-    }
+    printf("Trials %s: ", buff);
+    print_trace();
     time_t now = time(NULL);
     int elapsed = (int) (now - start);
     commas(PROGRESS / elapsed, buff);
     printf(" (%s per sec)\n", buff);
     start = now;
+}
+
+void print_trace() {
+    char *sep = "";
+    for (int i = 0; i < current; i++) {
+        printf("%s%d", sep, s[i]);
+        sep = ", ";
+    }
+    printf(" (low = %d)", low);
 }
 
 void commas(long l, char *buff) {
