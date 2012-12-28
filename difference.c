@@ -133,8 +133,18 @@ bool find_difference_set(int k, int prefix_size, int prefix[]) {
         push(0);
         push(1);
     } else {
-        for (int i = 0; i < prefix_size; i++) {
-            push(prefix[i]);
+        int i;
+        for (i = 0; i < prefix_size; i++) {
+            if (!push(prefix[i]))
+                break;
+        }
+        // Choose next legal prefix.
+        if (i != prefix_size) {
+            while (!push(++prefix[i])) {}
+            printf("Illegal prefix.  Using: ");
+            print_trace();
+            printf(" instead.\n");
+
         }
     }
     candidate = s[current - 1] + low + 1;
