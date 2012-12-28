@@ -13,29 +13,50 @@ typedef enum {false, true} bool;
 int primes[MAX_SET];
 int pcount = 0;
 
+long trials = 0;
+time_t start;
+
+int m;
+int s[MAX_SET];
+bool diffs[MAX_DIFFS];
+int current;
+int low;
+
 void sieve(void);
-bool find_difference_set(int k, int s[]);
+bool find_difference_set(int k);
+bool push(int a);
+int pop();
+void reset_progress();
+void progress();
+
 void commas(long, char *);
 void insert_string(char *, char *);
 
 int main(int argc, char *argv[]) {
-    int s[MAX_SET];
     int start;
+    int end;
 
     sieve();
 
     start = 2;
+    end = MAX_SET;
     if (argc > 1) {
         sscanf(argv[1], "%d", &start);
+        end = start;
+    }
+    if (argc > 2) {
+        sscanf(argv[2], "%d", &end);
     }
 
     for (int i = 0; i < pcount; i++) {
         int k = primes[i] + 1;
+        if (k > end) {
+            break;
+        }
         if (k < start) {
             continue;
         }
-        printf("\nDifference set (k = %d, m = %d):\n", k, k * (k - 1) + 1);
-        if (find_difference_set(k, s)) {
+        if (find_difference_set(k)) {
             char *sep = "";
             for (int i = 0; i < k; i++) {
                 printf("%s%d", sep, s[i]);
@@ -73,94 +94,120 @@ void sieve() {
     }
 }
 
-bool find_difference_set(int k, int s[]) {
-    int m = k * (k - 1) + 1;
-    int d[MAX_DIFFS];
-    int hist[MAX_DIFFS];
-    int stack[MAX_SET];
-    int next = 1;
-    int n;
-    int i, j;
-    int a;
-    long trials = 0;
-    time_t start = time(NULL);
-    char buff[16];
+bool find_difference_set(int k) {
+    int candidate;
 
-    start = time(NULL);
+    m = k * (k - 1) + 1;
 
-    s[0] = 0; s[1] = 1;
-    stack[0] = 0;
+    printf("\nDifference set (k = %d, m = %d):\n", k, m);
 
-    for (i = 0; i < m; i++) {
-        d[i] = false;
+    s[0] = 0;
+    current = 1;
+    candidate = 1;
+
+    diffs[0] = true;
+    for (int i = 1; i <= m / 2; i++) {
+        diffs[i] = false;
     }
+    low = 0;
+
+    reset_progress();
 
     FOREVER {
-        trials++;
-        if (trials % PROGRESS == 0) {
-            commas(trials, buff);
-            printf("Progress (%s): ", buff);
-            char *sep = "";
-            for (i = 0; i < next; i++) {
-                printf("%s%d", sep, s[i]);
-                sep = ", ";
-            }
-            time_t now = time(NULL);
-            int elapsed = (int) (now - start);
-            commas(PROGRESS / elapsed, buff);
-            printf(" (%s per sec)\n", buff);
-            start = now;
-        }
+        progress(current, s);
 
-        n = s[next];
-        // Test s[next] against previous elements.
-        for (i = 0; i < next; i++) {
-            a = n - s[i];
-            if (a > m / 2) {
-                a = m - a;
-            }
-            if (d[a]) {
-                for (j = 0; j < i; j++) {
-                    a = n - s[j];
-                    if (a > m / 2) {
-                        a = m - a;
-                    }
-                    d[a] = 0;
-                }
-                break;
-            }
-            d[a] = 1;
-        }
-
-        // s[next] is feasible
-        if (i == next) {
-            if (next == k - 1) {
+        // if candidate is feasible, push on
+        if (push(candidate)) {
+            if (current == k) {
                 return true;
             }
-            // TODO add low option
-            s[++next] = n + 2;
+            candidate += low + 1;
             continue;
         }
 
-        // s[next] is not feasible - try next value
-        s[next]++;
+        // n is not feasible - try next value
+        candidate++;
 
         // Can't work - backtrack
-        if (s[next] + 2 * (k - next - 1) >= m) {
-            if (next == 1) {
+        if (candidate + (low + 1) * (k - current - 1) >= m - low) {
+            if (current == 1) {
                 return false;
             }
-            n = s[--next];
-            for (i = 0; i < next; i++) {
-                a = n - s[i];
-                if (a > m / 2) {
-                    a = m - a;
-                }
-                d[a] = 0;
-            }
-            s[next] = n + 1;
+            candidate = pop() + 1;
         }
     }
+}
+
+bool push(int a) {
+    int d;
+
+    for (int i = 0; i < current; i++) {
+        d = a - s[i];
+        if (d > m / 2) {
+            d = m - d;
+        }
+        if (diffs[d]) {
+            for (int j = 0; j < i; j++) {
+                d = a - s[j];
+                if (d > m / 2) {
+                    d = m - d;
+                }
+                diffs[d] = false;
+            }
+            return false;
+        }
+        diffs[d] = true;
+    }
+    s[current] = a;
+    current++;
+
+    while (low < m / 2 && diffs[low + 1]) {
+        low++;
+    }
+
+    return true;
+}
+
+int pop() {
+    int a = s[--current];
+    for (int i = 0; i < current; i++) {
+        int d = a - s[i];
+        if (d > m / 2) {
+            d = m - d;
+        }
+        diffs[d] = false;
+        if (d < low) {
+            low = d - 1;
+        }
+    }
+    return a;
+}
+
+void reset_progress() {
+    start = time(NULL);
+    trials = 0;
+}
+
+void progress() {
+    char buff[20];
+
+    trials++;
+    if (trials % PROGRESS != 0) {
+        return;
+    }
+
+    commas(trials, buff);
+    printf("Progress (%s): ", buff);
+    char *sep = "";
+    for (int i = 0; i < current; i++) {
+        printf("%s%d", sep, s[i]);
+        sep = ", ";
+    }
+    time_t now = time(NULL);
+    int elapsed = (int) (now - start);
+    commas(PROGRESS / elapsed, buff);
+    printf(" (%s per sec)\n", buff);
+    start = now;
 }
 
 void commas(long l, char *buff) {
