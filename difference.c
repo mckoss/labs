@@ -23,13 +23,14 @@ int current;
 int low;
 
 void sieve(void);
-bool find_difference_set(int k);
+bool find_difference_set(int k, int prefix_size, int prefix[]);
 bool push(int a);
 int pop();
 
 void reset_progress();
 void progress();
 void print_trace();
+void print_ints(int count, int nums[]);
 
 void commas(long, char *);
 void insert_string(char *, char *);
@@ -37,17 +38,35 @@ void insert_string(char *, char *);
 int main(int argc, char *argv[]) {
     int start;
     int end;
+    int prefix[MAX_SET];
+    int prefix_size = 0;
 
     sieve();
 
     start = 2;
     end = MAX_SET;
+    // difference <start k>
     if (argc > 1) {
         sscanf(argv[1], "%d", &start);
         end = start;
     }
-    if (argc > 2) {
+    // difference <start k> <end k>
+    if (argc == 3) {
         sscanf(argv[2], "%d", &end);
+    }
+    // differece <k> <prefix-1> <prefix-2> ...
+    if (argc > 3) {
+        prefix_size = argc - 2;
+        for (int i = 0; i < prefix_size; i++) {
+            sscanf(argv[i + 2], "%d", &prefix[i]);
+        }
+    }
+
+    printf("Calculating difference sets from k = %d to k = %d.\n", start, end);
+    if (prefix_size > 0) {
+        printf("Prefix: ");
+        print_ints(prefix_size, prefix);
+        printf("\n");
     }
 
     for (int i = 0; i < pcount; i++) {
@@ -58,7 +77,7 @@ int main(int argc, char *argv[]) {
         if (k < start) {
             continue;
         }
-        if (find_difference_set(k)) {
+        if (find_difference_set(k, prefix_size, prefix)) {
             print_trace();
         } else {
             printf("No solution.");
@@ -96,22 +115,29 @@ void sieve() {
     }
 }
 
-bool find_difference_set(int k) {
+bool find_difference_set(int k, int prefix_size, int prefix[]) {
     int candidate;
 
     m = k * (k - 1) + 1;
 
     printf("\nDifference set (k = %d, m = %d):\n", k, m);
 
-    s[0] = 0;
-    current = 1;
-    candidate = 1;
-
+    low = 0;
     diffs[0] = true;
     for (int i = 1; i <= m / 2; i++) {
         diffs[i] = false;
     }
-    low = 0;
+
+    current = 0;
+    if (prefix_size == 0) {
+        push(0);
+        push(1);
+    } else {
+        for (int i = 0; i < prefix_size; i++) {
+            push(prefix[i]);
+        }
+    }
+    candidate = s[current - 1] + low + 1;
 
     reset_progress();
 
@@ -209,12 +235,16 @@ void progress() {
 }
 
 void print_trace() {
+    print_ints(current, s);
+    printf(" (low = %d)", low);
+}
+
+void print_ints(int count, int nums[]) {
     char *sep = "";
-    for (int i = 0; i < current; i++) {
-        printf("%s%d", sep, s[i]);
+    while (count--) {
+        printf("%s%d", sep, *nums++);
         sep = ", ";
     }
-    printf(" (low = %d)", low);
 }
 
 void commas(long l, char *buff) {
