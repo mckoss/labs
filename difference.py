@@ -45,11 +45,17 @@ class DiffState(object):
         self.diff_map = [True] + [False] * (self.m / 2)
         self.low = 0
 
+        self.candidate = None
         for a in prefix:
             if not self.push(a):
-                raise ValueError("Illegal prefix.")
+                print "Illegal prefix: %r" % prefix
+                self.candidate = a
+                print "Starting from: %r %d" % (self.current, self.candidate)
+                break
 
-        self.candidate = self.current[-1] + self.low + 1
+        if self.candidate is None:
+            self.candidate = self.current[-1] + self.low + 1
+
         self.min_length = len(self.current)
 
         self.progress = Progress()
