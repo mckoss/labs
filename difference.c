@@ -15,7 +15,6 @@ int pcount = 0;
 
 void sieve(void);
 bool find_difference_set(int k, int s[]);
-void remove_diffs(int d[], int *dFirst, int *dMax);
 void commas(long, char *);
 void insert_string(char *, char *);
 
@@ -81,7 +80,8 @@ bool find_difference_set(int k, int s[]) {
     int stack[MAX_SET];
     int next = 1;
     int n;
-    int i;
+    int i, j;
+    int a;
     long trials = 0;
     time_t start = time(NULL);
     char buff[16];
@@ -111,44 +111,55 @@ bool find_difference_set(int k, int s[]) {
             printf(" (%s per sec)\n", buff);
             start = now;
         }
+
         n = s[next];
-        stack[next] = stack[next - 1];
         // Test s[next] against previous elements.
         for (i = 0; i < next; i++) {
-            int a = (m + n - s[i]) % m;
-            int b = (m + s[i] - n) % m;
-            if (d[a] || d[b]) {
-                remove_diffs(d, &hist[stack[next - 1]], &hist[stack[next]]);
+            a = n - s[i];
+            if (a > m / 2) {
+                a = m - a;
+            }
+            if (d[a]) {
+                for (j = 0; j < i; j++) {
+                    a = n - s[j];
+                    if (a > m / 2) {
+                        a = m - a;
+                    }
+                    d[a] = 0;
+                }
                 break;
             }
-            d[a] = d[b] = 1;
-            hist[stack[next]++] = a;
-            hist[stack[next]++] = b;
+            d[a] = 1;
         }
+
         // s[next] is feasible
         if (i == next) {
             if (next == k - 1) {
                 return true;
             }
+            // TODO add low option
             s[++next] = n + 2;
             continue;
         }
+
         // s[next] is not feasible - try next value
         s[next]++;
+
         // Can't work - backtrack
         if (s[next] + 2 * (k - next - 1) >= m) {
-            s[--next]++;
             if (next == 1) {
                 return false;
             }
-            remove_diffs(d, &hist[stack[next - 1]], &hist[stack[next]]);
+            n = s[--next];
+            for (i = 0; i < next; i++) {
+                a = n - s[i];
+                if (a > m / 2) {
+                    a = m - a;
+                }
+                d[a] = 0;
+            }
+            s[next] = n + 1;
         }
-    }
-}
-
-void remove_diffs(int d[], int *dFirst, int *dMax) {
-    while (dFirst < dMax) {
-        d[*dFirst++] = 0;
     }
 }
 
