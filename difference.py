@@ -9,11 +9,11 @@ from amb import Runner, Fail, MonteCarloRunner
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--start", default=2, type=int,
+    parser.add_argument("--start", default=3, type=int,
                         help="Starting point for size (k) of difference set search.")
     parser.add_argument("--end", default=103, type=int,
                         help="Ending point for size of difference set search.")
-    parser.add_argument("--all",
+    parser.add_argument("--all", action="store_true",
                         help="Find all difference sets (does not stop a first solution.")
     parser.add_argument("prefix", default=[0, 1], type=int, nargs='*',
                         help="Search all solutions that have given prefix.")
@@ -30,8 +30,20 @@ def main():
             continue
 
         ds = DiffState(k, args.prefix)
-        ds.search()
-        print ds
+        unique_solutions = []
+        while True:
+            ds.search()
+            if ds.is_solved():
+                for soln in unique_solutions:
+                    if ds.is_inverse(soln):
+                        # print "%s same as %r" % (ds, soln)
+                        break
+                else:
+                    print ds
+                    unique_solutions.append(list(ds.current))
+            if not args.all or ds.is_finished():
+                break
+            ds.next()
         ds.progress.report(final=True)
 
 
@@ -67,12 +79,11 @@ class DiffState(object):
         while True:
             self.progress.report(self)
 
-            size = len(self.current)
-            if size == self.k or size < self.min_length:
+            if self.is_finished():
                 return
 
             if self.candidate + (self.low + 1) * (self.k - len(self.current) - 1) >= self.m - self.low:
-                self.candidate = self.pop() + 1
+                self.next()
                 continue
 
             if self.push(self.candidate):
@@ -85,6 +96,12 @@ class DiffState(object):
 
     def is_solved(self):
         return len(self.current) == self.k
+
+    def is_finished(self):
+        return len(self.current) < self.min_length
+
+    def next(self):
+        self.candidate = self.pop() + 1
 
     def push(self, a):
         for b in self.current:
@@ -124,6 +141,12 @@ class DiffState(object):
                 self.low = d - 1
 
         return a
+
+    def is_inverse(self, ds):
+        for i in range(2, self.k):
+            if ds[i] != self.m - self.current[self.k - i + 1] + 1:
+                return False
+        return True
 
 
 def sieve(n, prime_power=False):
