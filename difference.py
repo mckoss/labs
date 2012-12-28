@@ -6,26 +6,31 @@ from itertools import combinations
 from progress import Progress
 from amb import Runner, Fail, MonteCarloRunner
 
-MAX_SET = 103
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", default="diffstate",
                         help="Select function version to use (find, diffstate, amb, monte).")
+    parser.add_argument("--start", default=2, type=int,
+                        help="Starting point for size (k) of difference set search.")
+    parser.add_argument("--end", default=103, type=int,
+                        help="Ending point for size of difference set search.")
+    parser.add_argument("prefix", default=[0, 1], type=int, nargs='*',
+                        help="Search all solutions that have given prefix.")
     args = parser.parse_args()
 
-    primes = sieve(MAX_SET, prime_power=True)
+    primes = sieve(args.end + 1, prime_power=True)
 
     p = Progress(name="Searching")
-    for k in range(2, MAX_SET):
-        print "\nDifference set (v = %d, k = %d, 1)" % (k * (k -1) + 1, k)
+    for k in range(args.start, args.end + 1):
+        print "\nDifference set (k = %d, m = %d)" % (k, k * (k -1) + 1)
 
-        if k - 1 not in primes:
+        if k > 2 and k - 1 not in primes:
             print "Theorem: set k = %d does not exist (since %d is not a prime power)." % (k, k - 1)
             continue
 
         if args.version == 'diffstate':
-            ds = DiffState(k)
+            ds = DiffState(k, args.prefix)
             ds.search()
             print ds
             ds.progress.report(final=True)
@@ -104,19 +109,20 @@ def find_difference_set(k):
 
 
 class DiffState(object):
-    def __init__(self, k, start=None, end=None):
+    def __init__(self, k, prefix=None):
         self.k = k
         self.m = k * (k - 1) + 1
-        if start is None:
-            start = [0, 1]
+        if prefix is None:
+            prefix = [0, 1]
         self.current = []
         self.diff_map = [True] + [False] * (self.m / 2)
         self.low = 0
 
-        for a in start[:-1]:
+        for a in prefix:
             if not self.push(a):
-                raise ValueError("Illegal start.")
-        self.candidate = start[-1]
+                raise ValueError("Illegal prefix.")
+
+        self.candidate = self.current[-1] + self.low + 1
         self.min_length = len(self.current)
 
         self.progress = Progress()
@@ -128,8 +134,8 @@ class DiffState(object):
         while True:
             self.progress.report(self)
 
-            soln = len(self.current)
-            if soln == self.k or soln < self.min_length:
+            size = len(self.current)
+            if size == self.k or size < self.min_length:
                 return
 
             if self.candidate + (self.low + 1) * (self.k - len(self.current) - 1) >= self.m - self.low:
