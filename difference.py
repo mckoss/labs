@@ -9,12 +9,12 @@ from amb import Runner, Fail, MonteCarloRunner
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--version", default="diffstate",
-                        help="Select function version to use (find, diffstate, amb, monte).")
     parser.add_argument("--start", default=2, type=int,
                         help="Starting point for size (k) of difference set search.")
     parser.add_argument("--end", default=103, type=int,
                         help="Ending point for size of difference set search.")
+    parser.add_argument("--all",
+                        help="Find all difference sets (does not stop a first solution.")
     parser.add_argument("prefix", default=[0, 1], type=int, nargs='*',
                         help="Search all solutions that have given prefix.")
     args = parser.parse_args()
@@ -29,83 +29,10 @@ def main():
             print "Theorem: set k = %d does not exist (since %d is not a prime power)." % (k, k - 1)
             continue
 
-        if args.version == 'diffstate':
-            ds = DiffState(k, args.prefix)
-            ds.search()
-            print ds
-            ds.progress.report(final=True)
-        elif args.version == 'find':
-            find_difference_set(k)
-        elif args.version == 'amb':
-            ar = Runner(amb_diff)
-            print "Result: %s" % ar.run(k)
-        elif args.version == 'monte':
-            ar = MonteCarloRunner(amb_diff)
-            print "Result: %s" % ar.run(k)
-        else:
-            raise ValueError("No such version: %s" % args.version)
-
-
-def amb_diff(amb, k):
-    m = k * (k - 1) + 1
-    last = 1
-    s = []
-
-    diffs = set()
-    diffs.add(0)
-
-    for i in range(k):
-        s.append(amb(m))
-        for j in range(0, i):
-            d1 = (s[j] - s[i]) % m
-            d2 = (s[i] - s[j]) % m
-            if d1 in diffs:
-                raise Fail
-            diffs.add(d1)
-            if d2 in diffs:
-                raise Fail
-            diffs.add(d2)
-
-    return s
-
-
-def find_difference_set(k):
-    m = k * (k - 1) + 1
-    s = [0, 1] + [0] * (k - 2)
-    stack = [set()]
-    next = 1
-
-    progress = Progress()
-
-    def test_number(n):
-        progress.report((k, s[:next + 1]))
-
-        d = stack[-1].copy()
-        for i in range(next):
-            if (n - s[i]) % m in d or (s[i] - n) % m in d:
-                return None
-            d.add((n - s[i]) % m)
-            d.add((s[i] - n) % m)
-        return d
-
-    while True:
-        d = test_number(s[next])
-        if d is not None:
-            if next == k - 1:
-                progress.report(final=True)
-                return s
-            stack.append(d)
-            s[next + 1] = s[next] + 2
-            next += 1
-            continue
-        s[next] += 1
-        if s[next] + 2 * (k - next - 1) >= m:
-            s[next - 1] += 1
-            stack.pop()
-            next -= 1
-            if next == 1:
-                progress.report(final=True)
-                return ()
+        ds = DiffState(k, args.prefix)
+        ds.search()
+        print ds
+        ds.progress.report(final=True)
 
 
 class DiffState(object):
@@ -191,27 +118,6 @@ class DiffState(object):
                 self.low = d - 1
 
         return a
-
-
-def slow_find_difference_set(k):
-    """ This one is concise, and expressive - but SLOW """
-    if k in (7,):
-        return ()
-    m = k * (k - 1) + 1
-    for s in combinations(range(m), k):
-        # WLG - there exists a set begining 0, 1, ...
-        if s[0] != 0 or s[1] != 1:
-            break
-        d = set()
-        for i, j in combinations(range(k), 2):
-            (a, b) = (s[i], s[j])
-            if (a - b) % m in d or (b - a) % m in d:
-                break
-            d.add((a - b) % m)
-            d.add((b - a) % m)
-        else:
-            return s
-    return ()
 
 
 def sieve(n, prime_power=False):
