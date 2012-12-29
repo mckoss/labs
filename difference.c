@@ -2,10 +2,11 @@
 #include <math.h>
 #include <time.h>
 #include <string.h>
+#include <stdlib.h>
 
 typedef enum {false, true} bool;
 
-#define MAX_SET 30
+#define MAX_SET 33
 #define MAX_DIFFS (MAX_SET * (MAX_SET - 1) + 1)
 #define FOREVER for (;;)
 #define PROGRESS 100000000L
@@ -23,6 +24,7 @@ int current;
 int low;
 
 void sieve(void);
+int cmp_int(const void *a, const void *b);
 bool find_difference_set(int k, int prefix_size, int prefix[]);
 bool push(int a);
 int pop();
@@ -42,6 +44,9 @@ int main(int argc, char *argv[]) {
     int prefix_size = 0;
 
     sieve();
+    printf("Primes and prime powers: ");
+    print_ints(pcount, primes);
+    printf("\n");
 
     start = 2;
     end = MAX_SET;
@@ -109,10 +114,15 @@ void sieve() {
         }
         int power = i * i;
         while (power < MAX_SET) {
-            s[power] = false;
+            primes[pcount++] = power;
             power *= i;
         }
     }
+    qsort(primes, pcount, sizeof(int), cmp_int);
+}
+
+int cmp_int(const void *a, const void *b) {
+    return *(int *)a - *(int *)b;
 }
 
 bool find_difference_set(int k, int prefix_size, int prefix[]) {
@@ -152,7 +162,7 @@ bool find_difference_set(int k, int prefix_size, int prefix[]) {
     reset_progress();
 
     FOREVER {
-        progress(current, s);
+        progress();
 
         // if candidate is feasible, push on
         if (push(candidate)) {
