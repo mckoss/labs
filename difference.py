@@ -152,22 +152,26 @@ class DiffState(object):
 def sieve(n, prime_power=False):
     """ Return all primes less than or equal to n. """
     sqrt = int(n ** 0.5)
-    s = set()
+    comp = set()
     primes = []
 
-    for i in [2] + range(3, n + 1):
-        if i in s:
+    for i in range(2, n + 1):
+        if i in comp:
             continue
         primes.append(i);
         if i > sqrt:
             continue
         for j in range(i * i, n + 1, i):
-            s.add(j)
-        if prime_power:
+            comp.add(j)
+
+    if prime_power:
+        for i in range(2, sqrt + 1):
             power = i * i
             while power <= n:
-                s.remove(power)
+                primes.append(power)
                 power *= i
+
+        primes.sort()
 
     return primes
 

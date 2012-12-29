@@ -9,6 +9,8 @@ class TestSieve(unittest.TestCase):
         pp = sieve(100, prime_power=True)
         prefix = [2, 3, 4, 5, 7, 8, 9, 11]
         self.assertEqual(pp[:len(prefix)], prefix)
+        self.assertIn(32, pp)
+        self.assertIn(64, pp)
 
 
 class DifferenceSet(unittest.TestCase):
