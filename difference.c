@@ -127,6 +127,7 @@ int cmp_int(const void *a, const void *b) {
 
 bool find_difference_set(int k, int prefix_size, int prefix[]) {
     int candidate;
+    int min_size;
 
     m = k * (k - 1) + 1;
 
@@ -158,6 +159,7 @@ bool find_difference_set(int k, int prefix_size, int prefix[]) {
         }
     }
     candidate = s[current - 1] + low + 1;
+    min_size = current;
 
     reset_progress();
 
@@ -178,7 +180,7 @@ bool find_difference_set(int k, int prefix_size, int prefix[]) {
 
         // Can't work - backtrack
         if (candidate + (low + 1) * (k - current - 1) >= m - low) {
-            if (current == 1) {
+            if (current < min_size) {
                 return false;
             }
             candidate = pop() + 1;
