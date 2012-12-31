@@ -1,3 +1,6 @@
+from progress import Progress
+
+
 class SearchSpace(object):
     """
     Abstract class defining a solution-space search (with backtracking).
@@ -15,7 +18,6 @@ class SearchSpace(object):
         self.depth = 0
         self.choices = []
         self.limits = []
-        self.trials = 0
 
     def choose(self, limit):
         if self.depth == len(self.choices):
@@ -42,11 +44,31 @@ class SearchSpace(object):
     def search(self):
         pass
 
+    def reset(self):
+        self.depth = 0
+
+    def complete(self):
+        pass
+
     def run(self):
         while self.depth >= 0:
-            self.depth = 0
-            self.trials += 1
+            self.reset()
             result = self.search()
             if result is not None:
+                self.complete()
                 return result
             self.next_choice()
+        self.complete()
+
+
+class SearchProgress(SearchSpace):
+    def __init__(self, name='Search', report_rate=5):
+        super(SearchProgress, self).__init__()
+        self.progress = Progress(name=name, report_rate=report_rate)
+
+    def reset(self):
+        super(SearchProgress, self).reset()
+        self.progress.report(self.choices)
+
+    def complete(self):
+        self.progress.report(self.choices, final=True)

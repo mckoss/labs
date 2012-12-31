@@ -12,7 +12,7 @@ class Progress(object):
              ('month', 4))
     def __init__(self, name='Progress', report_rate=5):
         self.name = name
-        self.increment = 1
+        self.increment = 5
         self.report_rate = report_rate
         self.count = 0
         self.total_count = 0
@@ -25,24 +25,31 @@ class Progress(object):
         self.interval_start = time.time()
 
     def report(self, status=None, final=False):
-        self.count += 1
-        if not final and self.count < self.increment:
-            return
+        if not final:
+            self.count += 1
+            if self.count < self.increment:
+                return
+
         dt = time.time() - self.interval_start
         rate = float(self.increment) / dt
+
         if not final:
             self.increment = int(self.count * self.report_rate / dt)
+
         for unit in self.units:
             rate /= unit[1]
             if rate >= 1:
                 break
 
-        sys.stderr.write("{:s}: {:,.2f}/{:s} @ {:s}\n".format(self.name,
-                                                             rate,
-                                                             unit[0],
-                                                             status if status is not None else ''
-                                                             ))
         self.reset()
+
+        if self.total_count > 0:
+            sys.stderr.write("{:,d}. {:s}: {:,.2f}/{:s} @ {:s}\n".format(self.total_count,
+                                                                         self.name,
+                                                                         rate,
+                                                                         unit[0],
+                                                                         status if status is not None else ''
+                                                                         ))
         if final:
             sys.stdout.write("Total time {:,.2f} secs (count: {:,d})\n".format(time.time() - self.start_time,
-                                                                           self.total_count))
+                                                                               self.total_count))
