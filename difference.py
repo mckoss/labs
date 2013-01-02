@@ -3,8 +3,7 @@ import math
 import argparse
 from itertools import combinations
 
-from progress import Progress
-from amb import Runner, Fail, MonteCarloRunner
+from search import SearchSpace, SearchProgress
 
 
 def main():
@@ -21,7 +20,6 @@ def main():
 
     primes = sieve(args.end + 1, prime_power=True)
 
-    p = Progress(name="Searching")
     for k in range(args.start, args.end + 1):
         print "\nDifference set (k = %d, m = %d)" % (k, k * (k -1) + 1)
 
@@ -29,7 +27,7 @@ def main():
             print "Theorem: set k = %d does not exist (since %d is not a prime power)." % (k, k - 1)
             continue
 
-        ds = DiffState(k, args.prefix)
+        ds = DiffState(k, start=args.prefix)
         unique_solutions = []
         while True:
             ds.search()
@@ -43,65 +41,35 @@ def main():
                     unique_solutions.append(list(ds.current))
             if not args.all or ds.is_finished():
                 break
-            ds.next()
-        ds.progress.report(final=True)
 
 
-class DiffState(object):
-    def __init__(self, k, prefix=None):
+class DiffState(SearchProgress, SearchSpace):
+    def __init__(self, k, **kwargs):
+        super(DiffState, self).__init__(**kwargs)
         self.k = k
         self.m = k * (k - 1) + 1
-        if prefix is None:
-            prefix = [0, 1]
-        self.current = []
         self.diff_map = [True] + [False] * (self.m / 2)
-        self.low = 0
-
-        self.candidate = None
-        for a in prefix:
-            if not self.push(a):
-                print "Illegal prefix: %r" % prefix
-                self.candidate = a
-                print "Starting from: %r %d" % (self.current, self.candidate)
-                break
-
-        if self.candidate is None:
-            self.candidate = self.current[-1] + self.low + 1
-
-        self.min_length = len(self.current)
-
-        self.progress = Progress()
+        self.low = -1
+        self.current = []
 
     def __str__(self):
         return str(self.current)
 
-    def search(self):
-        while True:
-            self.progress.report(self)
-
-            if self.is_finished():
-                return
-
-            if self.candidate + (self.low + 1) * (self.k - len(self.current) - 1) >= self.m - self.low:
-                self.next()
-                continue
-
-            if self.push(self.candidate):
-                if self.is_solved():
-                    return
-                self.candidate += self.low + 1
-                continue
-
-            self.candidate += 1
+    def step(self):
+        super(DiffState, self).step()
+        min = self.low + 1
+        if len(self.current) > 0:
+            min += self.current[-1]
+        candidate = self.choose(min=min,
+                                limit=self.m - self.low - \
+                                    (self.low + 1) * (self.k - len(self.current) - 1))
+        if self.push(candidate):
+            self.accept()
+            if self.is_solved():
+                return self.current
 
     def is_solved(self):
         return len(self.current) == self.k
-
-    def is_finished(self):
-        return len(self.current) < self.min_length
-
-    def next(self):
-        self.candidate = self.pop() + 1
 
     def push(self, a):
         for b in self.current:
@@ -128,7 +96,7 @@ class DiffState(object):
 
         return True
 
-    def pop(self):
+    def backtrack(self, a):
         a = self.current.pop()
         for b in self.current:
             d = a - b
@@ -139,8 +107,6 @@ class DiffState(object):
             # Update highest consecutive difference from zero
             if d <= self.low:
                 self.low = d - 1
-
-        return a
 
     def is_inverse(self, ds):
         for i in range(2, self.k):
