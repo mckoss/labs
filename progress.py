@@ -24,6 +24,9 @@ class Progress(object):
         self.count = 0
         self.interval_start = time.time()
 
+    def get_count(self):
+        return self.total_count + self.count
+
     def report(self, status=None, final=False):
         if not final:
             self.count += 1

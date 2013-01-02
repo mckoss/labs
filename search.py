@@ -59,19 +59,20 @@ class SearchSpace(object):
         for i in range(min(len(self.choices), len(self.end))):
             if self.choices[i] > self.end[i]:
                 return True
+            if self.choices[i] < self.end[i]:
+                return False
 
         return len(self.choices) >= len(self.end)
 
     def choose(self, limit, min=0, step=1):
         self.accepted = False
-        if self.depth == len(self.choices):
+        if self.depth == len(self.limits):
             self.limits.append(limit)
+        if self.depth == len(self.steps):
             self.steps.append(step)
-            choice = min
-            self.choices.append(choice)
-        else:
-            choice = self.choices[self.depth]
-        return choice
+        if self.depth == len(self.choices):
+            self.choices.append(min)
+        return self.choices[self.depth]
 
     def accept(self):
         self.accepted = True
@@ -79,6 +80,7 @@ class SearchSpace(object):
 
     def next(self):
         if self.accepted:
+            self.accepted = False
             return
 
         # Backtrack to prior depth
@@ -107,8 +109,8 @@ class SearchSpace(object):
 
 
 class SearchProgress(object):
-    def __init__(self, name='Search', report_rate=5):
-        super(SearchProgress, self).__init__()
+    def __init__(self, name='Search', report_rate=5, **kwargs):
+        super(SearchProgress, self).__init__(**kwargs)
         self.progress = Progress(name=name, report_rate=report_rate)
 
     def step(self):

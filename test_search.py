@@ -33,10 +33,25 @@ class TestSearch(unittest.TestCase):
             q = BacktrackQueens(test[0])
             self.assertEqual(q.search(), test[1])
 
+    def test_all(self):
+        q = BacktrackQueens(6)
+        count = 0
+        while True:
+            result = q.search()
+            if result is None:
+                break
+            count += 1
+        self.assertEqual(count, 4)
+
+    def test_start(self):
+        q = BacktrackQueens(20, start=[0, 2, 4, 1, 3, 12, 14])
+        self.assertEqual(q.search(), self.tests[10][1])
+        self.assertEqual(q.progress.get_count(), 11194)
+
 
 class Queens(SearchProgress, SearchSpace):
-    def __init__(self, size=8):
-        super(Queens, self).__init__()
+    def __init__(self, size=8, **kwargs):
+        super(Queens, self).__init__(**kwargs)
         self.size = size
 
     def restart(self):
@@ -62,6 +77,7 @@ class Queens(SearchProgress, SearchSpace):
 
     def step(self):
         super(Queens, self).step()
+        # TODO: Shouldn't there be a way to for backup when depth > size?
         place = (self.depth, self.choose(self.size))
         if not self.check(place):
             return
