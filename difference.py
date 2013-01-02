@@ -63,7 +63,7 @@ class DiffState(SearchProgress, SearchSpace):
         candidate = self.choose(min=min,
                                 limit=self.m - self.low - \
                                     (self.low + 1) * (self.k - len(self.current) - 1))
-        if self.push(candidate):
+        if self.is_feasible(candidate):
             self.accept()
             if self.is_solved():
                 return self.current
@@ -71,7 +71,7 @@ class DiffState(SearchProgress, SearchSpace):
     def is_solved(self):
         return len(self.current) == self.k
 
-    def push(self, a):
+    def is_feasible(self, a):
         for b in self.current:
             d = a - b
             if d > self.m / 2:
