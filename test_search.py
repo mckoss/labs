@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import unittest
 
-from search import SearchProgress, SearchSpace
+from search import SearchProgress, SearchSpace, MultiSearch
 
 
 class TestSearch(unittest.TestCase):
@@ -52,6 +52,13 @@ class TestSearch(unittest.TestCase):
         q = BacktrackQueens(20, start=[0, 2, 4, 1, 3, 12], end=[0, 2, 4, 1, 3, 12, 14])
         self.assertEqual(q.search(), None)
         self.assertEqual(q.choices, [0, 2, 4, 1, 3, 12, 14])
+
+
+class TestMulti(unittest.TestCase):
+    def test_basic(self):
+        ms = MultiSearch(searcher=BacktrackQueens, size=8)
+        self.assertEqual(ms.search(),
+                         [(0, 0), (1, 4), (2, 7), (3, 5), (4, 2), (5, 6), (6, 1), (7, 3)])
 
 
 class Queens(SearchProgress, SearchSpace):

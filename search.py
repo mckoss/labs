@@ -1,3 +1,5 @@
+import multiprocessing
+
 from progress import Progress
 
 
@@ -138,3 +140,19 @@ class SearchProgress(object):
     def complete(self):
         super(SearchProgress, self).complete()
         self.progress.report(self.choices, final=True)
+
+
+class MultiSearch(object):
+    """ Employ mulitple worker processes to carry out a coordinated search. """
+    def __init__(self, searcher=None, **kwargs):
+        self.searcher = searcher
+        self.kwargs = kwargs
+
+    def search(self):
+        cpu_count = multiprocessing.cpu_count()
+        print "CPU count = %d" % cpu_count
+        if cpu_count == 1:
+            s = self.searcher(**self.kwargs)
+            return s.search()
+
+        raise RuntimeError("NYI")
