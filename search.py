@@ -95,10 +95,11 @@ class SearchSpace(object):
             if depth == -1:
                 break
 
-        self.depth = depth
-        del self.choices[depth + 1:]
-        del self.steps[depth + 1:]
-        del self.limits[depth + 1:]
+        if depth < latest:
+            self.depth = depth
+            del self.choices[depth + 1:]
+            del self.steps[depth + 1:]
+            del self.limits[depth + 1:]
 
         if not hasattr(self, 'backtrack') and not self.is_finished():
             self.restart()
