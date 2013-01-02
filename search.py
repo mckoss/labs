@@ -1,79 +1,7 @@
 from progress import Progress
 
 
-class RestartSearch(object):
-    """
-    Abstract class defining a solution-space search.  When an invalid configuration is found
-    it restarts the search providing the next sequence of choices.
-
-    Simplifiies implementation by:
-
-    - Organizing searching with backtracking.
-    - Starting searches from known starting points.
-    - Limiting searches to specified ending points.
-    - Organizing workers to cooperatively search a space w/o overlap.
-
-    All choices must be modeled as sequence of integers (from 0 to some maximum).
-    """
-    def __init__(self):
-        self.depth = 0
-        self.choices = []
-        self.limits = []
-
-    def choose(self, limit):
-        if self.depth == len(self.choices):
-            self.limits.append(limit)
-            value = 0
-            self.choices.append(value)
-        else:
-            value = self.choices[self.depth]
-        self.depth += 1
-        return value
-
-    def next_choice(self):
-        while self.depth >= 0:
-            self.depth -= 1
-            if self.depth == -1:
-                return
-            self.choices[self.depth] += 1
-            if self.choices[self.depth] < self.limits[self.depth]:
-                break
-
-        del self.choices[self.depth + 1:]
-        del self.limits[self.depth + 1:]
-
-    def search(self):
-        pass
-
-    def complete(self):
-        pass
-
-    def run(self):
-        while self.depth >= 0:
-            self.depth = 0
-            self.step()
-            result = self.search()
-            if result is not None:
-                self.complete()
-                return result
-            self.next_choice()
-        self.complete()
-
-
-class SearchProgress(object):
-    def __init__(self, name='Search', report_rate=5):
-        super(SearchProgress, self).__init__()
-        self.progress = Progress(name=name, report_rate=report_rate)
-
-    def step(self):
-        self.progress.report(self.choices)
-
-    def complete(self):
-        super(SearchProgress, self).complete()
-        self.progress.report(self.choices, final=True)
-
-
-class BacktrackSearch(object):
+class SearchSpace(object):
     """
     Abstract class defining a solution-space search (with backtracking).
 
@@ -86,55 +14,107 @@ class BacktrackSearch(object):
 
     All choices must be modeled as sequence of integers (from 0 to some maximum).
     """
-    def __init__(self):
-        self.choices = []
+    def __init__(self, start=None, end=None):
+        if start is None:
+            start = []
+        self.choices = start
+        if end is None:
+            end = list(start)
+            if len(end) > 0:
+                end[-1] += 1
+        self.end = end
+        self.steps = []
         self.limits = []
+
         self.restart()
 
     def restart(self):
         self.depth = 0
 
-    def run(self):
+    def search(self):
         while not self.is_finished():
             result = self.step()
             if result is not None:
                 self.complete()
                 return result
+            self.next()
+
         self.complete()
 
-    def is_finished(self):
-        # TODO: Add start a limit sequences.
-        return self.depth < 0
+    def step(self):
+        """ Override:
+        choice = self.choose()
+        if self.is_valid(choice):
+            self.accept()
+            if is_solved():
+                return self.choices
+        """
+        pass
 
-    def choose(self, limit):
+    def is_finished(self):
+        """ Stop when prefix of choice >= end. """
+        if len(self.end) == 0:
+            return self.depth == -1
+
+        for i in range(min(len(self.choices), len(self.end))):
+            if self.choices[i] > self.end[i]:
+                return True
+
+        return len(self.choices) >= len(self.end)
+
+    def choose(self, limit, min=0, step=1):
+        self.accepted = False
         if self.depth == len(self.choices):
             self.limits.append(limit)
-            value = 0
-            self.choices.append(value)
+            self.steps.append(step)
+            choice = min
+            self.choices.append(choice)
         else:
-            value = self.choices[self.depth]
+            choice = self.choices[self.depth]
+        return choice
+
+    def accept(self):
+        self.accepted = True
         self.depth += 1
-        return value
 
-    def reject(self):
-        """ Revert the last choice and prepare the next one. """
-        latest = self.depth - 1
-        while self.depth >= 0:
-            self.depth -= 1
-            if self.depth == -1:
+    def next(self):
+        if self.accepted:
+            return
+
+        # Backtrack to prior depth
+        latest = self.depth
+        depth = self.depth
+        while depth >= 0:
+            if depth < latest and hasattr(self, 'backtrack'):
+                self.backtrack(self.choices[depth])
+            self.choices[depth] += self.steps[depth]
+            if self.choices[depth] < self.limits[depth]:
                 break
-            if self.depth < latest:
-                self.backtrack(self.choices[self.depth])
-            self.choices[self.depth] += 1
-            if self.choices[self.depth] < self.limits[self.depth]:
+            depth -= 1
+            if depth == -1:
                 break
 
-        del self.choices[self.depth + 1:]
-        del self.limits[self.depth + 1:]
+        self.depth = depth
+        del self.choices[depth + 1:]
+        del self.steps[depth + 1:]
+        del self.limits[depth + 1:]
+
+        if not hasattr(self, 'backtrack') and not self.is_finished():
+            self.restart()
 
     def complete(self):
         pass
 
-    def backtrack(self, choice):
-        """ If backtracking is not supported - a restart from the beginning works. """
-        self.restart()
+
+class SearchProgress(object):
+    def __init__(self, name='Search', report_rate=5):
+        super(SearchProgress, self).__init__()
+        self.progress = Progress(name=name, report_rate=report_rate)
+
+    def step(self):
+        super(SearchProgress, self).step()
+        self.progress.report(self.choices)
+
+    def complete(self):
+        super(SearchProgress, self).complete()
+        self.progress.report(self.choices, final=True)

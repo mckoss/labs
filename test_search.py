@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import unittest
 
-from search import RestartSearch, BacktrackSearch, SearchProgress
+from search import SearchProgress, SearchSpace
 
 
 class TestSearch(unittest.TestCase):
@@ -17,74 +17,30 @@ class TestSearch(unittest.TestCase):
                       (10, [(0, 0), (1, 2), (2, 5), (3, 7), (4, 9), (5, 4), (6, 8), (7, 1), (8, 3), (9, 6)]),
                       (18, [(0, 0), (1, 2), (2, 4), (3, 1), (4, 7), (5, 14), (6, 11), (7, 15), (8, 12), (9, 16),
                             (10, 5), (11, 17), (12, 6), (13, 3), (14, 10), (15, 8), (16, 13), (17, 9)]),
+                      (20, [(0, 0), (1, 2), (2, 4), (3, 1), (4, 3), (5, 12), (6, 14), (7, 11), (8, 17), (9, 19),
+                            (10, 16), (11, 8), (12, 15), (13, 18), (14, 7), (15, 9), (16, 6), (17, 13), (18, 5),
+                            (19, 10)]),
                       ]
-        """
-        (20, [(0, 0), (1, 2), (2, 4), (3, 1), (4, 3), (5, 12), (6, 14), (7, 11), (8, 17), (9, 19),
-        (10, 16), (11, 8), (12, 15), (13, 18), (14, 7), (15, 9), (16, 6), (17, 13), (18, 5),
-        (19, 10)]),
-        """
 
     def test_queens(self):
-        for test in self.tests:
+        for test in self.tests[:9]:
             q = Queens(test[0])
-            self.assertEqual(q.run(), test[1])
-            # if test[1] is not None:
-            #     print q
+            x = q.search()
+            self.assertEqual(x, test[1])
 
     def test_backtrack_queens(self):
         for test in self.tests:
             q = BacktrackQueens(test[0])
-            self.assertEqual(q.run(), test[1])
+            self.assertEqual(q.search(), test[1])
 
 
-class Queens(SearchProgress, RestartSearch):
+class Queens(SearchProgress, SearchSpace):
     def __init__(self, size=8):
         super(Queens, self).__init__()
         self.size = size
 
-    def check(self, place):
-        def unique(n, s):
-            if n in s:
-                return False
-            s.add(n)
-            return True
-
-        return unique(place[0], self.rows) and \
-            unique(place[1], self.cols) and \
-            unique(place[0] - place[1], self.diag1) and \
-            unique(place[0] + place[1], self.diag2)
-
-    def search(self):
-        self.rows = set()
-        self.cols = set()
-        self.diag1 = set()
-        self.diag2 = set()
-        self.queens = []
-
-        for i in range(self.size):
-            place = (i, self.choose(self.size))
-            if not self.check(place):
-                return None
-            self.queens.append(place)
-
-        return self.queens
-
-    def __str__(self):
-        """ Represent as a board. """
-        rows = []
-        for place in self.queens:
-            rows.append(' '.join(['X' if col == place[1] else '.' for col in range(self.size)]))
-        return '\n'.join(rows)
-
-
-
-class BacktrackQueens(SearchProgress, BacktrackSearch):
-    def __init__(self, size=8):
-        super(BacktrackQueens, self).__init__()
-        self.size = size
-
     def restart(self):
-        super(BacktrackQueens, self).restart()
+        super(Queens, self).restart()
         self.rows = set()
         self.cols = set()
         self.diag1 = set()
@@ -105,21 +61,14 @@ class BacktrackQueens(SearchProgress, BacktrackSearch):
         return True
 
     def step(self):
-        super(BacktrackQueens, self).step()
+        super(Queens, self).step()
         place = (self.depth, self.choose(self.size))
         if not self.check(place):
-            self.reject()
             return
         self.queens.append(place)
+        self.accept()
         if self.depth == self.size:
             return self.queens
-
-    def backtrack(self, choice):
-        place = self.queens.pop()
-        self.rows.remove(place[0])
-        self.cols.remove(place[1])
-        self.diag1.remove(place[0] - place[1])
-        self.diag2.remove(place[0] + place[1])
 
     def __str__(self):
         """ Represent as a board. """
@@ -127,6 +76,16 @@ class BacktrackQueens(SearchProgress, BacktrackSearch):
         for place in self.queens:
             rows.append(' '.join(['X' if col == place[1] else '.' for col in range(self.size)]))
         return '\n'.join(rows)
+
+
+class BacktrackQueens(Queens):
+    """ Same a Queens - but can backtrack rather than restart. """
+    def backtrack(self, choice):
+        place = self.queens.pop()
+        self.rows.remove(place[0])
+        self.cols.remove(place[1])
+        self.diag1.remove(place[0] - place[1])
+        self.diag2.remove(place[0] + place[1])
 
 
 if __name__ == '__main__':
