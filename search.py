@@ -3,16 +3,41 @@ from progress import Progress
 
 class SearchSpace(object):
     """
-    Abstract class defining a solution-space search (with backtracking).
+    Abstract class defining a solution-space search (with backtracking).  This class
+    searches a solution space that looks like a tree of integer valued options at each
+    node.
 
     Simplifiies implementation by:
 
     - Organizing searching with backtracking.
     - Starting searches from known starting points.
     - Limiting searches to specified ending points.
-    - Organizing workers to cooperatively search a space w/o overlap.
 
     All choices must be modeled as sequence of integers (from 0 to some maximum).
+
+    Usage:
+
+        class MySearch(SearchSpace) # or class MySearch(SearchProgress, SearchSpace)
+            def step(self):
+                choice = self.choose(max_value)
+                if self.is_feasible(choice):
+                    self.accept()
+                    if is_solved():
+                        return self.choices
+
+            def backtrack(self, choice):
+                ...
+
+         ss = MySearch()
+         print ss.search()
+
+    The step function will be called repeatedle with successive choices.  When accept is not called,
+    the search continues at the next level of depth.
+
+    When all the values at a given depth are exhausted, the search decreases the depth, and calls
+    the backtrack function (if provided) to undo the effect of an earlier choice.  If no backtrack
+    function is given, search will call your restart function, and restart the search from the root
+    of the search tree (similar to use of the McCarthy's ambiguous function).
     """
     def __init__(self, start=None, end=None):
         if start is None:
@@ -45,13 +70,6 @@ class SearchSpace(object):
         self.complete()
 
     def step(self):
-        """ Override:
-        choice = self.choose()
-        if self.is_valid(choice):
-            self.accept()
-            if is_solved():
-                return self.choices
-        """
         pass
 
     def is_finished(self):
