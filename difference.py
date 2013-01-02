@@ -27,7 +27,7 @@ def main():
             print "Theorem: set k = %d does not exist (since %d is not a prime power)." % (k, k - 1)
             continue
 
-        ds = DiffState(k, start=args.prefix)
+        ds = DiffState(k, start=args.prefix, end=[1])
         unique_solutions = []
         while True:
             ds.search()

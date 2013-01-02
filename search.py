@@ -17,12 +17,15 @@ class SearchSpace(object):
     def __init__(self, start=None, end=None):
         if start is None:
             start = []
-        self.choices = start
+        self.choices = list(start)
         if end is None:
-            end = list(start)
-            if len(end) > 0:
-                end[-1] += 1
-        self.end = end
+            self.guard = len(start) - 1
+            if self.guard >= 0:
+                self.guard_value = start[self.guard] + 1
+        else:
+            self.guard = len(end) - 1
+            if self.guard >= 0:
+                self.guard_value = end[self.guard]
         self.steps = []
         self.limits = []
 
@@ -52,26 +55,22 @@ class SearchSpace(object):
         pass
 
     def is_finished(self):
-        """ Stop when prefix of choice >= end. """
-        if len(self.end) == 0:
-            return self.depth == -1
-
-        for i in range(min(len(self.choices), len(self.end))):
-            if self.choices[i] > self.end[i]:
-                return True
-            if self.choices[i] < self.end[i]:
-                return False
-
-        return len(self.choices) >= len(self.end)
+        if self.depth == -1:
+            return True
+        if self.guard < 0:
+            return False
+        return len(self.choices) > self.guard and self.choices[self.guard] >= self.guard_value
 
     def choose(self, limit, min=0, step=1):
         self.accepted = False
-        if self.depth == len(self.limits):
-            self.limits.append(limit)
-        if self.depth == len(self.steps):
-            self.steps.append(step)
         if self.depth == len(self.choices):
             self.choices.append(min)
+            self.limits.append(limit)
+            self.steps.append(step)
+            return min
+        if self.depth == len(self.limits):
+            self.limits.append(limit)
+            self.steps.append(step)
         return self.choices[self.depth]
 
     def accept(self):
