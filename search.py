@@ -1,4 +1,4 @@
-import multiprocessing
+from multiprocessing import cpu_count, Pool
 
 from progress import Progress
 
@@ -41,18 +41,18 @@ class SearchSpace(object):
     function is given, search will call your restart function, and restart the search from the root
     of the search tree (similar to use of the McCarthy's ambiguous function).
     """
-    def __init__(self, start=None, end=None):
+    def __init__(self, start=None, stop=None):
         if start is None:
             start = []
         self.choices = list(start)
-        if end is None:
+        if stop is None:
             self.guard = len(start) - 1
             if self.guard >= 0:
                 self.guard_value = start[self.guard] + 1
         else:
-            self.guard = len(end) - 1
+            self.guard = len(stop) - 1
             if self.guard >= 0:
-                self.guard_value = end[self.guard]
+                self.guard_value = stop[self.guard]
         self.steps = []
         self.limits = []
 
@@ -142,17 +142,26 @@ class SearchProgress(object):
         self.progress.report(self.choices, final=True)
 
 
-class MultiSearch(object):
+class MultiSearch(SearchSpace):
     """ Employ mulitple worker processes to carry out a coordinated search. """
     def __init__(self, searcher=None, **kwargs):
-        self.searcher = searcher
-        self.kwargs = kwargs
+        super(MultiSearch, self).__init__(**kwargs)
 
     def search(self):
-        cpu_count = multiprocessing.cpu_count()
-        print "CPU count = %d" % cpu_count
+        cpus = cpu_count()
+        print "CPU count = %d" % cpus
         if cpu_count == 1:
             s = self.searcher(**self.kwargs)
             return s.search()
 
-        raise RuntimeError("NYI")
+        pool = Pool(cpus)
+        results = pool.map(worker_search, range(2 * cpus))
+        return results
+
+def worker_search(start=None):
+    print "Worker: %d" % start
+    return start * 2
+
+
+if __name__ == '__main__':
+    print "Root"

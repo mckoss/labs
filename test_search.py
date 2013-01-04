@@ -49,7 +49,7 @@ class TestSearch(unittest.TestCase):
         self.assertEqual(q.progress.get_count(), 11194)
 
     def test_end(self):
-        q = BacktrackQueens(20, start=[0, 2, 4, 1, 3, 12], end=[0, 2, 4, 1, 3, 12, 14])
+        q = BacktrackQueens(20, start=[0, 2, 4, 1, 3, 12], stop=[0, 2, 4, 1, 3, 12, 14])
         self.assertEqual(q.search(), None)
         self.assertEqual(q.choices, [0, 2, 4, 1, 3, 12, 14])
 

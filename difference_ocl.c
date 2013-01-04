@@ -30,8 +30,6 @@ int main(int argc, char** argv)
 
     cl_mem output;                      // device memory used for the output array
 
-    // Connect to a compute device
-    //
     int gpu = 1;
     err = clGetDeviceIDs(NULL, gpu ? CL_DEVICE_TYPE_GPU : CL_DEVICE_TYPE_CPU, 1, &device_id, NULL);
     if (err != CL_SUCCESS)
@@ -40,8 +38,6 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    // Create a compute context
-    //
     context = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
     if (!context)
     {
@@ -49,8 +45,6 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    // Create a command commands
-    //
     commands = clCreateCommandQueue(context, device_id, 0, &err);
     if (!commands)
     {
@@ -72,8 +66,6 @@ int main(int argc, char** argv)
     KernelSource[cb] = 0;
     fclose(fp);
 
-    // Create the compute program from the source buffer
-    //
     program = clCreateProgramWithSource(context, 1, (const char **) & KernelSource, NULL, &err);
     if (!program)
     {
@@ -81,8 +73,6 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    // Build the program executable
-    //
     err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
     if (err != CL_SUCCESS)
     {
@@ -95,8 +85,6 @@ int main(int argc, char** argv)
         exit(1);
     }
 
-    // Create the compute kernel in the program we wish to run
-    //
     kernel = clCreateKernel(program, "difference", &err);
     if (!kernel || err != CL_SUCCESS)
     {
