@@ -71,6 +71,27 @@ class SearchSpace(object):
 
         self.complete()
 
+    def advance_to_depth(self, target_depth):
+        """ Advance to next feasible prefix of a given length. """
+        if self.is_finished():
+            return None
+
+        while self.depth > target_depth:
+            self.advance()
+
+        if self.depth == target_depth:
+            self.depth -= 1
+            if hasattr(self, 'backtrack'):
+                self.backtrack(self.choices[self.depth])
+            self.advance()
+
+        while not self.is_finished() and self.depth < target_depth:
+            self.step()
+            self.next()
+
+        if not self.is_finished():
+            return self.choices[:self.depth]
+
     def step(self):
         pass
 
@@ -102,20 +123,20 @@ class SearchSpace(object):
             self.accepted = False
             return
 
-        # Backtrack to prior depth
-        latest = self.depth
+        self.advance()
+
+    def advance(self):
+        provisional = self.depth
         depth = self.depth
         while depth >= 0:
-            if depth < latest and hasattr(self, 'backtrack'):
+            if depth < provisional and hasattr(self, 'backtrack'):
                 self.backtrack(self.choices[depth])
             self.choices[depth] += self.steps[depth]
             if self.choices[depth] < self.limits[depth]:
                 break
             depth -= 1
-            if depth == -1:
-                break
 
-        if depth < latest:
+        if depth < provisional:
             self.depth = depth
             del self.choices[depth + 1:]
             del self.steps[depth + 1:]
@@ -146,17 +167,19 @@ class MultiSearch(SearchSpace):
     """ Employ mulitple worker processes to carry out a coordinated search. """
     def __init__(self, searcher=None, **kwargs):
         super(MultiSearch, self).__init__(**kwargs)
+        self.child_length = len(self.start) + 1
 
     def search(self):
-        cpus = cpu_count()
+        worker_count = cpu_count() * 2
         print "CPU count = %d" % cpus
-        if cpu_count == 1:
+        if cpu_count() == 1:
             s = self.searcher(**self.kwargs)
             return s.search()
 
-        pool = Pool(cpus)
-        results = pool.map(worker_search, range(2 * cpus))
-        return results
+        s = self.searcher(**self.kwargs)
+        for worker_number in range(worker_count):
+            prefix = s.advance_to(self.child_length)
+            print "Start worker at %r" % prefix
 
 def worker_search(start=None):
     print "Worker: %d" % start

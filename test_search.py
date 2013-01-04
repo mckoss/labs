@@ -53,6 +53,19 @@ class TestSearch(unittest.TestCase):
         self.assertEqual(q.search(), None)
         self.assertEqual(q.choices, [0, 2, 4, 1, 3, 12, 14])
 
+    def test_advance(self):
+        q = BacktrackQueens(20)
+        self.assertEqual(q.advance_to_depth(5), [0, 2, 4, 1, 3])
+        for i in range(7, 20):
+            self.assertEqual(q.advance_to_depth(5), [0, 2, 4, 1, i])
+        self.assertEqual(q.advance_to_depth(5), [0, 2, 4, 6, 1])
+
+    def test_advance_one(self):
+        q = BacktrackQueens(5)
+        for i in range(5):
+            self.assertEqual(q.advance_to_depth(1), [i])
+        self.assertIsNone(q.advance_to_depth(1), None)
+
 
 class TestMulti(unittest.TestCase):
     def test_basic(self):
