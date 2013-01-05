@@ -1,4 +1,4 @@
-from multiprocessing import cpu_count, Pool
+from multiprocessing import cpu_count, Pool, Process
 
 from progress import Progress
 
@@ -163,27 +163,36 @@ class SearchProgress(object):
         self.progress.report(self.choices, final=True)
 
 
-class MultiSearch(SearchSpace):
+class MultiSearch(object):
     """ Employ mulitple worker processes to carry out a coordinated search. """
-    def __init__(self, searcher=None, **kwargs):
-        super(MultiSearch, self).__init__(**kwargs)
-        self.child_length = len(self.start) + 1
+    def __init__(self, searcher=None, start=None, **kwargs):
+        self.searcher = searcher
+        self.start = start
+        self.kwargs = kwargs
+        self.child_length = len(start) + 1 if start is not None else 1
 
     def search(self):
-        worker_count = cpu_count() * 2
-        print "CPU count = %d" % cpus
+        print "CPU count = %d" % cpu_count()
         if cpu_count() == 1:
-            s = self.searcher(**self.kwargs)
+            s = self.searcher(start=start, **self.kwargs)
             return s.search()
 
-        s = self.searcher(**self.kwargs)
+        worker_count = cpu_count() * 2
+        parent = self.searcher(**self.kwargs)
+        workers = []
         for worker_number in range(worker_count):
-            prefix = s.advance_to(self.child_length)
-            print "Start worker at %r" % prefix
+            prefix = parent.advance_to_depth(self.child_length)
+            if prefix is None:
+                break
+            print "Starting worker at %r" % prefix
+            p = Process(target=self.searcher, kwargs={'start': prefix})
+            p.start()
+            workers.append(p)
 
-def worker_search(start=None):
-    print "Worker: %d" % start
-    return start * 2
+        for p in workers:
+            p.join()
+
+        print "All workers complete."
 
 
 if __name__ == '__main__':
