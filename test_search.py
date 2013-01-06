@@ -70,8 +70,11 @@ class TestSearch(unittest.TestCase):
 class TestMulti(unittest.TestCase):
     def test_basic(self):
         ms = MultiSearch(searcher=BacktrackQueens, size=8)
-        self.assertEqual(ms.search(),
-                         [(0, 0), (1, 4), (2, 7), (3, 5), (4, 2), (5, 6), (6, 1), (7, 3)])
+        self.assertEqual(len(ms.search()), 8)
+
+    def test_long(self):
+        ms = MultiSearch(searcher=BacktrackQueens, size=20)
+        self.assertEqual(len(ms.search()), 20)
 
 
 class Queens(SearchProgress, SearchSpace):
