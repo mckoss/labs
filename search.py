@@ -203,11 +203,14 @@ class MultiSearch(object):
 
 
 def SearchWorker(Searcher, work_queue, results_queue):
-    work = work_queue.get()
-    s = Searcher(start=work['start'], **work['kwargs'])
     while True:
-        result = s.search()
-        results_queue.put(result)
+        work = work_queue.get()
+        s = Searcher(start=work['start'], **work['kwargs'])
+        while True:
+            result = s.search()
+            if result is None:
+                break
+            results_queue.put(result)
 
 
 if __name__ == '__main__':
