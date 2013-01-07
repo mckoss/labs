@@ -166,44 +166,49 @@ class SearchProgress(object):
 
 class MultiSearch(object):
     """ Employ mulitple worker processes to carry out a coordinated search. """
-    def __init__(self, searcher=None, start=None, **kwargs):
+    def __init__(self, searcher=None, start=None, preorder=False, count_solutions=1, **kwargs):
         self.searcher = searcher
+        self.count_solutions = count_solutions
         self.start = start
         self.kwargs = kwargs
         self.child_length = len(start) + 1 if start is not None else 1
 
-    def search(self):
-        if cpu_count() == 1:
-            s = self.searcher(start=start, **self.kwargs)
-            return s.search()
-
-        worker_count = cpu_count() * 2
-        parent = self.searcher(**self.kwargs)
-        workers = []
-        work_queue = Queue()
-        results_queue = Queue()
-        for worker_number in range(worker_count):
-            p = Process(target=SearchWorker, args=(self.searcher, work_queue, results_queue))
-            p.start()
-            workers.append(p)
+        worker_count = cpu_count()
+        print "Worker count: %d" % worker_count
+        self.parent = self.searcher(**self.kwargs)
+        self.workers = []
+        self.work_queue = Queue()
+        self.results_queue = Queue()
 
         while True:
-            prefix = parent.advance_to_depth(self.child_length)
+            prefix = self.parent.advance_to_depth(self.child_length)
             if prefix is None:
                 break
-            work_queue.put({'kwargs': self.kwargs,
-                            'start': prefix})
+            self.work_queue.put({'kwargs': self.kwargs,
+                                 'start': prefix})
 
-        result = results_queue.get()
+        for worker_number in range(worker_count):
+            p = Process(target=SearchWorker, args=(self.searcher,
+                                                   self.work_queue,
+                                                   self.results_queue))
+            p.start()
+            self.workers.append(p)
 
-        for worker in workers:
-            worker.terminate()
-
+    def search(self):
+        result = self.results_queue.get()
+        self.count_solutions -= 1
+        if self.count_solutions <= 0:
+            for worker in self.workers:
+                worker.terminate()
         return result
 
 
 def SearchWorker(Searcher, work_queue, results_queue):
     while True:
+        if work_queue.empty():
+            results_queue.close()
+            return
+
         work = work_queue.get()
         s = Searcher(start=work['start'], **work['kwargs'])
         while True:
