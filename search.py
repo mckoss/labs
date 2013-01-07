@@ -1,5 +1,5 @@
 import os
-from multiprocessing import cpu_count, Process, Queue
+from multiprocessing import cpu_count, Pool
 
 from progress import Progress
 
@@ -166,56 +166,47 @@ class SearchProgress(object):
 
 class MultiSearch(object):
     """ Employ mulitple worker processes to carry out a coordinated search. """
-    def __init__(self, searcher=None, start=None, preorder=False, count_solutions=1, **kwargs):
+    def __init__(self, searcher=None, start=None, preorder=False, max_solutions=1, **kwargs):
         self.searcher = searcher
-        self.count_solutions = count_solutions
+        self.max_solutions = max_solutions
         self.start = start
         self.kwargs = kwargs
         self.child_length = len(start) + 1 if start is not None else 1
-
-        worker_count = cpu_count()
-        print "Worker count: %d" % worker_count
         self.parent = self.searcher(**self.kwargs)
-        self.workers = []
-        self.work_queue = Queue()
-        self.results_queue = Queue()
+        self.worker_count = cpu_count()
+        self.pool = Pool(self.worker_count)
+        self.searchers = []
+
+    def search(self, callback):
+        self.callback = callback
 
         while True:
             prefix = self.parent.advance_to_depth(self.child_length)
             if prefix is None:
                 break
-            self.work_queue.put({'kwargs': self.kwargs,
-                                 'start': prefix})
+            self.pool.apply_async(search_wrapper,
+                                  args=(self.searcher, prefix),
+                                  kwds=self.kwargs,
+                                  callback=self.search_results)
 
-        for worker_number in range(worker_count):
-            p = Process(target=SearchWorker, args=(self.searcher,
-                                                   self.work_queue,
-                                                   self.results_queue))
-            p.start()
-            self.workers.append(p)
+    def search_results(self, result):
+        print "search_results(%r)" % result
+        self.max_solutions -= 1
+        self.callback(result)
 
-    def search(self):
-        result = self.results_queue.get()
-        self.count_solutions -= 1
-        if self.count_solutions <= 0:
-            for worker in self.workers:
-                worker.terminate()
-        return result
+    def join(self):
+        """ Wait until all workers stopped. """
+        if self.max_solutions <= 0:
+            self.pool.terminate()
+        else:
+            self.pool.close()
+        self.pool.join()
 
 
-def SearchWorker(Searcher, work_queue, results_queue):
-    while True:
-        if work_queue.empty():
-            results_queue.close()
-            return
-
-        work = work_queue.get()
-        s = Searcher(start=work['start'], **work['kwargs'])
-        while True:
-            result = s.search()
-            if result is None:
-                break
-            results_queue.put(result)
+def search_wrapper(Searcher, prefix, **kwargs):
+    print "search_wrapper(%r)" % kwargs
+    s = Searcher(start=prefix, **kwargs)
+    return s.search()
 
 
 if __name__ == '__main__':
