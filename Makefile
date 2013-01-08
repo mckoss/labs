@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS := -std=c99 -O3
+CFLAGS := -std=c99 -g -O3
 
 all: difference difference_ocl
 

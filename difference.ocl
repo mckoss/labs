@@ -1,10 +1,10 @@
 __kernel void difference(
     int k,
-    __global int *output,
-    const unsigned int count)
+    __global int *output)
 {
     unsigned int i = get_global_id(0);
-    if (i < count) {
+    int m = k * (k - 1) + 1;
+    if (i < m) {
         output[i] = i * i + k;
     }
 }
