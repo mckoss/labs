@@ -7,8 +7,10 @@
 #define FOREVER for (;;)
 
 typedef struct {
+    int k;
     int m;
     int low;
+    int max_candidate;
     int current;
     int *set;
     int *diffs;
@@ -27,12 +29,12 @@ __kernel void kmain(
     int diffs[MAX_MOD];
     PUSH_CONTEXT pc;
     int candidate;
-    // unsigned int worker_id = get_global_id(0);
 
     pc.current = 0;
     pc.low = 0;
     pc.set = set;
     pc.diffs = diffs;
+    pc.k = k;
     pc.m = k * (k - 1) + 1;
 
     diffs[0] = true;
@@ -50,6 +52,8 @@ __kernel void kmain(
     }
 
     candidate = set[pc.current - 1] + pc.low + 1;
+    // unsigned int worker_id = get_global_id(0);
+
     int min_size = pc.current;
 
     FOREVER {
@@ -69,7 +73,7 @@ __kernel void kmain(
         candidate++;
 
         // Can't work - backtrack
-        if (candidate + (pc.low + 1) * (k - pc.current - 1) >= pc.m - pc.low) {
+        if (candidate >= pc.max_candidate) {
             if (pc.current < min_size) {
                 return;
             }
@@ -104,6 +108,8 @@ int push(int a, PUSH_CONTEXT *pc) {
         pc->low++;
     }
 
+    pc->max_candidate = pc->m - pc->low - (pc->low + 1) * (pc->k - pc->current - 1);
+
     return true;
 }
 
@@ -120,6 +126,8 @@ int pop(PUSH_CONTEXT *pc) {
             pc->low = d - 1;
         }
     }
+
+    pc->max_candidate = pc->m - pc->low - (pc->low + 1) * (pc->k - pc->current - 1);
 
     return a;
 }
