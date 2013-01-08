@@ -1,3 +1,4 @@
+/* Version 0.1 */
 #define MAX_SET 30
 #define MAX_MOD (MAX_SET * (MAX_SET - 1) + 1)
 
@@ -5,6 +6,8 @@
 #define true 1
 
 #define FOREVER for (;;)
+
+#define MAX_ITERATIONS 100000
 
 typedef struct {
     int k;
@@ -23,6 +26,7 @@ __kernel void kmain(
     int k,
     int prefix_size,
     __global int *prefix,
+    __global int *status,
     __global int *output)
 {
     int set[MAX_SET];
@@ -51,18 +55,39 @@ __kernel void kmain(
         }
     }
 
-    candidate = set[pc.current - 1] + pc.low + 1;
-    // unsigned int worker_id = get_global_id(0);
+    size_t worker_id = get_global_id(0);
+    status[worker_id] = -1;
 
+    unsigned int seed = worker_id;
+    if (!push(seed % pc.m, &pc)) {
+        status[worker_id] = -2;
+        return;
+    }
+    seed = seed / pc.m;
+    if (!push(seed % pc.m, &pc)) {
+        status[worker_id] = -3;
+        return;
+    }
+
+    candidate = set[pc.current - 1] + pc.low + 1;
     int min_size = pc.current;
 
+    int iterations = 0;
+    status[worker_id] = -4;
     FOREVER {
+        iterations++;
+        if (iterations >= MAX_ITERATIONS) {
+            status[worker_id] = -5;
+            return;
+        }
+
         // if candidate is feasible, push on
         if (push(candidate, &pc)) {
             if (pc.current == k) {
                 for (int i = 0; i < k; i++) {
                     output[i] = pc.set[i];
                 }
+                status[worker_id] = iterations;
                 return;
             }
             candidate += pc.low + 1;
@@ -75,6 +100,7 @@ __kernel void kmain(
         // Can't work - backtrack
         if (candidate >= pc.max_candidate) {
             if (pc.current < min_size) {
+                status[worker_id] = iterations;
                 return;
             }
             candidate = pop(&pc) + 1;

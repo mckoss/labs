@@ -73,36 +73,46 @@ int main(int argc, char *argv[]) {
     }
 
     cl_kernel kernel = OCLFunc(clCreateKernel, program, "kmain");
+    size_t local;
+    OCLErr(clGetKernelWorkGroupInfo, kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local), &local, NULL);
+    printf("Local workgroup size: %zu\n", local);
+
+
     cl_mem prefix = OCLFunc(clCreateBuffer, context, CL_MEM_READ_ONLY, results_size, NULL);
+    cl_mem status = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, sizeof(int) * local, NULL);
     cl_mem output = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, results_size, NULL);
     int prefix_size = 0;
 
-    /* kmain args
-    int k,
-    int prefix_size,
-    __global int *prefix,
-    __global int *output
-    */
+    // kmain args
     Arg(0, k);
     Arg(1, prefix_size);
     Arg(2, prefix);
-    Arg(3, output);
+    Arg(3, status);
+    Arg(4, output);
 
-    size_t local;
-    OCLErr(clGetKernelWorkGroupInfo, kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local), &local, NULL);
-
-    printf("Local workgroup size: %zu\n", local);
 
     printf("Searching of k=%d, m=%d\n", k, k * (k - 1) + 1);
 
     OCLErr(clEnqueueNDRangeKernel, commands, kernel, 1, NULL, &local, &local, 0, NULL, NULL);
     clFinish(commands);
 
-    int *results = malloc(results_size);
-    OCLErr(clEnqueueReadBuffer, commands, output, CL_TRUE, 0, results_size, results, 0, NULL, NULL );
+    int *output_buffer = malloc(results_size);
+    OCLErr(clEnqueueReadBuffer, commands, output, CL_TRUE, 0, results_size, output_buffer, 0, NULL, NULL );
+
+    int *status_buffer = malloc(sizeof(int) * local);
+    OCLErr(clEnqueueReadBuffer, commands, status, CL_TRUE, 0, sizeof(int) * local, status_buffer, 0, NULL, NULL );
 
     for (int i = 0; i < k; i++) {
-        printf("%d ", results[i]);
+        printf("%d ", output_buffer[i]);
+    }
+    printf("\n");
+
+    printf("Worker status:\n");
+    for (int i = 0; i < local; i++) {
+        if (i % 16 == 0) {
+            printf("\n%04d: ", i);
+        }
+        printf("%5d ", status_buffer[i]);
     }
     printf("\n");
 
