@@ -58,14 +58,9 @@ __kernel void kmain(
     size_t worker_id = get_global_id(0);
     status[worker_id] = -1;
 
-    unsigned int seed = worker_id;
-    if (!push(seed % pc.m, &pc)) {
+    unsigned int seed = worker_id + 3;
+    if (!push(seed, &pc)) {
         status[worker_id] = -2;
-        return;
-    }
-    seed = seed / pc.m;
-    if (!push(seed % pc.m, &pc)) {
-        status[worker_id] = -3;
         return;
     }
 

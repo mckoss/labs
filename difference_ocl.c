@@ -12,7 +12,7 @@
 #define CHECK_ERROR(clFunc) \
     if (err) { \
         printf("%s error '%s' (%d)\n", #clFunc, get_opencl_error(err), err); \
-        return EXIT_FAILURE; \
+        exit(1); \
     }
 
 #define OCLFunc(clFunc, ...) \
@@ -35,12 +35,13 @@ int main(int argc, char *argv[]) {
 
     if (argc != 2) {
         printf("Usage: %s <k>\n", argv[0]);
-        return EXIT_FAILURE;
+        exit(1);
     }
 
     int k;
     sscanf(argv[1], "%d", &k);
 
+    printf("Size of int: %zd.\n", sizeof(int));
     int results_size = sizeof(int) * k;
 
     FILE *fp;
@@ -50,7 +51,7 @@ int main(int argc, char *argv[]) {
     fp = fopen("difference.ocl", "r");
     if (!fp) {
         printf("Can't open file.");
-        return EXIT_FAILURE;
+        exit(1);
     }
     KernelSource = (char *) malloc(MAX_SOURCE);
     cb = fread(KernelSource, 1, MAX_SOURCE, fp);
@@ -69,19 +70,30 @@ int main(int argc, char *argv[]) {
 
         clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
         printf("%s\n", buffer);
-        return EXIT_FAILURE;
+        exit(1);
     }
 
-    cl_kernel kernel = OCLFunc(clCreateKernel, program, "kmain");
-    size_t local;
-    OCLErr(clGetKernelWorkGroupInfo, kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local), &local, NULL);
-    printf("Local workgroup size: %zu\n", local);
+    size_t m = k * (k - 1) + 1;
+    printf("Searching of k=%d, m=%zd\n", k, m);
 
+    cl_kernel kernel = OCLFunc(clCreateKernel, program, "kmain");
+
+    size_t global = m - 3;
+    size_t max_group_size;
+    size_t local;
+    OCLErr(clGetKernelWorkGroupInfo, kernel, device_id,
+           CL_KERNEL_WORK_GROUP_SIZE, sizeof(max_group_size), &max_group_size, NULL);
+    printf("Max workgroup size: %zu\n", max_group_size);
+    int groups = (global + max_group_size - 1) / max_group_size;
+    local = global / groups;
+    printf("Global size %zd divided into %d groups of %zd (local groups).\n", global, groups, local);
 
     cl_mem prefix = OCLFunc(clCreateBuffer, context, CL_MEM_READ_ONLY, results_size, NULL);
     cl_mem status = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, sizeof(int) * local, NULL);
     cl_mem output = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, results_size, NULL);
     int prefix_size = 0;
+
+    printf("1\n");
 
     // kmain args
     Arg(0, k);
@@ -90,16 +102,25 @@ int main(int argc, char *argv[]) {
     Arg(3, status);
     Arg(4, output);
 
+    printf("2\n");
 
-    printf("Searching of k=%d, m=%d\n", k, k * (k - 1) + 1);
-
-    OCLErr(clEnqueueNDRangeKernel, commands, kernel, 1, NULL, &local, &local, 0, NULL, NULL);
+    OCLErr(clEnqueueNDRangeKernel, commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
     clFinish(commands);
 
+    printf("3\n");
+
     int *output_buffer = malloc(results_size);
+    if (output_buffer == 0) {
+        printf("Could not allocate output buffer.");
+        exit(1);
+    }
     OCLErr(clEnqueueReadBuffer, commands, output, CL_TRUE, 0, results_size, output_buffer, 0, NULL, NULL );
 
     int *status_buffer = malloc(sizeof(int) * local);
+    if (status_buffer == 0) {
+        printf("Could not allocate status buffer.");
+        exit(1);
+    }
     OCLErr(clEnqueueReadBuffer, commands, status, CL_TRUE, 0, sizeof(int) * local, status_buffer, 0, NULL, NULL );
 
     for (int i = 0; i < k; i++) {
