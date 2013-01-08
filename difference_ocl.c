@@ -42,7 +42,6 @@ int main(int argc, char *argv[]) {
     sscanf(argv[1], "%d", &k);
 
     int results_size = sizeof(int) * k;
-    int *results = malloc(results_size);
 
     FILE *fp;
     int cb;
@@ -74,8 +73,8 @@ int main(int argc, char *argv[]) {
     }
 
     cl_kernel kernel = OCLFunc(clCreateKernel, program, "kmain");
-    cl_mem output = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, results_size, NULL);
     cl_mem prefix = OCLFunc(clCreateBuffer, context, CL_MEM_READ_ONLY, results_size, NULL);
+    cl_mem output = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, results_size, NULL);
     int prefix_size = 0;
 
     /* kmain args
@@ -99,6 +98,7 @@ int main(int argc, char *argv[]) {
     OCLErr(clEnqueueNDRangeKernel, commands, kernel, 1, NULL, &local, &local, 0, NULL, NULL);
     clFinish(commands);
 
+    int *results = malloc(results_size);
     OCLErr(clEnqueueReadBuffer, commands, output, CL_TRUE, 0, results_size, results, 0, NULL, NULL );
 
     for (int i = 0; i < k; i++) {
