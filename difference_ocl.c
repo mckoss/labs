@@ -23,6 +23,9 @@
     err = clFunc(__VA_ARGS__); \
     CHECK_ERROR(clFunc)
 
+#define Arg(i, name) \
+    OCLErr(clSetKernelArg, kernel, i, sizeof(name), &name);
+
 #define MAX_SOURCE 24000
 
 
@@ -72,9 +75,19 @@ int main(int argc, char *argv[]) {
 
     cl_kernel kernel = OCLFunc(clCreateKernel, program, "kmain");
     cl_mem output = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, results_size, NULL);
+    cl_mem prefix = OCLFunc(clCreateBuffer, context, CL_MEM_READ_ONLY, results_size, NULL);
+    int prefix_size = 0;
 
-    OCLErr(clSetKernelArg, kernel, 0, sizeof(k), &k);
-    OCLErr(clSetKernelArg, kernel, 1, sizeof(cl_mem), &output);
+    /* kmain args
+    int k,
+    int prefix_size,
+    __global int *prefix,
+    __global int *output
+    */
+    Arg(0, k);
+    Arg(1, prefix_size);
+    Arg(2, prefix);
+    Arg(3, output);
 
     size_t local;
     OCLErr(clGetKernelWorkGroupInfo, kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local), &local, NULL);
