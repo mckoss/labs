@@ -1,10 +1,125 @@
-__kernel void difference(
+#define MAX_SET 30
+#define MAX_MOD (MAX_SET * (MAX_SET - 1) + 1)
+
+#define false 0
+#define true 1
+
+#define FOREVER for (;;)
+
+typedef struct {
+    int m;
+    int low;
+    int current;
+    int *set;
+    int *diffs;
+} PUSH_CONTEXT;
+
+int push(int a, PUSH_CONTEXT *pc);
+int pop(PUSH_CONTEXT *pc);
+
+__kernel void kmain(
     int k,
+    int prefix_size,
+    __global int *prefix,
     __global int *output)
 {
-    unsigned int i = get_global_id(0);
-    int m = k * (k - 1) + 1;
-    if (i < m) {
-        output[i] = i * i + k;
+    int set[MAX_SET];
+    int diffs[MAX_MOD];
+    PUSH_CONTEXT pc;
+    int candidate;
+    // unsigned int worker_id = get_global_id(0);
+
+    pc.current = 0;
+    pc.low = 0;
+    pc.set = set;
+    pc.diffs = diffs;
+    pc.m = k * (k - 1) + 1;
+
+    diffs[0] = true;
+    for (int i = 1; i <= pc.m / 2; i++) {
+        diffs[i] = false;
     }
+
+    if (prefix_size == 0) {
+        push(0, &pc);
+        push(1, &pc);
+    } else {
+        for (int i = 0; i < prefix_size; i++) {
+            push(prefix[i], &pc);
+        }
+    }
+
+    candidate = set[pc.current - 1] + pc.low + 1;
+    int min_size = pc.current;
+
+    FOREVER {
+        // if candidate is feasible, push on
+        if (push(candidate, &pc)) {
+            if (pc.current == k) {
+                for (int i = 0; i < k; i++) {
+                    output[i] = pc.set[i];
+                }
+                return;
+            }
+            candidate += pc.low + 1;
+            continue;
+        }
+
+        // n is not feasible - try next value
+        candidate++;
+
+        // Can't work - backtrack
+        if (candidate + (pc.low + 1) * (k - pc.current - 1) >= pc.m - pc.low) {
+            if (pc.current < min_size) {
+                return;
+            }
+            candidate = pop(&pc) + 1;
+        }
+    }
+}
+
+int push(int a, PUSH_CONTEXT *pc) {
+    int d;
+
+    for (int i = 0; i < pc->current; i++) {
+        d = a - pc->set[i];
+        if (d > pc->m / 2) {
+            d = pc->m - d;
+        }
+        if (pc->diffs[d]) {
+            for (int j = 0; j < i; j++) {
+                d = a - pc->set[j];
+                if (d > pc->m / 2) {
+                    d = pc->m - d;
+                }
+                pc->diffs[d] = false;
+            }
+            return false;
+        }
+        pc->diffs[d] = true;
+    }
+    pc->set[pc->current++] = a;
+
+    while (pc->low < pc->m / 2 && pc->diffs[pc->low + 1]) {
+        pc->low++;
+    }
+
+    return true;
+}
+
+int pop(PUSH_CONTEXT *pc) {
+    int a = pc->set[--pc->current];
+
+    for (int i = 0; i < pc->current; i++) {
+        int d = a - pc->set[i];
+        if (d > pc->m / 2) {
+            d = pc->m - d;
+        }
+        pc->diffs[d] = false;
+        if (d <= pc->low) {
+            pc->low = d - 1;
+        }
+    }
+
+    return a;
 }

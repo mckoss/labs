@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "ocl_errors.h"
 #include <math.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -10,7 +11,7 @@
 
 #define CHECK_ERROR(clFunc) \
     if (err) { \
-        printf("OpenCL error in function %s", "clFunc"); \
+        printf("%s error '%s' (%d)\n", #clFunc, get_opencl_error(err), err); \
         return EXIT_FAILURE; \
     }
 
@@ -37,8 +38,7 @@ int main(int argc, char *argv[]) {
     int k;
     sscanf(argv[1], "%d", &k);
 
-    int m = k * (k - 1) + 1;
-    int results_size = sizeof(int) * m;
+    int results_size = sizeof(int) * k;
     int *results = malloc(results_size);
 
     FILE *fp;
@@ -59,8 +59,18 @@ int main(int argc, char *argv[]) {
     cl_context context = OCLFunc(clCreateContext, 0, 1, &device_id, NULL, NULL);
     cl_command_queue commands = OCLFunc(clCreateCommandQueue, context, device_id, 0);
     cl_program program = OCLFunc(clCreateProgramWithSource, context, 1, (const char **) & KernelSource, NULL);
-    OCLErr(clBuildProgram, program, 0, NULL, NULL, NULL, NULL);
-    cl_kernel kernel = OCLFunc(clCreateKernel, program, "difference");
+    err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
+    if (err) {
+        char buffer[2048];
+        size_t len;
+        printf("Failed to build program.");
+
+        clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
+        printf("%s\n", buffer);
+        return EXIT_FAILURE;
+    }
+
+    cl_kernel kernel = OCLFunc(clCreateKernel, program, "kmain");
     cl_mem output = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, results_size, NULL);
 
     OCLErr(clSetKernelArg, kernel, 0, sizeof(k), &k);
@@ -71,14 +81,14 @@ int main(int argc, char *argv[]) {
 
     printf("Local workgroup size: %zu\n", local);
 
-    printf("Searching of k=%d, m=%d\n", k, m);
+    printf("Searching of k=%d, m=%d\n", k, k * (k - 1) + 1);
 
     OCLErr(clEnqueueNDRangeKernel, commands, kernel, 1, NULL, &local, &local, 0, NULL, NULL);
     clFinish(commands);
 
     OCLErr(clEnqueueReadBuffer, commands, output, CL_TRUE, 0, results_size, results, 0, NULL, NULL );
 
-    for (int i = 0; i < m; i++) {
+    for (int i = 0; i < k; i++) {
         printf("%d ", results[i]);
     }
     printf("\n");
