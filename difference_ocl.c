@@ -23,8 +23,8 @@
     err = clFunc(__VA_ARGS__); \
     CHECK_ERROR(clFunc)
 
-#define Arg(i, name) \
-    OCLErr(clSetKernelArg, kernel, i, sizeof(name), &name);
+#define KernelArg(name) \
+    OCLErr(clSetKernelArg, kernel, iarg++, sizeof(name), &name);
 
 #define MAX_SOURCE 24000
 
@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
     cl_program program = OCLFunc(clCreateProgramWithSource, context, 1, (const char **) & KernelSource, NULL);
     err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
     if (err) {
-        char buffer[2048];
+        char buffer[4096];
         size_t len;
         printf("Failed to build program.");
 
@@ -78,33 +78,39 @@ int main(int argc, char *argv[]) {
 
     cl_kernel kernel = OCLFunc(clCreateKernel, program, "kmain");
 
-    size_t global = m - 3;
     size_t max_group_size;
-    size_t local;
     OCLErr(clGetKernelWorkGroupInfo, kernel, device_id,
            CL_KERNEL_WORK_GROUP_SIZE, sizeof(max_group_size), &max_group_size, NULL);
     printf("Max workgroup size: %zu\n", max_group_size);
-    int groups = (global + max_group_size - 1) / max_group_size;
-    local = global / groups;
-    printf("Global size %zd divided into %d groups of %zd (local groups).\n", global, groups, local);
+
+    size_t global[1];
+    size_t local[1];
+    global[0] = m - 3;
+    int groups = (global[0] + max_group_size - 1) / max_group_size;
+    local[0] = global[0] / groups;
+    printf("Global size %zd divided into %d groups of %zd (local groups).\n", global[0], groups, local[0]);
 
     cl_mem prefix = OCLFunc(clCreateBuffer, context, CL_MEM_READ_ONLY, results_size, NULL);
-    cl_mem status = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, sizeof(int) * local, NULL);
+    cl_mem status = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, sizeof(int) * local[0], NULL);
     cl_mem output = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, results_size, NULL);
     int prefix_size = 0;
 
     printf("1\n");
 
     // kmain args
-    Arg(0, k);
-    Arg(1, prefix_size);
-    Arg(2, prefix);
-    Arg(3, status);
-    Arg(4, output);
+    int iarg = 0;
+    KernelArg(k);
+    KernelArg(prefix_size);
+    KernelArg(prefix);
+    KernelArg(status);
+    KernelArg(output);
 
     printf("2\n");
 
-    OCLErr(clEnqueueNDRangeKernel, commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
+    // Args:
+    // command_queue, kernel, work_dim, global_work_offset, global_work_size, local_work_size,
+    // num_events_in_wait_list,event_wait_list, event
+    OCLErr(clEnqueueNDRangeKernel, commands, kernel, 1, NULL, global, NULL, 0, NULL, NULL);
     clFinish(commands);
 
     printf("3\n");
@@ -116,12 +122,12 @@ int main(int argc, char *argv[]) {
     }
     OCLErr(clEnqueueReadBuffer, commands, output, CL_TRUE, 0, results_size, output_buffer, 0, NULL, NULL );
 
-    int *status_buffer = malloc(sizeof(int) * local);
+    int *status_buffer = malloc(sizeof(int) * local[0]);
     if (status_buffer == 0) {
         printf("Could not allocate status buffer.");
         exit(1);
     }
-    OCLErr(clEnqueueReadBuffer, commands, status, CL_TRUE, 0, sizeof(int) * local, status_buffer, 0, NULL, NULL );
+    OCLErr(clEnqueueReadBuffer, commands, status, CL_TRUE, 0, sizeof(int) * local[0], status_buffer, 0, NULL, NULL );
 
     for (int i = 0; i < k; i++) {
         printf("%d ", output_buffer[i]);
@@ -129,7 +135,7 @@ int main(int argc, char *argv[]) {
     printf("\n");
 
     printf("Worker status:\n");
-    for (int i = 0; i < local; i++) {
+    for (int i = 0; i < local[0]; i++) {
         if (i % 16 == 0) {
             printf("\n%04d: ", i);
         }

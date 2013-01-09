@@ -34,6 +34,15 @@ __kernel void kmain(
     PUSH_CONTEXT pc;
     int candidate;
 
+    size_t worker_id = get_global_id(0);
+    size_t local_id = get_local_id(0);
+
+    if (k > MAX_SET) {
+        status[local_id] = -1;
+        return;
+    }
+    status[local_id] = -2;
+
     pc.current = 0;
     pc.low = 0;
     pc.set = set;
@@ -42,9 +51,6 @@ __kernel void kmain(
     pc.m = k * (k - 1) + 1;
 
     diffs[0] = true;
-    for (int i = 1; i <= pc.m / 2; i++) {
-        diffs[i] = false;
-    }
 
     if (prefix_size == 0) {
         push(0, &pc);
@@ -55,24 +61,25 @@ __kernel void kmain(
         }
     }
 
-    size_t worker_id = get_global_id(0);
-    status[worker_id] = -1;
+    status[local_id] = -3;
 
     unsigned int seed = worker_id + 3;
     if (!push(seed, &pc)) {
-        status[worker_id] = -2;
+        status[local_id] = -4;
         return;
     }
+
+    return;
 
     candidate = set[pc.current - 1] + pc.low + 1;
     int min_size = pc.current;
 
     int iterations = 0;
-    status[worker_id] = -4;
+    status[local_id] = -5;
     FOREVER {
         iterations++;
         if (iterations >= MAX_ITERATIONS) {
-            status[worker_id] = -5;
+            status[local_id] = -6;
             return;
         }
 
@@ -82,7 +89,7 @@ __kernel void kmain(
                 for (int i = 0; i < k; i++) {
                     output[i] = pc.set[i];
                 }
-                status[worker_id] = iterations;
+                status[local_id] = iterations;
                 return;
             }
             candidate += pc.low + 1;
@@ -95,7 +102,7 @@ __kernel void kmain(
         // Can't work - backtrack
         if (candidate >= pc.max_candidate) {
             if (pc.current < min_size) {
-                status[worker_id] = iterations;
+                status[local_id] = iterations;
                 return;
             }
             candidate = pop(&pc) + 1;
