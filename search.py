@@ -109,10 +109,11 @@ class SearchSpace(object):
             self.choices.append(min)
             self.limits.append(limit)
             self.steps.append(step)
-            return min
-        if self.depth == len(self.limits):
+        elif self.depth == len(self.limits):
             self.limits.append(limit)
             self.steps.append(step)
+        if min >= limit:
+            return None
         return self.choices[self.depth]
 
     def accept(self):
