@@ -18,18 +18,29 @@ typedef struct {
     int current;
     int *set;
     int *diffs;
-    __global int *status;
 } PUSH_CONTEXT;
 
 int push(int a, PUSH_CONTEXT *pc);
 int pop(PUSH_CONTEXT *pc);
+
+// Global counters
+#define SOLVED 0
+#define STEPS 1
+#define EXIT0 2
+#define EXIT1 3
+#define EXIT2 4
+#define EXHAUSTED 5
+#define ITER_MAX 6
+
+#define inc_counter(index) atomic_inc(&counters[index])
+#define add_counter(index, delta) atomic_add(&counters[index], delta)
+
 
 __kernel void kmain(
     int k,
     int prefix_size,
     __global int *prefix,
     __global int *counters,
-    __global int *status,
     __global int *output)
 {
     // TODO: Private memory may be more expensive than local memory...
@@ -42,16 +53,14 @@ __kernel void kmain(
     size_t local_id = get_local_id(0);
 
     if (k > MAX_SET) {
-        status[local_id] = -1;
+        inc_counter(EXIT0);
         return;
     }
-    status[local_id] = -2;
 
     pc.current = 0;
     pc.low = 0;
     pc.set = set;
     pc.diffs = diffs;
-    pc.status = status;
     pc.local_id = local_id;
     pc.k = k;
     pc.m = k * (k - 1) + 1;
@@ -74,12 +83,12 @@ __kernel void kmain(
 
     // Prefix must be valid or return error code status.
     if (pc.current != prefix_size) {
-        status[local_id] = -100 - pc.current;
+        inc_counter(EXIT1);
         return;
     }
 
     if (!push(global_id + 3, &pc)) {
-        status[local_id] = -200 - (global_id + 3);
+        inc_counter(EXIT2);
         return;
     }
 
@@ -90,22 +99,21 @@ __kernel void kmain(
     FOREVER {
         iterations++;
         if (iterations >= MAX_ITERATIONS) {
-            status[local_id] = -500;
+            inc_counter(ITER_MAX);
+            add_counter(STEPS, iterations);
             return;
         }
 
         // if candidate is feasible, push on
         if (push(candidate, &pc)) {
             if (pc.current == k) {
-                int solutions = atomic_inc(&counters[0]);
-                if (solutions > 0) {
-                    status[local_id] = -600;
-                    return;
+                int solutions = inc_counter(SOLVED);
+                if (solutions == 0) {
+                    for (int i = 0; i < k; i++) {
+                        output[i] = pc.set[i];
+                    }
                 }
-                for (int i = 0; i < k; i++) {
-                    output[i] = pc.set[i];
-                }
-                status[local_id] = iterations;
+                add_counter(STEPS, iterations);
                 return;
             }
             candidate += pc.low + 1;
@@ -119,7 +127,8 @@ __kernel void kmain(
         if (candidate >= pc.max_candidate) {
             // No solution.
             if (pc.current < min_size) {
-                status[local_id] = -800;
+                inc_counter(EXHAUSTED);
+                add_counter(STEPS, iterations);
                 return;
             }
             candidate = pop(&pc) + 1;

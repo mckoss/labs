@@ -28,6 +28,21 @@
 
 #define MAX_SOURCE 24000
 
+// Global Counters
+#define NUM_COUNTERS 7
+
+const char *counter_labels[NUM_COUNTERS] = {
+    "Solutions",
+    "Steps",
+    "k > MAX_SET",
+    "Prefix Invalid",
+    "First choice invalid",
+    "Exhausted search",
+    "Hit max search limit"
+};
+
+void commas(int num, char *buff);
+void insert_string(char *buff, char *s);
 
 int main(int argc, char *argv[]) {
     int err;
@@ -86,12 +101,9 @@ int main(int argc, char *argv[]) {
     global[0] = m - 3;
 
     cl_mem prefix = OCLFunc(clCreateBuffer, context, CL_MEM_READ_ONLY, sizeof(int) * k, NULL);
-    cl_mem counters = OCLFunc(clCreateBuffer, context, CL_MEM_READ_WRITE, sizeof(int), NULL);
-    cl_mem status = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, sizeof(int) * max_group_size, NULL);
+    cl_mem counters = OCLFunc(clCreateBuffer, context, CL_MEM_READ_WRITE, sizeof(int) * NUM_COUNTERS, NULL);
     cl_mem output = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, sizeof(int) * k, NULL);
     int prefix_size = 0;
-
-    printf("1\n");
 
     // kmain args
     int iarg = 0;
@@ -99,10 +111,7 @@ int main(int argc, char *argv[]) {
     KernelArg(prefix_size);
     KernelArg(prefix);
     KernelArg(counters);
-    KernelArg(status);
     KernelArg(output);
-
-    printf("2\n");
 
     // Args:
     // command_queue, kernel, work_dim, global_work_offset, global_work_size, local_work_size,
@@ -110,41 +119,28 @@ int main(int argc, char *argv[]) {
     OCLErr(clEnqueueNDRangeKernel, commands, kernel, 1, NULL, global, NULL, 0, NULL, NULL);
     clFinish(commands);
 
-    printf("3\n");
-
     int *output_buffer = malloc(sizeof(int) * k);
     if (output_buffer == 0) {
         printf("Could not allocate output buffer.");
         exit(1);
     }
-    OCLErr(clEnqueueReadBuffer, commands, output, CL_TRUE, 0, sizeof(int) * k, output_buffer, 0, NULL, NULL );
-
-    int counters_buffer[1];
-    OCLErr(clEnqueueReadBuffer, commands, counters, CL_TRUE, 0, sizeof(int), counters_buffer, 0, NULL, NULL );
-
-    printf("Found %d solutions.\n", counters_buffer[0]);
-
-    int *status_buffer = malloc(sizeof(int) * max_group_size);
-    if (status_buffer == 0) {
-        printf("Could not allocate status buffer.");
-        exit(1);
-    }
-    OCLErr(clEnqueueReadBuffer, commands, status, CL_TRUE, 0, sizeof(int) * max_group_size,
-           status_buffer, 0, NULL, NULL );
+    OCLErr(clEnqueueReadBuffer, commands, output, CL_TRUE, 0,
+           sizeof(int) * k, output_buffer, 0, NULL, NULL );
 
     for (int i = 0; i < k; i++) {
         printf("%d ", output_buffer[i]);
     }
     printf("\n");
 
-    printf("Worker status:\n");
-    for (int i = 0; i < max_group_size; i++) {
-        if (i % 16 == 0) {
-            printf("\n%04d: ", i);
-        }
-        printf("%5d ", status_buffer[i]);
+    int counters_buffer[NUM_COUNTERS];
+    OCLErr(clEnqueueReadBuffer, commands, counters, CL_TRUE, 0,
+           sizeof(int) * NUM_COUNTERS, counters_buffer, 0, NULL, NULL );
+
+    for (int i = 0; i < NUM_COUNTERS; i++) {
+        char num_buff[20];
+        commas(counters_buffer[i], num_buff);
+        printf("%s: %s\n", counter_labels[i], num_buff);
     }
-    printf("\n");
 
     clReleaseMemObject(output);
     clReleaseProgram(program);
@@ -153,4 +149,27 @@ int main(int argc, char *argv[]) {
     clReleaseContext(context);
 
     return 0;
+}
+
+void commas(int num, char *buff) {
+    sprintf(buff, "%d", num);
+    char *end = buff + strlen(buff) - 3;
+    while (end > buff) {
+        insert_string(end, ",");
+        end -= 3;
+    }
+}
+
+void insert_string(char *buff, char *s) {
+    int cch = strlen(s);
+
+    char *pchFrom = buff + strlen(buff);
+    char *pchTo = pchFrom + cch;
+    while (pchFrom >= buff) {
+        *pchTo-- = *pchFrom--;
+    }
+    pchFrom = s + cch - 1;
+    while (pchTo >= buff) {
+        *pchTo-- = *pchFrom--;
+    }
 }
