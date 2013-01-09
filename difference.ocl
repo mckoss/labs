@@ -27,11 +27,12 @@ int pop(PUSH_CONTEXT *pc);
 #define SOLVED 0
 #define SOLUTION_STEPS 1
 #define STEPS 2
-#define EXIT0 3
-#define EXIT1 4
-#define EXIT2 5
-#define EXHAUSTED 6
-#define ITER_MAX 7
+#define EXIT_K_MAX 3
+#define EXIT_PREFIX 4
+#define EXIT_CHOICE_1 5
+#define EXIT_CHOICE_2 6
+#define EXHAUSTED 7
+#define ITER_MAX 8
 
 #define inc_counter(index) atomic_inc(&counters[index])
 #define add_counter(index, delta) atomic_add(&counters[index], delta)
@@ -54,7 +55,7 @@ __kernel void kmain(
     size_t local_id = get_local_id(0);
 
     if (k > MAX_SET) {
-        inc_counter(EXIT0);
+        inc_counter(EXIT_K_MAX);
         return;
     }
 
@@ -84,12 +85,18 @@ __kernel void kmain(
 
     // Prefix must be valid or return error code status.
     if (pc.current != prefix_size) {
-        inc_counter(EXIT1);
+        inc_counter(EXIT_PREFIX);
         return;
     }
 
-    if (!push(global_id + 3, &pc)) {
-        inc_counter(EXIT2);
+    int seed = global_id;
+    if (!push((seed % (pc.m - 3)) + 3, &pc)) {
+        inc_counter(EXIT_CHOICE_1);
+        return;
+    }
+    seed /= pc.m - 3;
+    if (!push(seed + 3, &pc)) {
+        inc_counter(EXIT_CHOICE_2);
         return;
     }
 

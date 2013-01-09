@@ -29,7 +29,7 @@
 #define MAX_SOURCE 24000
 
 // Global Counters
-#define NUM_COUNTERS 7
+#define NUM_COUNTERS 9
 
 const char *counter_labels[NUM_COUNTERS] = {
     "Solutions",
@@ -38,6 +38,7 @@ const char *counter_labels[NUM_COUNTERS] = {
     "k > MAX_SET",
     "Prefix Invalid",
     "First choice invalid",
+    "Second choice invalid",
     "Exhausted search",
     "Hit max search limit"
 };
@@ -99,7 +100,7 @@ int main(int argc, char *argv[]) {
     printf("Max workgroup size: %zu\n", max_group_size);
 
     size_t global[1];
-    global[0] = m - 3;
+    global[0] = (m - 3) * (m - 3);
 
     cl_mem prefix = OCLFunc(clCreateBuffer, context, CL_MEM_READ_ONLY, sizeof(int) * k, NULL);
     cl_mem counters = OCLFunc(clCreateBuffer, context, CL_MEM_READ_WRITE, sizeof(int) * NUM_COUNTERS, NULL);
