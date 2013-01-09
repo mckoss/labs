@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
     }
 
     size_t m = k * (k - 1) + 1;
-    printf("Searching of k=%d, m=%zd\n", k, m);
+    printf("Searching for difference set(k=%d, m=%zd)\n", k, m);
 
     cl_kernel kernel = OCLFunc(clCreateKernel, program, "kmain");
 
@@ -84,14 +84,10 @@ int main(int argc, char *argv[]) {
     printf("Max workgroup size: %zu\n", max_group_size);
 
     size_t global[1];
-    size_t local[1];
     global[0] = m - 3;
-    int groups = (global[0] + max_group_size - 1) / max_group_size;
-    local[0] = global[0] / groups;
-    printf("Global size %zd divided into %d groups of %zd (local groups).\n", global[0], groups, local[0]);
 
     cl_mem prefix = OCLFunc(clCreateBuffer, context, CL_MEM_READ_ONLY, results_size, NULL);
-    cl_mem status = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, sizeof(int) * local[0], NULL);
+    cl_mem status = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, sizeof(int) * max_group_size, NULL);
     cl_mem output = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, results_size, NULL);
     int prefix_size = 0;
 
@@ -122,12 +118,13 @@ int main(int argc, char *argv[]) {
     }
     OCLErr(clEnqueueReadBuffer, commands, output, CL_TRUE, 0, results_size, output_buffer, 0, NULL, NULL );
 
-    int *status_buffer = malloc(sizeof(int) * local[0]);
+    int *status_buffer = malloc(sizeof(int) * max_group_size);
     if (status_buffer == 0) {
         printf("Could not allocate status buffer.");
         exit(1);
     }
-    OCLErr(clEnqueueReadBuffer, commands, status, CL_TRUE, 0, sizeof(int) * local[0], status_buffer, 0, NULL, NULL );
+    OCLErr(clEnqueueReadBuffer, commands, status, CL_TRUE, 0, sizeof(int) * max_group_size,
+           status_buffer, 0, NULL, NULL );
 
     for (int i = 0; i < k; i++) {
         printf("%d ", output_buffer[i]);
@@ -135,7 +132,7 @@ int main(int argc, char *argv[]) {
     printf("\n");
 
     printf("Worker status:\n");
-    for (int i = 0; i < local[0]; i++) {
+    for (int i = 0; i < max_group_size; i++) {
         if (i % 16 == 0) {
             printf("\n%04d: ", i);
         }
