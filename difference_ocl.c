@@ -119,6 +119,11 @@ int main(int argc, char *argv[]) {
     }
     OCLErr(clEnqueueReadBuffer, commands, output, CL_TRUE, 0, sizeof(int) * k, output_buffer, 0, NULL, NULL );
 
+    int counters_buffer[1];
+    OCLErr(clEnqueueReadBuffer, commands, counters, CL_TRUE, 0, sizeof(int), counters_buffer, 0, NULL, NULL );
+
+    printf("Found %d solutions.\n", counters_buffer[0]);
+
     int *status_buffer = malloc(sizeof(int) * max_group_size);
     if (status_buffer == 0) {
         printf("Could not allocate status buffer.");
