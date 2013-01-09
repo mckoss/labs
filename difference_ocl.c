@@ -42,7 +42,6 @@ int main(int argc, char *argv[]) {
     sscanf(argv[1], "%d", &k);
 
     printf("Size of int: %zd.\n", sizeof(int));
-    int results_size = sizeof(int) * k;
 
     FILE *fp;
     int cb;
@@ -86,9 +85,10 @@ int main(int argc, char *argv[]) {
     size_t global[1];
     global[0] = m - 3;
 
-    cl_mem prefix = OCLFunc(clCreateBuffer, context, CL_MEM_READ_ONLY, results_size, NULL);
+    cl_mem prefix = OCLFunc(clCreateBuffer, context, CL_MEM_READ_ONLY, sizeof(int) * k, NULL);
+    cl_mem counters = OCLFunc(clCreateBuffer, context, CL_MEM_READ_WRITE, sizeof(int), NULL);
     cl_mem status = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, sizeof(int) * max_group_size, NULL);
-    cl_mem output = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, results_size, NULL);
+    cl_mem output = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, sizeof(int) * k, NULL);
     int prefix_size = 0;
 
     printf("1\n");
@@ -98,6 +98,7 @@ int main(int argc, char *argv[]) {
     KernelArg(k);
     KernelArg(prefix_size);
     KernelArg(prefix);
+    KernelArg(counters);
     KernelArg(status);
     KernelArg(output);
 
@@ -111,12 +112,12 @@ int main(int argc, char *argv[]) {
 
     printf("3\n");
 
-    int *output_buffer = malloc(results_size);
+    int *output_buffer = malloc(sizeof(int) * k);
     if (output_buffer == 0) {
         printf("Could not allocate output buffer.");
         exit(1);
     }
-    OCLErr(clEnqueueReadBuffer, commands, output, CL_TRUE, 0, results_size, output_buffer, 0, NULL, NULL );
+    OCLErr(clEnqueueReadBuffer, commands, output, CL_TRUE, 0, sizeof(int) * k, output_buffer, 0, NULL, NULL );
 
     int *status_buffer = malloc(sizeof(int) * max_group_size);
     if (status_buffer == 0) {

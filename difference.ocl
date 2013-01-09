@@ -28,6 +28,7 @@ __kernel void kmain(
     int k,
     int prefix_size,
     __global int *prefix,
+    __global int *counters,
     __global int *status,
     __global int *output)
 {
@@ -96,9 +97,19 @@ __kernel void kmain(
             return;
         }
 
+        if (counters[0]) {
+            status[local_id] = -700;
+            return;
+        }
+
         // if candidate is feasible, push on
         if (push(candidate, &pc)) {
             if (pc.current == k) {
+                int solutions = atomic_inc(&counters[0]);
+                if (solutions > 0) {
+                    status[local_id] = -600;
+                    return;
+                }
                 for (int i = 0; i < k; i++) {
                     output[i] = pc.set[i];
                 }
@@ -114,8 +125,9 @@ __kernel void kmain(
 
         // Can't work - backtrack
         if (candidate >= pc.max_candidate) {
+            // No solution.
             if (pc.current < min_size) {
-                status[local_id] = iterations;
+                status[local_id] = -800;
                 return;
             }
             candidate = pop(&pc) + 1;
