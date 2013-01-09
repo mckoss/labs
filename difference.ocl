@@ -25,12 +25,13 @@ int pop(PUSH_CONTEXT *pc);
 
 // Global counters
 #define SOLVED 0
-#define STEPS 1
-#define EXIT0 2
-#define EXIT1 3
-#define EXIT2 4
-#define EXHAUSTED 5
-#define ITER_MAX 6
+#define SOLUTION_STEPS 1
+#define STEPS 2
+#define EXIT0 3
+#define EXIT1 4
+#define EXIT2 5
+#define EXHAUSTED 6
+#define ITER_MAX 7
 
 #define inc_counter(index) atomic_inc(&counters[index])
 #define add_counter(index, delta) atomic_add(&counters[index], delta)
@@ -109,6 +110,7 @@ __kernel void kmain(
             if (pc.current == k) {
                 int solutions = inc_counter(SOLVED);
                 if (solutions == 0) {
+                    add_counter(SOLUTION_STEPS, iterations);
                     for (int i = 0; i < k; i++) {
                         output[i] = pc.set[i];
                     }

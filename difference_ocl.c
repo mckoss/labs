@@ -33,7 +33,8 @@
 
 const char *counter_labels[NUM_COUNTERS] = {
     "Solutions",
-    "Steps",
+    "Solution steps",
+    "Global Steps",
     "k > MAX_SET",
     "Prefix Invalid",
     "First choice invalid",
