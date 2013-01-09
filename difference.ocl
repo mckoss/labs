@@ -78,8 +78,6 @@ __kernel void kmain(
         return;
     }
 
-    status[local_id] = -3;
-
     if (!push(global_id + 3, &pc)) {
         status[local_id] = -200 - (global_id + 3);
         return;
@@ -89,16 +87,10 @@ __kernel void kmain(
     int min_size = pc.current;
 
     int iterations = 0;
-    status[local_id] = -400;
     FOREVER {
         iterations++;
         if (iterations >= MAX_ITERATIONS) {
             status[local_id] = -500;
-            return;
-        }
-
-        if (counters[0]) {
-            status[local_id] = -700;
             return;
         }
 
