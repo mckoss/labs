@@ -7,7 +7,11 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <CL/opencl.h>
+#ifdef __APPLE__
+#include <OpenCL/opencl.h>
+#else
+#include <CL/cl.h>
+#endif
 
 #define CHECK_ERROR(clFunc) \
     if (err) { \
@@ -27,6 +31,8 @@
     OCLErr(clSetKernelArg, kernel, iarg++, sizeof(name), &name);
 
 #define MAX_SOURCE 24000
+#define MAX_DEVICES 4
+#define DEFAULT_DEVICE 0
 
 // Global Counters
 #define NUM_COUNTERS 20
@@ -51,7 +57,6 @@ void insert_string(char *buff, char *s);
 
 int main(int argc, char *argv[]) {
     int err;
-    cl_device_id device_id;
 
     if (argc < 2) {
         printf("Usage: %s K [prefix, ...]\n", argv[0]);
@@ -107,16 +112,21 @@ int main(int argc, char *argv[]) {
     }
 
     // TODO: Support more than 1 device
-    OCLErr(clGetDeviceIDs, platform_ids[0], CL_DEVICE_TYPE_GPU, 1, &device_id, NULL);
+    cl_device_id device_ids[MAX_DEVICES];
+    cl_uint num_devices;
+    OCLErr(clGetDeviceIDs, platform_ids[0], CL_DEVICE_TYPE_GPU,
+           MAX_DEVICES, device_ids, &num_devices);
+    for (int i = 0; i < num_devices; i++) {
+        printf("Device --- %d ---\n", i);
+        print_device_string(device_ids[i], CL_DEVICE_NAME);
+        print_device_num(device_ids[i], CL_DEVICE_ADDRESS_BITS);
+        print_device_num(device_ids[i], CL_DEVICE_ENDIAN_LITTLE);
+        print_device_num(device_ids[i], CL_DEVICE_MAX_COMPUTE_UNITS);
+        print_device_num(device_ids[i], CL_DEVICE_MAX_CLOCK_FREQUENCY);
+    }
 
-    print_device_string(device_id, CL_DEVICE_NAME);
-    print_device_num(device_id, CL_DEVICE_ADDRESS_BITS);
-    print_device_num(device_id, CL_DEVICE_ENDIAN_LITTLE);
-    print_device_num(device_id, CL_DEVICE_MAX_COMPUTE_UNITS);
-    print_device_num(device_id, CL_DEVICE_MAX_CLOCK_FREQUENCY);
-
-    cl_context context = OCLFunc(clCreateContext, 0, 1, &device_id, NULL, NULL);
-    cl_command_queue commands = OCLFunc(clCreateCommandQueue, context, device_id, 0);
+    cl_context context = OCLFunc(clCreateContext, 0, num_devices, device_ids, NULL, NULL);
+    cl_command_queue commands = OCLFunc(clCreateCommandQueue, context, device_ids[DEFAULT_DEVICE], 0);
     cl_program program = OCLFunc(clCreateProgramWithSource, context, 1, (const char **) & KernelSource, NULL);
     err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
     if (err) {
@@ -124,7 +134,7 @@ int main(int argc, char *argv[]) {
         size_t len;
         printf("Failed to build program.");
 
-        clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
+        clGetProgramBuildInfo(program, device_ids[DEFAULT_DEVICE], CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
         printf("%s\n", buffer);
         exit(1);
     }
@@ -135,7 +145,7 @@ int main(int argc, char *argv[]) {
     cl_kernel kernel = OCLFunc(clCreateKernel, program, "kmain");
 
     size_t max_group_size;
-    OCLErr(clGetKernelWorkGroupInfo, kernel, device_id,
+    OCLErr(clGetKernelWorkGroupInfo, kernel, device_ids[DEFAULT_DEVICE],
            CL_KERNEL_WORK_GROUP_SIZE, sizeof(max_group_size), &max_group_size, NULL);
     printf("Max workgroup size: %zu\n", max_group_size);
 
