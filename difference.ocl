@@ -52,8 +52,14 @@ __kernel void kmain(
     PUSH_CONTEXT pc;
     int candidate;
 
+    if (counters[SOLVED]) {
+        inc_counter(PRUNED);
+        return;
+    }
+
     size_t global_id = get_global_id(0);
     size_t local_id = get_local_id(0);
+    size_t global_size = get_global_size(0);
 
     if (k > MAX_SET) {
         inc_counter(EXIT_K_MAX);

@@ -30,6 +30,7 @@
 
 // Global Counters
 #define NUM_COUNTERS 20
+#define SOLVED 0
 
 const char *counter_labels[NUM_COUNTERS] = {
     "Solutions",
@@ -52,13 +53,19 @@ int main(int argc, char *argv[]) {
     int err;
     cl_device_id device_id;
 
-    if (argc != 2) {
-        printf("Usage: %s <k>\n", argv[0]);
+    if (argc < 2) {
+        printf("Usage: %s K [prefix, ...]\n", argv[0]);
         exit(1);
     }
 
     int k;
     sscanf(argv[1], "%d", &k);
+
+    int prefix_buffer[20];
+    for (int i = 2; i < argc; i++) {
+        sscanf(argv[i], "%d", &prefix_buffer[i-2]);
+    }
+    int prefix_size = argc - 2;
 
     printf("Size of int: %zd.\n", sizeof(int));
 
@@ -107,7 +114,11 @@ int main(int argc, char *argv[]) {
     cl_mem prefix = OCLFunc(clCreateBuffer, context, CL_MEM_READ_ONLY, sizeof(int) * k, NULL);
     cl_mem counters = OCLFunc(clCreateBuffer, context, CL_MEM_READ_WRITE, sizeof(int) * NUM_COUNTERS, NULL);
     cl_mem output = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, sizeof(int) * k, NULL);
-    int prefix_size = 0;
+
+    if (prefix_size > 0) {
+        OCLErr(clEnqueueWriteBuffer, commands, prefix, CL_TRUE, 0,
+               sizeof(int) * prefix_size, prefix_buffer, 0, NULL, NULL);
+    }
 
     // kmain args
     int iarg = 0;
