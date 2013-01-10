@@ -174,7 +174,7 @@ int main(int argc, char *argv[]) {
     OCLErr(clEnqueueNDRangeKernel, commands, kernel, 1, NULL, global, NULL, 0, NULL, NULL);
     OCLErr(clFinish, commands);
 
-    cl_int *output_buffer = malloc(sizeof(cl_int) * k);
+    int *output_buffer = malloc(sizeof(int) * k);
     OCLErr(clEnqueueReadBuffer, commands, output, CL_TRUE, 0,
            sizeof(int) * k, output_buffer, 0, NULL, NULL );
 
