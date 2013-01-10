@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
     int k;
     sscanf(argv[1], "%d", &k);
 
-    int prefix_buffer[20];
+    int prefix_buffer[40];
     for (int i = 2; i < argc; i++) {
         sscanf(argv[i], "%d", &prefix_buffer[i-2]);
     }
@@ -152,14 +152,16 @@ int main(int argc, char *argv[]) {
     size_t global[1];
     global[0] = 512 * 100;
 
-    cl_mem prefix = OCLFunc(clCreateBuffer, context, CL_MEM_READ_ONLY, sizeof(int) * k, NULL);
-    cl_mem counters = OCLFunc(clCreateBuffer, context, CL_MEM_READ_WRITE, sizeof(int) * NUM_COUNTERS, NULL);
-    cl_mem output = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, sizeof(int) * k, NULL);
+    cl_mem prefix = OCLFunc(clCreateBuffer, context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                            sizeof(int) * (prefix_size + 1), prefix_buffer);
 
-    if (prefix_size > 0) {
-        OCLErr(clEnqueueWriteBuffer, commands, prefix, CL_TRUE, 0,
-               sizeof(int) * prefix_size, prefix_buffer, 0, NULL, NULL);
-    }
+    int counters_buffer[NUM_COUNTERS];
+    cl_mem counters = OCLFunc(clCreateBuffer, context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
+                              sizeof(int) * NUM_COUNTERS, counters_buffer);
+
+    int *output_buffer = calloc(k, sizeof(int));
+    cl_mem output = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR,
+                            sizeof(int) * k, output_buffer);
 
     // kmain args
     int iarg = 0;
@@ -174,7 +176,6 @@ int main(int argc, char *argv[]) {
     OCLErr(clEnqueueNDRangeKernel, commands, kernel, 1, NULL, global, NULL, 0, NULL, NULL);
     OCLErr(clFinish, commands);
 
-    int *output_buffer = malloc(sizeof(int) * k);
     OCLErr(clEnqueueReadBuffer, commands, output, CL_TRUE, 0,
            sizeof(int) * k, output_buffer, 0, NULL, NULL );
 
@@ -183,7 +184,6 @@ int main(int argc, char *argv[]) {
     }
     printf("\n");
 
-    int counters_buffer[NUM_COUNTERS];
     OCLErr(clEnqueueReadBuffer, commands, counters, CL_TRUE, 0,
            sizeof(int) * NUM_COUNTERS, counters_buffer, 0, NULL, NULL );
 
