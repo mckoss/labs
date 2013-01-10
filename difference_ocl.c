@@ -29,7 +29,7 @@
 #define MAX_SOURCE 24000
 
 // Global Counters
-#define NUM_COUNTERS 9
+#define NUM_COUNTERS 20
 
 const char *counter_labels[NUM_COUNTERS] = {
     "Solutions",
@@ -40,7 +40,9 @@ const char *counter_labels[NUM_COUNTERS] = {
     "First choice invalid",
     "Second choice invalid",
     "Exhausted search",
-    "Hit max search limit"
+    "Hit max search limit",
+    "Pruned",
+    "Data"
 };
 
 void commas(int num, char *buff);

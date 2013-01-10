@@ -1,4 +1,4 @@
-/* Version 0.1 */
+/* Version 0.2 */
 #define MAX_SET 30
 #define MAX_MOD (MAX_SET * (MAX_SET - 1) + 1)
 
@@ -10,7 +10,6 @@
 #define MAX_ITERATIONS 100000
 
 typedef struct {
-    int local_id;
     int k;
     int m;
     int low;
@@ -18,6 +17,7 @@ typedef struct {
     int current;
     int *set;
     int *diffs;
+    __global int *counters;
 } PUSH_CONTEXT;
 
 int push(int a, PUSH_CONTEXT *pc);
@@ -33,10 +33,11 @@ int pop(PUSH_CONTEXT *pc);
 #define EXIT_CHOICE_2 6
 #define EXHAUSTED 7
 #define ITER_MAX 8
+#define PRUNED 9
+#define DATA 10
 
 #define inc_counter(index) atomic_inc(&counters[index])
 #define add_counter(index, delta) atomic_add(&counters[index], delta)
-
 
 __kernel void kmain(
     int k,
@@ -63,7 +64,7 @@ __kernel void kmain(
     pc.low = 0;
     pc.set = set;
     pc.diffs = diffs;
-    pc.local_id = local_id;
+    pc.counters = counters;
     pc.k = k;
     pc.m = k * (k - 1) + 1;
 
@@ -94,6 +95,7 @@ __kernel void kmain(
         inc_counter(EXIT_CHOICE_1);
         return;
     }
+
     seed /= pc.m - 3;
     if (!push(seed + 3, &pc)) {
         inc_counter(EXIT_CHOICE_2);
@@ -106,6 +108,11 @@ __kernel void kmain(
     int iterations = 0;
     FOREVER {
         iterations++;
+        if (counters[SOLVED]) {
+            inc_counter(PRUNED);
+            return;
+        }
+
         if (iterations >= MAX_ITERATIONS) {
             inc_counter(ITER_MAX);
             add_counter(STEPS, iterations);
@@ -157,7 +164,7 @@ int push(int a, PUSH_CONTEXT *pc) {
         if (d > pc->m / 2) {
             d = pc->m - d;
         }
-        if (pc->diffs[d]) {
+        if (d < 0 || pc->diffs[d]) {
             for (int j = 0; j < i; j++) {
                 d = a - pc->set[j];
                 if (d > pc->m / 2) {
