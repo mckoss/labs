@@ -1,9 +1,11 @@
-/* Version 0.2 */
+/* Version 0.3 */
 #define MAX_SET 30
 #define MAX_MOD (MAX_SET * (MAX_SET - 1) + 1)
 
+#ifndef false
 #define false 0
 #define true 1
+#endif
 
 #define FOREVER for (;;)
 
