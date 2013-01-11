@@ -32,7 +32,6 @@
 
 #define MAX_SOURCE 24000
 #define MAX_DEVICES 4
-#define DEFAULT_DEVICE 0
 
 // Global Counters
 #define NUM_COUNTERS 20
@@ -126,7 +125,7 @@ int main(int argc, char *argv[]) {
     }
 
     cl_context context = OCLFunc(clCreateContext, 0, num_devices, device_ids, NULL, NULL);
-    cl_command_queue commands = OCLFunc(clCreateCommandQueue, context, device_ids[DEFAULT_DEVICE], 0);
+    cl_command_queue commands = OCLFunc(clCreateCommandQueue, context, device_ids[num_devices - 1], 0);
     cl_program program = OCLFunc(clCreateProgramWithSource, context, 1, (const char **) & KernelSource, NULL);
     err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
     if (err) {
@@ -134,7 +133,7 @@ int main(int argc, char *argv[]) {
         size_t len;
         printf("Failed to build program.");
 
-        clGetProgramBuildInfo(program, device_ids[DEFAULT_DEVICE], CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
+        clGetProgramBuildInfo(program, device_ids[num_devices - 1], CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
         printf("%s\n", buffer);
         exit(1);
     }
@@ -145,12 +144,12 @@ int main(int argc, char *argv[]) {
     cl_kernel kernel = OCLFunc(clCreateKernel, program, "kmain");
 
     size_t max_group_size;
-    OCLErr(clGetKernelWorkGroupInfo, kernel, device_ids[DEFAULT_DEVICE],
+    OCLErr(clGetKernelWorkGroupInfo, kernel, device_ids[num_devices - 1],
            CL_KERNEL_WORK_GROUP_SIZE, sizeof(max_group_size), &max_group_size, NULL);
     printf("Max workgroup size: %zu\n", max_group_size);
 
     size_t global[1];
-    global[0] = 512 * 100;
+    global[0] = max_group_size;
 
     cl_mem prefix = OCLFunc(clCreateBuffer, context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                             sizeof(int) * (prefix_size + 1), prefix_buffer);
