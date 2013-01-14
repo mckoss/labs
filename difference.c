@@ -3,6 +3,8 @@
 #include <time.h>
 #include <string.h>
 #include <stdlib.h>
+#include <signal.h>
+#include <pthread.h>
 
 typedef enum {false, true} bool;
 
@@ -14,25 +16,34 @@ typedef enum {false, true} bool;
 int primes[MAX_SET];
 int pcount = 0;
 
-long trials = 0;
 time_t start;
 
-int m;
-int s[MAX_SET];
-bool diffs[MAX_DIFFS];
-int current;
-int low;
+typedef struct {
+    int k;
+    int m;
+    long trials;
+    int prefix_size;
+    int prefix[MAX_SET];
+    int s[MAX_SET];
+    bool diffs[MAX_DIFFS];
+    int current;
+    int low;
+} DIFF_VARS;
+
+DIFF_VARS *pdv_global;
 
 void sieve(void);
 int cmp_int(const void *a, const void *b);
-bool find_difference_set(int k, int prefix_size, int prefix[]);
-bool push(int a);
-int pop();
+bool find_difference_set(DIFF_VARS *pdv);
+bool push(int a, DIFF_VARS *pdv);
+int pop(DIFF_VARS *pdv);
+void final_status();
 
-void reset_progress();
-void progress();
-void print_trace();
-void print_ints(int count, int nums[]);
+
+void reset_progress(DIFF_VARS *pdv);
+void progress(DIFF_VARS *pdv);
+void print_trace(DIFF_VARS *pdv);
+void print_ints(FILE *pfile, int count, int nums[]);
 
 void commas(long, char *);
 void insert_string(char *, char *);
@@ -40,14 +51,16 @@ void insert_string(char *, char *);
 int main(int argc, char *argv[]) {
     int start;
     int end;
-    int prefix[MAX_SET];
-    int prefix_size = 0;
 
     sieve();
-    printf("Primes and prime powers: ");
-    print_ints(pcount, primes);
-    printf("\n");
+    fprintf(stderr, "Primes and prime powers: ");
+    print_ints(stderr, pcount, primes);
+    fprintf(stderr, "\n");
 
+    DIFF_VARS *pdv = (DIFF_VARS *) calloc(1, sizeof(DIFF_VARS));
+    pdv_global = pdv;
+
+    // difference <start k> <end k>
     start = 2;
     end = MAX_SET;
     // difference <start k>
@@ -55,23 +68,27 @@ int main(int argc, char *argv[]) {
         sscanf(argv[1], "%d", &start);
         end = start;
     }
+
     // difference <start k> <end k>
     if (argc == 3) {
         sscanf(argv[2], "%d", &end);
     }
+
     // differece <k> <prefix-1> <prefix-2> ...
     if (argc > 3) {
-        prefix_size = argc - 2;
-        for (int i = 0; i < prefix_size; i++) {
-            sscanf(argv[i + 2], "%d", &prefix[i]);
+        pdv->prefix_size = argc - 2;
+        for (int i = 0; i < pdv->prefix_size; i++) {
+            sscanf(argv[i + 2], "%d", &pdv->prefix[i]);
         }
     }
 
-    printf("Calculating difference sets from k = %d to k = %d.\n", start, end);
-    if (prefix_size > 0) {
-        printf("Prefix: ");
-        print_ints(prefix_size, prefix);
-        printf("\n");
+    signal(SIGINT, final_status);
+
+    fprintf(stderr, "Calculating difference sets from k = %d to k = %d.\n", start, end);
+    if (pdv->prefix_size > 0) {
+        fprintf(stderr, "Prefix: ");
+        print_ints(stderr, pdv->prefix_size, pdv->prefix);
+        fprintf(stderr, "\n");
     }
 
     for (int i = 0; i < pcount; i++) {
@@ -82,17 +99,30 @@ int main(int argc, char *argv[]) {
         if (k < start) {
             continue;
         }
-        if (find_difference_set(k, prefix_size, prefix)) {
-            print_trace();
+
+        pdv->k = k;
+
+        if (find_difference_set(pdv)) {
+            print_trace(pdv);
         } else {
-            printf("No solution.");
+            fprintf(stderr, "No solution.");
         }
-        char buff[20];
-        commas(trials, buff);
-        printf("\nTrials: %s\n", buff);
+        final_status(0);
     }
 
     return 0;
+}
+
+void final_status(int sig_num) {
+    char buff[20];
+
+    if (sig_num != 0) {
+        fprintf(stderr, "Program terminated (%d).\n", sig_num);
+        print_trace(pdv_global);
+    }
+    commas(pdv_global->trials, buff);
+    fprintf(stderr, "\nTotal Trials: %s\n", buff);
+    exit(sig_num);
 }
 
 void sieve() {
@@ -125,53 +155,44 @@ int cmp_int(const void *a, const void *b) {
     return *(int *)a - *(int *)b;
 }
 
-bool find_difference_set(int k, int prefix_size, int prefix[]) {
+bool find_difference_set(DIFF_VARS *pdv) {
     int candidate;
     int min_size;
 
-    m = k * (k - 1) + 1;
+    pdv->m = pdv->k * (pdv->k - 1) + 1;
 
-    printf("\nDifference set (k = %d, m = %d):\n", k, m);
+    fprintf(stderr, "\nDifference set (k = %d, m = %d):\n", pdv->k, pdv->m);
 
-    low = 0;
-    diffs[0] = true;
-    for (int i = 1; i <= m / 2; i++) {
-        diffs[i] = false;
+    pdv->low = 0;
+    pdv->diffs[0] = true;
+    for (int i = 1; i <= pdv->m / 2; i++) {
+        pdv->diffs[i] = false;
     }
 
-    current = 0;
-    if (prefix_size == 0) {
-        push(0);
-        push(1);
+    pdv->current = 0;
+    if (pdv->prefix_size == 0) {
+        push(0, pdv);
+        push(1, pdv);
     } else {
         int i;
-        for (i = 0; i < prefix_size; i++) {
-            if (!push(prefix[i]))
-                break;
-        }
-        // Choose next legal prefix.
-        if (i != prefix_size) {
-            while (!push(++prefix[i])) {}
-            printf("Illegal prefix.  Using: ");
-            print_trace();
-            printf(" instead.\n");
-
+        for (i = 0; i < pdv->prefix_size; i++) {
+            push(pdv->prefix[i], pdv);
         }
     }
-    candidate = s[current - 1] + low + 1;
-    min_size = current;
+    candidate = pdv->s[pdv->current - 1] + pdv->low + 1;
+    min_size = pdv->current;
 
-    reset_progress();
+    reset_progress(pdv);
 
     FOREVER {
-        progress();
+        progress(pdv);
 
         // if candidate is feasible, push on
-        if (push(candidate)) {
-            if (current == k) {
+        if (push(candidate, pdv)) {
+            if (pdv->current == pdv->k) {
                 return true;
             }
-            candidate += low + 1;
+            candidate += pdv->low + 1;
             continue;
         }
 
@@ -179,92 +200,91 @@ bool find_difference_set(int k, int prefix_size, int prefix[]) {
         candidate++;
 
         // Can't work - backtrack
-        if (candidate + (low + 1) * (k - current - 1) >= m - low) {
-            if (current < min_size) {
+        if (candidate + (pdv->low + 1) * (pdv->k - pdv->current - 1) >= pdv->m - pdv->low) {
+            if (pdv->current < min_size) {
                 return false;
             }
-            candidate = pop() + 1;
+            candidate = pop(pdv) + 1;
         }
     }
 }
 
-bool push(int a) {
+bool push(int a, DIFF_VARS *pdv) {
     int d;
 
-    for (int i = 0; i < current; i++) {
-        d = a - s[i];
-        if (d > m / 2) {
-            d = m - d;
+    for (int i = 0; i < pdv->current; i++) {
+        d = a - pdv->s[i];
+        if (d > pdv->m / 2) {
+            d = pdv->m - d;
         }
-        if (diffs[d]) {
+        if (pdv->diffs[d]) {
             for (int j = 0; j < i; j++) {
-                d = a - s[j];
-                if (d > m / 2) {
-                    d = m - d;
+                d = a - pdv->s[j];
+                if (d > pdv->m / 2) {
+                    d = pdv->m - d;
                 }
-                diffs[d] = false;
+                pdv->diffs[d] = false;
             }
             return false;
         }
-        diffs[d] = true;
+        pdv->diffs[d] = true;
     }
-    s[current] = a;
-    current++;
+    pdv->s[pdv->current++] = a;
 
-    while (low < m / 2 && diffs[low + 1]) {
-        low++;
+    while (pdv->low < pdv->m / 2 && pdv->diffs[pdv->low + 1]) {
+        pdv->low++;
     }
 
     return true;
 }
 
-int pop() {
-    int a = s[--current];
-    for (int i = 0; i < current; i++) {
-        int d = a - s[i];
-        if (d > m / 2) {
-            d = m - d;
+int pop(DIFF_VARS *pdv) {
+    int a = pdv->s[--pdv->current];
+    for (int i = 0; i < pdv->current; i++) {
+        int d = a - pdv->s[i];
+        if (d > pdv->m / 2) {
+            d = pdv->m - d;
         }
-        diffs[d] = false;
-        if (d <= low) {
-            low = d - 1;
+        pdv->diffs[d] = false;
+        if (d <= pdv->low) {
+            pdv->low = d - 1;
         }
     }
     return a;
 }
 
-void reset_progress() {
+void reset_progress(DIFF_VARS *pdv) {
     start = time(NULL);
-    trials = 0;
+    pdv->trials = 0;
 }
 
-void progress() {
+void progress(DIFF_VARS *pdv) {
     char buff[20];
 
-    trials++;
-    if (trials % PROGRESS != 0) {
+    pdv->trials++;
+    if (pdv->trials % PROGRESS != 0) {
         return;
     }
 
-    commas(trials, buff);
-    printf("Trials %s: ", buff);
-    print_trace();
+    commas(pdv->trials, buff);
+    fprintf(stderr, "Trials %s: ", buff);
+    print_trace(pdv);
     time_t now = time(NULL);
     int elapsed = (int) (now - start);
     commas(PROGRESS / elapsed, buff);
-    printf(" (%s per sec)\n", buff);
+    fprintf(stderr, " (%s per sec)\n", buff);
     start = now;
 }
 
-void print_trace() {
-    print_ints(current, s);
-    printf(" (low = %d)", low);
+void print_trace(DIFF_VARS *pdv) {
+    print_ints(stderr, pdv->current, pdv->s);
+    fprintf(stderr, " (low = %d)", pdv->low);
 }
 
-void print_ints(int count, int nums[]) {
+void print_ints(FILE *pfile, int count, int nums[]) {
     char *sep = "";
     while (count--) {
-        printf("%s%d", sep, *nums++);
+        fprintf(pfile, "%s%d", sep, *nums++);
         sep = ", ";
     }
 }
