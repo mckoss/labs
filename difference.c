@@ -40,7 +40,7 @@ int cmp_int(const void *a, const void *b);
 void *find_difference_set(void *ptr);
 bool push(int a, DIFF_VARS *pdv);
 int pop(DIFF_VARS *pdv);
-void final_status();
+void print_status();
 
 void print_trace(DIFF_VARS *pdv);
 void print_ints(FILE *pfile, int count, int nums[]);
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    signal(SIGINT, final_status);
+    signal(SIGINT, print_status);
 
     fprintf(stderr, "Calculating difference sets from k = %d to k = %d.\n", start, end);
     if (prefix_size > 0) {
@@ -121,30 +121,24 @@ int main(int argc, char *argv[]) {
         }
 
         FOREVER {
+            sleep(1);
             bool all_complete = true;
             for (int i = 0; i < NUM_THREADS; i++) {
                 if (!diff_vars[i].complete) {
                     all_complete = false;
+                    break;
                 }
-                print_trace(&diff_vars[i]);
             }
+            print_status(0);
             if (all_complete) {
                 break;
             }
-            sleep(5);
         }
 
         void *results;
         for (int i = 0; i < NUM_THREADS; i++) {
             pthread_join(threads[i], &results);
-            if (results) {
-                print_trace(&diff_vars[i]);
-            } else {
-                fprintf(stderr, "No solution for thread %d.\n", i);
-            }
         }
-
-        final_status(0);
 
         free(diff_vars);
         diff_vars = NULL;
@@ -153,7 +147,7 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-void final_status(int sig_num) {
+void print_status(int sig_num) {
     char buff[20];
 
     if (sig_num != 0) {
@@ -273,11 +267,12 @@ int pop(DIFF_VARS *pdv) {
 }
 
 void print_trace(DIFF_VARS *pdv) {
-    char buff[20];
+    char trials_string[20];
+    char *complete = pdv->complete ? "*" : "";
 
-    commas(pdv->trials, buff);
+    commas(pdv->trials, trials_string);
 
-    fprintf(stderr, "%d: (%d, %d) @%s: ", pdv->thread_num, pdv->k, pdv->m, buff);
+    fprintf(stderr, "%d%s: (%d, %d) @%s: ", pdv->thread_num, complete, pdv->k, pdv->m, trials_string);
     print_ints(stderr, pdv->current, pdv->s);
     fprintf(stderr, " (low = %d)\n", pdv->low);
 }
