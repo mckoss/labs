@@ -19,11 +19,11 @@ int pcount = 0;
 time_t start;
 
 typedef struct {
+    bool complete;
     int k;
     int m;
     long trials;
     int prefix_size;
-    int prefix[MAX_SET];
     int s[MAX_SET];
     bool diffs[MAX_DIFFS];
     int current;
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
     if (argc > 3) {
         pdv->prefix_size = argc - 2;
         for (int i = 0; i < pdv->prefix_size; i++) {
-            sscanf(argv[i + 2], "%d", &pdv->prefix[i]);
+            sscanf(argv[i + 2], "%d", &pdv->s[i]);
         }
     }
 
@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Calculating difference sets from k = %d to k = %d.\n", start, end);
     if (pdv->prefix_size > 0) {
         fprintf(stderr, "Prefix: ");
-        print_ints(stderr, pdv->prefix_size, pdv->prefix);
+        print_ints(stderr, pdv->prefix_size, pdv->s);
         fprintf(stderr, "\n");
     }
 
@@ -122,7 +122,10 @@ void final_status(int sig_num) {
     }
     commas(pdv_global->trials, buff);
     fprintf(stderr, "\nTotal Trials: %s\n", buff);
-    exit(sig_num);
+
+    if (sig_num != 0) {
+        exit(sig_num);
+    }
 }
 
 void sieve() {
@@ -157,7 +160,6 @@ int cmp_int(const void *a, const void *b) {
 
 bool find_difference_set(DIFF_VARS *pdv) {
     int candidate;
-    int min_size;
 
     pdv->m = pdv->k * (pdv->k - 1) + 1;
 
@@ -173,14 +175,14 @@ bool find_difference_set(DIFF_VARS *pdv) {
     if (pdv->prefix_size == 0) {
         push(0, pdv);
         push(1, pdv);
+        pdv->prefix_size = 2;
     } else {
         int i;
         for (i = 0; i < pdv->prefix_size; i++) {
-            push(pdv->prefix[i], pdv);
+            push(pdv->s[i], pdv);
         }
     }
     candidate = pdv->s[pdv->current - 1] + pdv->low + 1;
-    min_size = pdv->current;
 
     reset_progress(pdv);
 
@@ -190,6 +192,7 @@ bool find_difference_set(DIFF_VARS *pdv) {
         // if candidate is feasible, push on
         if (push(candidate, pdv)) {
             if (pdv->current == pdv->k) {
+                pdv->complete = true;
                 return true;
             }
             candidate += pdv->low + 1;
@@ -201,7 +204,8 @@ bool find_difference_set(DIFF_VARS *pdv) {
 
         // Can't work - backtrack
         if (candidate + (pdv->low + 1) * (pdv->k - pdv->current - 1) >= pdv->m - pdv->low) {
-            if (pdv->current < min_size) {
+            if (pdv->current < pdv->prefix_size) {
+                pdv->complete = true;
                 return false;
             }
             candidate = pop(pdv) + 1;
