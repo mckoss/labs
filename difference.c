@@ -14,10 +14,10 @@ typedef enum {false, true} bool;
 #define FOREVER for (;;)
 #define NUM_THREADS 4
 
+int active_threads = 0;
+
 int primes[MAX_SET];
 int pcount = 0;
-
-time_t start;
 
 typedef struct {
     int thread_num;
@@ -38,6 +38,7 @@ DIFF_VARS *diff_vars = NULL;
 void sieve(void);
 int cmp_int(const void *a, const void *b);
 void *find_difference_set(void *ptr);
+bool next_target(DIFF_VARS *pdv);
 bool push(int a, DIFF_VARS *pdv);
 int pop(DIFF_VARS *pdv);
 void print_status();
@@ -80,20 +81,24 @@ int main(int argc, char *argv[]) {
         for (int i = 0; i < prefix_size; i++) {
             sscanf(argv[i + 2], "%d", &prefix[i]);
         }
+    } else {
+        prefix_size = 2;
+        prefix[0] = 0;
+        prefix[1] = 1;
     }
 
     signal(SIGINT, print_status);
 
     fprintf(stderr, "Calculating difference sets from k = %d to k = %d.\n", start, end);
-    if (prefix_size > 0) {
-        fprintf(stderr, "Prefix: ");
-        print_ints(stderr, prefix_size, prefix);
-        fprintf(stderr, "\n");
-    }
+    fprintf(stderr, "Prefix: ");
+    print_ints(stderr, prefix_size, prefix);
+    fprintf(stderr, "\n");
 
     for (int i = 0; i < pcount; i++) {
         int k = primes[i] + 1;
         int m = k * (k - 1) + 1;
+        DIFF_VARS parent_diff;
+
         if (k > end) {
             break;
         }
@@ -103,41 +108,66 @@ int main(int argc, char *argv[]) {
 
         fprintf(stderr, "\nDifference set (k = %d, m = %d):\n", k, m);
 
+        bzero(&parent_diff, sizeof(parent_diff));
+
+        parent_diff.thread_num = -1;
+        parent_diff.k = k;
+        parent_diff.m = m;
+        parent_diff.prefix_size = prefix_size;
+        parent_diff.target_depth = prefix_size + 2;
+        memcpy(parent_diff.s, prefix, sizeof(int) * prefix_size);
+
+        find_difference_set(&parent_diff);
+        if (parent_diff.complete) {
+            fprintf(stderr, "Parent solution: ");
+            print_trace(&parent_diff);
+            continue;
+        }
+
         diff_vars = calloc(NUM_THREADS, sizeof(DIFF_VARS));
 
-        for (int i = 0; i < NUM_THREADS; i++) {
-            diff_vars[i].thread_num = i;
-            diff_vars[i].k = k;
-            diff_vars[i].m = m;
-            diff_vars[i].prefix_size = prefix_size;
-
-            for (int j = 0; j < prefix_size; j++) {
-                diff_vars[i].s[j] = prefix[j];
-            }
-        }
-
-        for (int i = 0; i < NUM_THREADS; i++) {
-            pthread_create(&threads[i], NULL, find_difference_set, (void *) &diff_vars[i]);
-        }
-
         FOREVER {
-            sleep(1);
-            bool all_complete = true;
-            for (int i = 0; i < NUM_THREADS; i++) {
-                if (!diff_vars[i].complete) {
-                    all_complete = false;
+            for (active_threads = 0; active_threads < NUM_THREADS; active_threads++) {
+                if (parent_diff.current < parent_diff.target_depth) {
+                    break;
+                }
+
+                memcpy(&diff_vars[active_threads], &parent_diff, sizeof(DIFF_VARS));
+                diff_vars[active_threads].thread_num = active_threads;
+                diff_vars[active_threads].prefix_size = parent_diff.current;
+                diff_vars[active_threads].target_depth = 0;
+
+                pthread_create(&threads[active_threads],
+                               NULL,
+                               find_difference_set,
+                               (void *) &diff_vars[active_threads]);
+                next_target(&parent_diff);
+            }
+
+            if (active_threads == 0) {
+                break;
+            }
+
+            FOREVER {
+                bool all_complete = true;
+
+                sleep(1);
+                for (int i = 0; i < active_threads; i++) {
+                    if (!diff_vars[i].complete) {
+                        all_complete = false;
+                        break;
+                    }
+                }
+                print_status(0);
+                if (all_complete) {
                     break;
                 }
             }
-            print_status(0);
-            if (all_complete) {
-                break;
-            }
-        }
 
-        void *results;
-        for (int i = 0; i < NUM_THREADS; i++) {
-            pthread_join(threads[i], &results);
+            void *results;
+            for (int i = 0; i < active_threads; i++) {
+                pthread_join(threads[i], &results);
+            }
         }
 
         free(diff_vars);
@@ -154,10 +184,8 @@ void print_status(int sig_num) {
         fprintf(stderr, "Program terminated (%d).\n", sig_num);
     }
 
-    if (diff_vars) {
-        for (int i = 0; i < NUM_THREADS; i++) {
-            print_trace(&diff_vars[i]);
-        }
+    for (int i = 0; i < active_threads; i++) {
+        print_trace(&diff_vars[i]);
     }
 
     if (sig_num != 0) {
@@ -180,15 +208,8 @@ void *find_difference_set(void *ptr) {
     }
 
     pdv->current = 0;
-    if (pdv->prefix_size == 0) {
-        push(0, pdv);
-        push(1, pdv);
-        pdv->prefix_size = 2;
-    } else {
-        int i;
-        for (i = 0; i < pdv->prefix_size; i++) {
-            push(pdv->s[i], pdv);
-        }
+    for (int i = 0; i < pdv->prefix_size; i++) {
+        push(pdv->s[i], pdv);
     }
 
     candidate = pdv->s[pdv->current - 1] + pdv->low + 1;
@@ -219,6 +240,19 @@ void *find_difference_set(void *ptr) {
             }
             candidate = pop(pdv) + 1;
         }
+    }
+}
+
+bool next_target(DIFF_VARS *pdv) {
+    int candidate = pop(pdv) + 1;
+    FOREVER {
+        if (candidate + (pdv->low + 1) * (pdv->k - pdv->current - 1) >= pdv->m - pdv->low) {
+            return false;
+        }
+        if (push(candidate, pdv)) {
+            return true;
+        }
+        candidate++;
     }
 }
 
@@ -269,12 +303,13 @@ int pop(DIFF_VARS *pdv) {
 void print_trace(DIFF_VARS *pdv) {
     char trials_string[20];
     char *complete = pdv->complete ? "*" : "";
+    char *solved = pdv->current == pdv->k ? " SOLVED" : "";
 
     commas(pdv->trials, trials_string);
 
     fprintf(stderr, "%d%s: (%d, %d) @%s: ", pdv->thread_num, complete, pdv->k, pdv->m, trials_string);
     print_ints(stderr, pdv->current, pdv->s);
-    fprintf(stderr, " (low = %d)\n", pdv->low);
+    fprintf(stderr, " (low = %d)%s\n", pdv->low, solved);
 }
 
 void print_ints(FILE *pfile, int count, int nums[]) {
