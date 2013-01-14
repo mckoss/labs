@@ -7,7 +7,11 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifdef __APPLE__
 #include <OpenCL/opencl.h>
+#else
+#include <CL/cl.h>
+#endif
 
 #define CHECK_ERROR(clFunc) \
     if (err) { \
@@ -27,6 +31,7 @@
     OCLErr(clSetKernelArg, kernel, iarg++, sizeof(name), &name);
 
 #define MAX_SOURCE 24000
+#define MAX_DEVICES 4
 
 // Global Counters
 #define NUM_COUNTERS 20
@@ -46,12 +51,11 @@ const char *counter_labels[NUM_COUNTERS] = {
     "Data"
 };
 
-void commas(int num, char *buff);
+char *commas(int num, char *buff);
 void insert_string(char *buff, char *s);
 
 int main(int argc, char *argv[]) {
     int err;
-    cl_device_id device_id;
 
     if (argc < 2) {
         printf("Usage: %s K [prefix, ...]\n", argv[0]);
@@ -61,7 +65,7 @@ int main(int argc, char *argv[]) {
     int k;
     sscanf(argv[1], "%d", &k);
 
-    int prefix_buffer[20];
+    int prefix_buffer[40];
     for (int i = 2; i < argc; i++) {
         sscanf(argv[i], "%d", &prefix_buffer[i-2]);
     }
@@ -83,9 +87,45 @@ int main(int argc, char *argv[]) {
     KernelSource[cb] = 0;
     fclose(fp);
 
-    OCLErr(clGetDeviceIDs, NULL, CL_DEVICE_TYPE_GPU, 1, &device_id, NULL);
-    cl_context context = OCLFunc(clCreateContext, 0, 1, &device_id, NULL, NULL);
-    cl_command_queue commands = OCLFunc(clCreateCommandQueue, context, device_id, 0);
+    cl_platform_id platform_ids[4];
+    cl_uint num_platforms;
+    char info_buffer[128];
+    int info_num;
+    size_t size;
+
+#define print_platform_string(id, name) \
+    OCLErr(clGetPlatformInfo, id, name, sizeof(info_buffer), (void *) info_buffer, &size); \
+    printf(#name ": %s\n", info_buffer)
+
+#define print_device_string(id, name) \
+    OCLErr(clGetDeviceInfo, id, name, sizeof(info_buffer), (void *) info_buffer, &size); \
+    printf(#name ": %s\n", info_buffer)
+
+#define print_device_num(id, name) \
+    OCLErr(clGetDeviceInfo, id, name, sizeof(int), &info_num, &size); \
+    printf(#name ": %d\n", info_num);
+
+    OCLErr(clGetPlatformIDs, 4, platform_ids, &num_platforms);
+    for (int i = 0; i < num_platforms; i++) {
+        print_platform_string(platform_ids[i], CL_PLATFORM_NAME);
+    }
+
+    // TODO: Support more than 1 device
+    cl_device_id device_ids[MAX_DEVICES];
+    cl_uint num_devices;
+    OCLErr(clGetDeviceIDs, platform_ids[0], CL_DEVICE_TYPE_GPU,
+           MAX_DEVICES, device_ids, &num_devices);
+    for (int i = 0; i < num_devices; i++) {
+        printf("Device --- %d ---\n", i);
+        print_device_string(device_ids[i], CL_DEVICE_NAME);
+        print_device_num(device_ids[i], CL_DEVICE_ADDRESS_BITS);
+        print_device_num(device_ids[i], CL_DEVICE_ENDIAN_LITTLE);
+        print_device_num(device_ids[i], CL_DEVICE_MAX_COMPUTE_UNITS);
+        print_device_num(device_ids[i], CL_DEVICE_MAX_CLOCK_FREQUENCY);
+    }
+
+    cl_context context = OCLFunc(clCreateContext, 0, num_devices, device_ids, NULL, NULL);
+    cl_command_queue commands = OCLFunc(clCreateCommandQueue, context, device_ids[num_devices - 1], 0);
     cl_program program = OCLFunc(clCreateProgramWithSource, context, 1, (const char **) & KernelSource, NULL);
     err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
     if (err) {
@@ -93,7 +133,7 @@ int main(int argc, char *argv[]) {
         size_t len;
         printf("Failed to build program.");
 
-        clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
+        clGetProgramBuildInfo(program, device_ids[num_devices - 1], CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
         printf("%s\n", buffer);
         exit(1);
     }
@@ -104,21 +144,23 @@ int main(int argc, char *argv[]) {
     cl_kernel kernel = OCLFunc(clCreateKernel, program, "kmain");
 
     size_t max_group_size;
-    OCLErr(clGetKernelWorkGroupInfo, kernel, device_id,
+    OCLErr(clGetKernelWorkGroupInfo, kernel, device_ids[num_devices - 1],
            CL_KERNEL_WORK_GROUP_SIZE, sizeof(max_group_size), &max_group_size, NULL);
     printf("Max workgroup size: %zu\n", max_group_size);
 
     size_t global[1];
-    global[0] = 512 * 100;
+    global[0] = max_group_size;
 
-    cl_mem prefix = OCLFunc(clCreateBuffer, context, CL_MEM_READ_ONLY, sizeof(int) * k, NULL);
-    cl_mem counters = OCLFunc(clCreateBuffer, context, CL_MEM_READ_WRITE, sizeof(int) * NUM_COUNTERS, NULL);
-    cl_mem output = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY, sizeof(int) * k, NULL);
+    cl_mem prefix = OCLFunc(clCreateBuffer, context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                            sizeof(int) * (prefix_size + 1), prefix_buffer);
 
-    if (prefix_size > 0) {
-        OCLErr(clEnqueueWriteBuffer, commands, prefix, CL_TRUE, 0,
-               sizeof(int) * prefix_size, prefix_buffer, 0, NULL, NULL);
-    }
+    int counters_buffer[NUM_COUNTERS];
+    cl_mem counters = OCLFunc(clCreateBuffer, context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
+                              sizeof(int) * NUM_COUNTERS, counters_buffer);
+
+    int *output_buffer = calloc(k, sizeof(int));
+    cl_mem output = OCLFunc(clCreateBuffer, context, CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR,
+                            sizeof(int) * k, output_buffer);
 
     // kmain args
     int iarg = 0;
@@ -128,17 +170,11 @@ int main(int argc, char *argv[]) {
     KernelArg(counters);
     KernelArg(output);
 
-    // Args:
     // command_queue, kernel, work_dim, global_work_offset, global_work_size, local_work_size,
     // num_events_in_wait_list,event_wait_list, event
     OCLErr(clEnqueueNDRangeKernel, commands, kernel, 1, NULL, global, NULL, 0, NULL, NULL);
-    clFinish(commands);
+    OCLErr(clFinish, commands);
 
-    int *output_buffer = malloc(sizeof(int) * k);
-    if (output_buffer == 0) {
-        printf("Could not allocate output buffer.");
-        exit(1);
-    }
     OCLErr(clEnqueueReadBuffer, commands, output, CL_TRUE, 0,
            sizeof(int) * k, output_buffer, 0, NULL, NULL );
 
@@ -147,14 +183,12 @@ int main(int argc, char *argv[]) {
     }
     printf("\n");
 
-    int counters_buffer[NUM_COUNTERS];
     OCLErr(clEnqueueReadBuffer, commands, counters, CL_TRUE, 0,
            sizeof(int) * NUM_COUNTERS, counters_buffer, 0, NULL, NULL );
 
     for (int i = 0; i < NUM_COUNTERS; i++) {
         char num_buff[20];
-        commas(counters_buffer[i], num_buff);
-        printf("%s: %s\n", counter_labels[i], num_buff);
+        printf("%s: %s\n", counter_labels[i], commas(counters_buffer[i], num_buff));
     }
 
     clReleaseMemObject(output);
@@ -166,13 +200,14 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-void commas(int num, char *buff) {
+char *commas(int num, char *buff) {
     sprintf(buff, "%d", num);
     char *end = buff + strlen(buff) - 3;
     while (end > buff) {
         insert_string(end, ",");
         end -= 3;
     }
+    return buff;
 }
 
 void insert_string(char *buff, char *s) {
