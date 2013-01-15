@@ -1,3 +1,19 @@
+/* ================================================================
+   difference.c - Difference Set generator.
+
+   Calculate difference sets of various sizes - using threading library
+   to maximize CPU cores in the search.
+
+   Copyright 2013, Mike Koss
+
+   Todo:
+
+   - Fix suboptimal thread scheduling
+   - Use smaller sleep timer to reschedule threads more rapidly.
+   - Return trials per sec timer.
+   - Option to continue search from a pause point (not a required prefix)
+   - Try speed of byte sized set and diffs arrays.
+================================================================== */
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
