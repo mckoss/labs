@@ -19,6 +19,9 @@
 #include <signal.h>
 #include <pthread.h>
 #include <unistd.h>
+#ifndef usleep
+int usleep (__useconds_t __useconds);
+#endif
 
 typedef enum {false, true} bool;
 typedef unsigned char byte;
