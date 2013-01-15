@@ -20,7 +20,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #ifndef usleep
-int usleep (__useconds_t __useconds);
+int usleep (useconds_t);
 #endif
 
 typedef enum {false, true} bool;
