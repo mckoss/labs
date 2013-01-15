@@ -131,7 +131,7 @@ int main(int argc, char *argv[]) {
         parent_diff.k = k;
         parent_diff.m = m;
         parent_diff.prefix_size = prefix_size;
-        parent_diff.target_depth = prefix_size + 4;
+        parent_diff.target_depth = prefix_size + (k < 18 ? 2 : 4);
         memcpy(parent_diff.s, prefix, sizeof(int) * prefix_size);
 
         find_difference_set(&parent_diff);
@@ -144,6 +144,8 @@ int main(int argc, char *argv[]) {
         all_trials = 0;
         diff_vars = calloc(NUM_THREADS, sizeof(DIFF_VARS));
 
+        int status_countdown = 0;
+        reset_status();
         FOREVER {
             for (active_threads = 0; active_threads < NUM_THREADS; active_threads++) {
                 if (parent_diff.current < parent_diff.target_depth) {
@@ -168,8 +170,8 @@ int main(int argc, char *argv[]) {
 
             bool any_solved;
             bool all_complete;
-            reset_status();
             FOREVER {
+                usleep(10000);
                 all_complete = true;
                 any_solved = false;
 
@@ -180,11 +182,13 @@ int main(int argc, char *argv[]) {
                         any_solved = true;
                     }
                 }
-                print_status(0);
+                if (status_countdown-- == 0 || any_solved) {
+                    print_status(0);
+                    status_countdown = 100;
+                }
                 if (all_complete) {
                     break;
                 }
-                sleep(1);
             }
 
             for (int i = 0; i < active_threads; i++) {
@@ -227,7 +231,7 @@ void print_status(int sig_num) {
         print_trace(&diff_vars[i]);
         cum_trials += diff_vars[i].trials;
     }
-    if (last_trials != 0) {
+    if (last_trials != 0 && elapsed > 0) {
         fprintf(stderr, "Cumulative trials: %s (%s/sec)\n",
                 commas(cum_trials, cum_trials_string),
                 commas((long) ((cum_trials - last_trials) / elapsed), rate_string));
