@@ -9,7 +9,6 @@
    Todo:
 
    - Fix suboptimal thread scheduling
-   - Use smaller sleep timer to reschedule threads more rapidly.
    - Option to continue search from a pause point (not a required prefix)
    - Try speed of byte sized set and diffs arrays.
 ================================================================== */
@@ -23,6 +22,7 @@
 #include <unistd.h>
 
 typedef enum {false, true} bool;
+typedef unsigned char byte;
 
 #define MAX_SET 50
 #define MAX_DIFFS (MAX_SET * (MAX_SET - 1) + 1)
@@ -46,7 +46,7 @@ typedef struct {
     int current;
     int low;
     int s[MAX_SET];
-    bool diffs[MAX_DIFFS];
+    byte diffs[MAX_DIFFS];
 } DIFF_VARS;
 
 DIFF_VARS *diff_vars = NULL;
