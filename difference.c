@@ -15,6 +15,7 @@ typedef enum {false, true} bool;
 #define NUM_THREADS 4
 
 int active_threads = 0;
+long all_trials;
 
 int primes[MAX_SET];
 int pcount = 0;
@@ -46,7 +47,7 @@ void print_status();
 void print_trace(DIFF_VARS *pdv);
 void print_ints(FILE *pfile, int count, int nums[]);
 
-void commas(long, char *);
+char *commas(long, char *);
 void insert_string(char *, char *);
 
 int main(int argc, char *argv[]) {
@@ -124,6 +125,7 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
+        all_trials = 0;
         diff_vars = calloc(NUM_THREADS, sizeof(DIFF_VARS));
 
         FOREVER {
@@ -148,25 +150,38 @@ int main(int argc, char *argv[]) {
                 break;
             }
 
+            bool any_solved;
+            bool all_complete;
             FOREVER {
-                bool all_complete = true;
+                all_complete = true;
+                any_solved = false;
 
-                sleep(1);
                 for (int i = 0; i < active_threads; i++) {
                     if (!diff_vars[i].complete) {
                         all_complete = false;
-                        break;
+                    } else if (diff_vars[i].current == diff_vars[i].k) {
+                        any_solved = true;
                     }
                 }
                 print_status(0);
-                if (all_complete) {
+                if (all_complete || any_solved) {
                     break;
                 }
+                sleep(1);
             }
 
-            void *results;
             for (int i = 0; i < active_threads; i++) {
-                pthread_join(threads[i], &results);
+                // Don't wait for still-computing threads to finish.
+                if (!diff_vars[i].complete) {
+                    fprintf(stderr, "Canceling thread %d.\n", i);
+                    pthread_cancel(threads[i]);
+                }
+                pthread_join(threads[i], NULL);
+                all_trials += diff_vars[i].trials;
+            }
+
+            if (any_solved) {
+                break;
             }
         }
 
@@ -178,7 +193,8 @@ int main(int argc, char *argv[]) {
 }
 
 void print_status(int sig_num) {
-    char buff[20];
+    char cum_trials_string[20];
+    long cum_trials = all_trials;
 
     if (sig_num != 0) {
         fprintf(stderr, "Program terminated (%d).\n", sig_num);
@@ -186,7 +202,9 @@ void print_status(int sig_num) {
 
     for (int i = 0; i < active_threads; i++) {
         print_trace(&diff_vars[i]);
+        cum_trials += diff_vars[i].trials;
     }
+    fprintf(stderr, "Cumulative trials: %s\n", commas(cum_trials, cum_trials_string));
 
     if (sig_num != 0) {
         exit(sig_num);
@@ -221,9 +239,9 @@ void *find_difference_set(void *ptr) {
         if (push(candidate, pdv)) {
             if (pdv->current == pdv->k) {
                 pdv->complete = true;
-                return pdv;
+                return NULL;
             } else if (pdv->current == pdv->target_depth) {
-                return pdv;
+                return NULL;
             }
             candidate += pdv->low + 1;
             continue;
@@ -234,7 +252,7 @@ void *find_difference_set(void *ptr) {
 
         // Can't work - backtrack
         if (candidate + (pdv->low + 1) * (pdv->k - pdv->current - 1) >= pdv->m - pdv->low) {
-            if (pdv->current < pdv->prefix_size) {
+            if (pdv->current <= pdv->prefix_size) {
                 pdv->complete = true;
                 return NULL;
             }
@@ -320,13 +338,14 @@ void print_ints(FILE *pfile, int count, int nums[]) {
     }
 }
 
-void commas(long l, char *buff) {
+char *commas(long l, char *buff) {
     sprintf(buff, "%ld", l);
     char *end = buff + strlen(buff) - 3;
     while (end > buff) {
         insert_string(end, ",");
         end -= 3;
     }
+    return buff;
 }
 
 void insert_string(char *buff, char *s) {
