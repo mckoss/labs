@@ -10,7 +10,6 @@
 
    - Fix suboptimal thread scheduling
    - Option to continue search from a pause point (not a required prefix)
-   - Try speed of byte sized set and diffs arrays.
 ================================================================== */
 #include <stdio.h>
 #include <math.h>
