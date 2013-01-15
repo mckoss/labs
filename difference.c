@@ -39,7 +39,7 @@ DIFF_VARS *diff_vars = NULL;
 void sieve(void);
 int cmp_int(const void *a, const void *b);
 void *find_difference_set(void *ptr);
-bool next_target(DIFF_VARS *pdv);
+void *search_next(DIFF_VARS *pdv, int candidate);
 bool push(int a, DIFF_VARS *pdv);
 int pop(DIFF_VARS *pdv);
 void print_status();
@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
                                NULL,
                                find_difference_set,
                                (void *) &diff_vars[active_threads]);
-                next_target(&parent_diff);
+                search_next(&parent_diff, pop(&parent_diff) + 1);
             }
 
             if (active_threads == 0) {
@@ -164,18 +164,13 @@ int main(int argc, char *argv[]) {
                     }
                 }
                 print_status(0);
-                if (all_complete || any_solved) {
+                if (all_complete) {
                     break;
                 }
                 sleep(1);
             }
 
             for (int i = 0; i < active_threads; i++) {
-                // Don't wait for still-computing threads to finish.
-                if (!diff_vars[i].complete) {
-                    fprintf(stderr, "Canceling thread %d.\n", i);
-                    pthread_cancel(threads[i]);
-                }
                 pthread_join(threads[i], NULL);
                 all_trials += diff_vars[i].trials;
             }
@@ -230,8 +225,10 @@ void *find_difference_set(void *ptr) {
         push(pdv->s[i], pdv);
     }
 
-    candidate = pdv->s[pdv->current - 1] + pdv->low + 1;
+    return search_next(pdv, pdv->s[pdv->current - 1] + pdv->low + 1);
+}
 
+void *search_next(DIFF_VARS *pdv, int candidate) {
     FOREVER {
         pdv->trials++;
 
@@ -261,21 +258,12 @@ void *find_difference_set(void *ptr) {
     }
 }
 
-bool next_target(DIFF_VARS *pdv) {
-    int candidate = pop(pdv) + 1;
-    FOREVER {
-        if (candidate + (pdv->low + 1) * (pdv->k - pdv->current - 1) >= pdv->m - pdv->low) {
-            return false;
-        }
-        if (push(candidate, pdv)) {
-            return true;
-        }
-        candidate++;
-    }
-}
-
 bool push(int a, DIFF_VARS *pdv) {
     int d;
+
+    if (a >= pdv->m) {
+        return false;
+    }
 
     for (int i = 0; i < pdv->current; i++) {
         d = a - pdv->s[i];
