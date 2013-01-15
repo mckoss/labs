@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
 
         fprintf(stderr, "\nDifference set (k = %d, m = %d):\n", k, m);
 
-        bzero(&parent_diff, sizeof(parent_diff));
+        memset(&parent_diff, 0, sizeof(parent_diff));
 
         parent_diff.thread_num = -1;
         parent_diff.k = k;
