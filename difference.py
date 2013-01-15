@@ -19,6 +19,7 @@ def main():
     args = parser.parse_args()
 
     primes = sieve(args.end + 1, prime_power=True)
+    print "Primes: %r" % primes
 
     for k in range(args.start, args.end + 1):
         print "\nDifference set (k = %d, m = %d)" % (k, k * (k -1) + 1)
@@ -132,14 +133,13 @@ def sieve(n, prime_power=False):
         for j in range(i * i, n + 1, i):
             comp.add(j)
 
-    if prime_power:
-        for i in range(2, sqrt + 1):
+        if prime_power:
             power = i * i
             while power <= n:
                 primes.append(power)
                 power *= i
 
-        primes.sort()
+    primes.sort()
 
     return primes
 

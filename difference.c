@@ -25,7 +25,7 @@
 
 typedef enum {false, true} bool;
 
-#define MAX_SET 33
+#define MAX_SET 50
 #define MAX_DIFFS (MAX_SET * (MAX_SET - 1) + 1)
 #define FOREVER for (;;)
 #define NUM_THREADS 4
