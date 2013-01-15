@@ -10,7 +10,6 @@
 
    - Fix suboptimal thread scheduling
    - Use smaller sleep timer to reschedule threads more rapidly.
-   - Return trials per sec timer.
    - Option to continue search from a pause point (not a required prefix)
    - Try speed of byte sized set and diffs arrays.
 ================================================================== */
@@ -58,6 +57,7 @@ void *find_difference_set(void *ptr);
 void *search_next(DIFF_VARS *pdv, int candidate);
 bool push(int a, DIFF_VARS *pdv);
 int pop(DIFF_VARS *pdv);
+void reset_status();
 void print_status();
 
 void print_trace(DIFF_VARS *pdv);
@@ -168,6 +168,7 @@ int main(int argc, char *argv[]) {
 
             bool any_solved;
             bool all_complete;
+            reset_status();
             FOREVER {
                 all_complete = true;
                 any_solved = false;
@@ -203,9 +204,20 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+time_t last_time;
+long last_trials;
+
+void reset_status() {
+    last_time = time(NULL);
+    last_trials = 0;
+}
+
 void print_status(int sig_num) {
     char cum_trials_string[20];
+    char rate_string[20];
     long cum_trials = all_trials;
+    time_t now = time(NULL);
+    time_t elapsed = now - last_time;
 
     if (sig_num != 0) {
         fprintf(stderr, "Program terminated (%d).\n", sig_num);
@@ -215,7 +227,13 @@ void print_status(int sig_num) {
         print_trace(&diff_vars[i]);
         cum_trials += diff_vars[i].trials;
     }
-    fprintf(stderr, "Cumulative trials: %s\n", commas(cum_trials, cum_trials_string));
+    if (last_trials != 0) {
+        fprintf(stderr, "Cumulative trials: %s (%s/sec)\n",
+                commas(cum_trials, cum_trials_string),
+                commas((long) ((cum_trials - last_trials) / elapsed), rate_string));
+    }
+    last_trials = cum_trials;
+    last_time = now;
 
     if (sig_num != 0) {
         exit(sig_num);
