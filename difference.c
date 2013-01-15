@@ -8,8 +8,8 @@
 
    Todo:
 
-   - Fix suboptimal thread scheduling
    - Option to continue search from a pause point (not a required prefix)
+   - Option to return all solutions (not just first found).
 ================================================================== */
 #include <stdio.h>
 #include <math.h>
@@ -28,15 +28,18 @@ typedef unsigned char byte;
 #define FOREVER for (;;)
 #define NUM_THREADS 4
 
-int active_threads = 0;
 long all_trials;
+time_t last_time;
+long last_trials;
 
 int primes[MAX_SET];
 int pcount = 0;
 
+typedef enum {thread_idle, thread_running, thread_complete} thread_status;
+
 typedef struct {
     int thread_num;
-    bool complete;
+    thread_status status;
     int k;
     int m;
     long trials;
@@ -134,68 +137,55 @@ int main(int argc, char *argv[]) {
         memcpy(parent_diff.s, prefix, sizeof(int) * prefix_size);
 
         find_difference_set(&parent_diff);
-        if (parent_diff.complete) {
+        if (parent_diff.current == parent_diff.k) {
             fprintf(stderr, "Parent solution: ");
             print_trace(&parent_diff);
             continue;
         }
 
-        all_trials = 0;
         diff_vars = calloc(NUM_THREADS, sizeof(DIFF_VARS));
 
-        int status_countdown = 0;
         reset_status();
+        int num_solved = 0;
         FOREVER {
-            for (active_threads = 0; active_threads < NUM_THREADS; active_threads++) {
-                if (parent_diff.current < parent_diff.target_depth) {
-                    break;
-                }
+            bool num_ready = 0;
 
-                memcpy(&diff_vars[active_threads], &parent_diff, sizeof(DIFF_VARS));
-                diff_vars[active_threads].thread_num = active_threads;
-                diff_vars[active_threads].prefix_size = parent_diff.current;
-                diff_vars[active_threads].target_depth = 0;
-
-                pthread_create(&threads[active_threads],
-                               NULL,
-                               find_difference_set,
-                               (void *) &diff_vars[active_threads]);
-                search_next(&parent_diff, pop(&parent_diff) + 1);
-            }
-
-            if (active_threads == 0) {
-                break;
-            }
-
-            bool any_solved;
-            bool all_complete;
-            FOREVER {
-                usleep(10000);
-                all_complete = true;
-                any_solved = false;
-
-                for (int i = 0; i < active_threads; i++) {
-                    if (!diff_vars[i].complete) {
-                        all_complete = false;
-                    } else if (diff_vars[i].current == diff_vars[i].k) {
-                        any_solved = true;
+            for (int i = 0; i < NUM_THREADS; i++) {
+                switch (diff_vars[i].status) {
+                case thread_complete:
+                    pthread_join(threads[i], NULL);
+                    all_trials += diff_vars[i].trials;
+                    if (diff_vars[i].current == diff_vars[i].k) {
+                        print_trace(&diff_vars[i]);
+                        num_solved++;
                     }
-                }
-                if (status_countdown-- == 0 || any_solved) {
-                    print_status(0);
-                    status_countdown = 100;
-                }
-                if (all_complete) {
+                    diff_vars[i].status = thread_idle;
+                    // Fall through
+                case thread_idle:
+                    if (!num_solved && parent_diff.current == parent_diff.target_depth) {
+                        memcpy(&diff_vars[i], &parent_diff, sizeof(DIFF_VARS));
+                        diff_vars[i].thread_num = i;
+                        diff_vars[i].prefix_size = parent_diff.current;
+                        diff_vars[i].target_depth = 0;
+                        diff_vars[i].status = thread_running;
+
+                        pthread_create(&threads[i],
+                                       NULL,
+                                       find_difference_set,
+                                       (void *) &diff_vars[i]);
+                        search_next(&parent_diff, pop(&parent_diff) + 1);
+                    } else {
+                        num_ready++;
+                    }
+                    break;
+                case thread_running:
                     break;
                 }
             }
 
-            for (int i = 0; i < active_threads; i++) {
-                pthread_join(threads[i], NULL);
-                all_trials += diff_vars[i].trials;
-            }
-
-            if (any_solved) {
+            usleep(10000);
+            print_status(0);
+            if (num_ready == NUM_THREADS) {
                 break;
             }
         }
@@ -207,10 +197,8 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-time_t last_time;
-long last_trials;
-
 void reset_status() {
+    all_trials = 0;
     last_time = time(NULL);
     last_trials = 0;
 }
@@ -222,15 +210,19 @@ void print_status(int sig_num) {
     time_t now = time(NULL);
     time_t elapsed = now - last_time;
 
+    if (sig_num == 0 && elapsed < 1.0) {
+        return;
+    }
+
     if (sig_num != 0) {
         fprintf(stderr, "Program terminated (%d).\n", sig_num);
     }
 
-    for (int i = 0; i < active_threads; i++) {
+    for (int i = 0; i < NUM_THREADS; i++) {
         print_trace(&diff_vars[i]);
         cum_trials += diff_vars[i].trials;
     }
-    if (last_trials != 0 && elapsed > 0) {
+    if (elapsed > 0) {
         fprintf(stderr, "Cumulative trials: %s (%s/sec)\n",
                 commas(cum_trials, cum_trials_string),
                 commas((long) ((cum_trials - last_trials) / elapsed), rate_string));
@@ -251,6 +243,8 @@ void *find_difference_set(void *ptr) {
     int candidate;
     DIFF_VARS *pdv = (DIFF_VARS *) ptr;
 
+    pdv->status = thread_running;
+    pdv->trials = 0;
     pdv->low = 0;
     pdv->diffs[0] = true;
     for (int i = 1; i <= pdv->m / 2; i++) {
@@ -272,9 +266,10 @@ void *search_next(DIFF_VARS *pdv, int candidate) {
         // if candidate is feasible, push on
         if (push(candidate, pdv)) {
             if (pdv->current == pdv->k) {
-                pdv->complete = true;
+                pdv->status = thread_complete;
                 return NULL;
             } else if (pdv->current == pdv->target_depth) {
+                pdv->status = thread_complete;
                 return NULL;
             }
             candidate += pdv->low + 1;
@@ -287,7 +282,7 @@ void *search_next(DIFF_VARS *pdv, int candidate) {
         // Can't work - backtrack
         if (candidate + (pdv->low + 1) * (pdv->k - pdv->current - 1) >= pdv->m - pdv->low) {
             if (pdv->current <= pdv->prefix_size) {
-                pdv->complete = true;
+                pdv->status = thread_complete;
                 return NULL;
             }
             candidate = pop(pdv) + 1;
@@ -345,7 +340,7 @@ int pop(DIFF_VARS *pdv) {
 
 void print_trace(DIFF_VARS *pdv) {
     char trials_string[20];
-    char *complete = pdv->complete ? "*" : "";
+    char *complete = pdv->status == thread_complete ? "*" : "";
     char *solved = pdv->current == pdv->k ? " SOLVED" : "";
 
     commas(pdv->trials, trials_string);
