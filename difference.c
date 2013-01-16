@@ -136,7 +136,7 @@ int main(int argc, char *argv[]) {
         parent_diff.k = k;
         parent_diff.m = m;
         parent_diff.prefix_size = prefix_size;
-        parent_diff.target_depth = prefix_size + (k < 18 ? 2 : 4);
+        parent_diff.target_depth = prefix_size + 2;
         memcpy(parent_diff.s, prefix, sizeof(int) * prefix_size);
 
         find_difference_set(&parent_diff);
