@@ -26,7 +26,7 @@ int usleep (useconds_t);
 typedef enum {false, true} bool;
 typedef unsigned char byte;
 
-#define MAX_SET 50
+#define MAX_SET 120
 #define MAX_DIFFS (MAX_SET * (MAX_SET - 1) + 1)
 #define FOREVER for (;;)
 #define NUM_THREADS 4
