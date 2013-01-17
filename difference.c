@@ -161,12 +161,16 @@ int main(int argc, char *argv[]) {
         parent_diff.target_depth = prefix_size + 2;
         memcpy(parent_diff.s, prefix, sizeof(int) * prefix_size);
 
-        find_difference_set(&parent_diff);
         if (parent_diff.current == parent_diff.k) {
             printf("%3d: ", parent_diff.k);
             print_ints(stdout, parent_diff.current, parent_diff.s);
             fputc('\n', stdout);
             continue;
+        }
+
+        find_difference_set(&parent_diff);
+        if (continue_flag) {
+            parent_diff.prefix_size = 0;
         }
 
         diff_vars = calloc(NUM_THREADS, sizeof(DIFF_VARS));
