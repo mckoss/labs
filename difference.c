@@ -10,7 +10,7 @@
 
    - Option to continue search from a pause point (not a required prefix)
    - Option to return all solutions (not just first found).
-================================================================== */
+`================================================================== */
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
@@ -19,9 +19,6 @@
 #include <signal.h>
 #include <pthread.h>
 #include <unistd.h>
-#ifndef usleep
-int usleep (useconds_t);
-#endif
 
 typedef enum {false, true} bool;
 typedef unsigned char byte;
@@ -56,6 +53,8 @@ typedef struct {
 
 DIFF_VARS *diff_vars = NULL;
 
+void expect(int value, int expected, char *message);
+void usage();
 void sieve(void);
 int cmp_int(const void *a, const void *b);
 void *find_difference_set(void *ptr);
@@ -69,39 +68,59 @@ void print_trace(DIFF_VARS *pdv);
 void print_ints(FILE *pfile, int count, int nums[]);
 
 char *commas(long, char *);
+void right_justify(char *s, int width);
 void insert_string(char *, char *);
 
 int main(int argc, char *argv[]) {
     int start;
     int end;
     pthread_t threads[NUM_THREADS];
+    bool continue_flag = false;
 
-    sieve();
-    fprintf(stderr, "Prime powers: ");
-    print_ints(stderr, pcount, primes);
-    fprintf(stderr, "\n");
+    int iarg = 1;
+    while (iarg < argc && argv[iarg][0] == '-') {
+        expect(strlen(argv[iarg]), 2,
+               "Invalid flag.");
+        switch (argv[iarg][1]) {
+        case 'h':
+            usage();
+            break;
+        case 'c':
+            continue_flag = true;
+            break;
+        default:
+            fprintf(stderr, "Unknown flag -%c.\n", argv[iarg][1]);
+            usage();
+            break;
+        }
+        iarg++;
+    }
 
-    // difference <start k> <end k>
     start = 2;
     end = MAX_SET;
+
     // difference <start k>
-    if (argc > 1) {
-        sscanf(argv[1], "%d", &start);
+    if (argc > iarg) {
+        expect(sscanf(argv[iarg], "%d", &start), 1,
+               "Invalid value for k.");
         end = start;
+        iarg++;
     }
 
     // difference <start k> <end k>
-    if (argc == 3) {
-        sscanf(argv[2], "%d", &end);
+    if (argc == iarg + 1) {
+        expect(sscanf(argv[iarg], "%d", &end), 1,
+               "Invalid value for [end].");
+        iarg++;
     }
 
     // differece <k> <prefix-1> <prefix-2> ...
     int prefix_size = 0;
     int prefix[MAX_SET];
-    if (argc > 3) {
-        prefix_size = argc - 2;
+    if (argc > iarg) {
+        prefix_size = argc - iarg;
         for (int i = 0; i < prefix_size; i++) {
-            sscanf(argv[i + 2], "%d", &prefix[i]);
+            sscanf(argv[iarg + i], "%d", &prefix[i]);
         }
     } else {
         prefix_size = 2;
@@ -109,23 +128,26 @@ int main(int argc, char *argv[]) {
         prefix[1] = 1;
     }
 
+    sieve();
+
     signal(SIGINT, print_status);
 
     fprintf(stderr, "Calculating difference sets from k = %d to k = %d.\n", start, end);
     fprintf(stderr, "Prefix: ");
     print_ints(stderr, prefix_size, prefix);
-    fprintf(stderr, "\n");
+    fputc('\n', stderr);
 
     for (int i = 0; i < pcount; i++) {
         int k = primes[i] + 1;
         int m = k * (k - 1) + 1;
         DIFF_VARS parent_diff;
 
-        if (k > end) {
-            break;
-        }
         if (k < start) {
             continue;
+        }
+
+        if (k > end) {
+            break;
         }
 
         fprintf(stderr, "\nDifference set (k = %d, m = %d):\n", k, m);
@@ -141,8 +163,9 @@ int main(int argc, char *argv[]) {
 
         find_difference_set(&parent_diff);
         if (parent_diff.current == parent_diff.k) {
-            fprintf(stderr, "Parent solution: ");
-            print_trace(&parent_diff);
+            printf("%3d: ", parent_diff.k);
+            print_ints(stdout, parent_diff.current, parent_diff.s);
+            fputc('\n', stdout);
             continue;
         }
 
@@ -157,12 +180,15 @@ int main(int argc, char *argv[]) {
                 switch (diff_vars[i].status) {
                 case thread_complete:
                     pthread_join(threads[i], NULL);
+                    diff_vars[i].status = thread_idle;
+
                     all_trials += diff_vars[i].trials;
                     if (diff_vars[i].current == diff_vars[i].k) {
-                        print_trace(&diff_vars[i]);
+                        printf("%3d: ", diff_vars[i].k);
+                        print_ints(stdout, diff_vars[i].current, diff_vars[i].s);
+                        fputc('\n', stdout);
                         num_solved++;
                     }
-                    diff_vars[i].status = thread_idle;
                     // Fall through
                 case thread_idle:
                     if (!num_solved && parent_diff.current == parent_diff.target_depth) {
@@ -186,7 +212,7 @@ int main(int argc, char *argv[]) {
                 }
             }
 
-            usleep(10000);
+            usleep(1000);
             print_status(0);
             if (num_ready == NUM_THREADS) {
                 break;
@@ -200,6 +226,25 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+void expect(int value, int expected, char *message) {
+    if (value == expected) {
+        return;
+    }
+    fputs(message, stderr);
+    fputc('\n', stderr);
+    usage();
+}
+
+void usage() {
+    fprintf(stderr, "Usage: difference -h [k-start] [k-end]]\n");
+    fprintf(stderr, "       difference -hc [k] [prefix1 prefix 2 ...]\n");
+    fprintf(stderr, "Find difference sets of order k.\n");
+    fputc('\n', stderr);
+    fprintf(stderr, "    -h: Help - print this usage statement.\n");
+    fprintf(stderr, "    -c: Continue beyond point where prefix is exhausted.\n");
+    exit(1);
+}
+
 void reset_status() {
     all_trials = 0;
     last_time = time(NULL);
@@ -207,8 +252,6 @@ void reset_status() {
 }
 
 void print_status(int sig_num) {
-    char cum_trials_string[20];
-    char rate_string[20];
     long cum_trials = all_trials;
     time_t now = time(NULL);
     time_t elapsed = now - last_time;
@@ -226,8 +269,12 @@ void print_status(int sig_num) {
         cum_trials += diff_vars[i].trials;
     }
     if (elapsed > 0) {
+        char cum_trials_string[20];
+        char rate_string[20];
+
+        commas(cum_trials, cum_trials_string);
         fprintf(stderr, "Cumulative trials: %s (%s/sec)\n",
-                commas(cum_trials, cum_trials_string),
+                cum_trials_string,
                 commas((long) ((cum_trials - last_trials) / elapsed), rate_string));
     }
     last_trials = cum_trials;
@@ -347,6 +394,7 @@ void print_trace(DIFF_VARS *pdv) {
     char *solved = pdv->current == pdv->k ? " SOLVED" : "";
 
     commas(pdv->trials, trials_string);
+    right_justify(trials_string, 15);
 
     fprintf(stderr, "%d%s: (%d, %d) @%s: ", pdv->thread_num, complete, pdv->k, pdv->m, trials_string);
     print_ints(stderr, pdv->current, pdv->s);
@@ -356,7 +404,7 @@ void print_trace(DIFF_VARS *pdv) {
 void print_ints(FILE *pfile, int count, int nums[]) {
     char *sep = "";
     while (count--) {
-        fprintf(pfile, "%s%d", sep, *nums++);
+        fprintf(pfile, "%s%3d", sep, *nums++);
         sep = ", ";
     }
 }
@@ -369,6 +417,21 @@ char *commas(long l, char *buff) {
         end -= 3;
     }
     return buff;
+}
+
+void right_justify(char *s, int width) {
+    int cch = strlen(s);
+    char spaces[128];
+    char *pch;
+
+    if (cch >= width) {
+        return;
+    }
+    for (pch = spaces; pch < spaces + width - cch; pch++) {
+        *pch = ' ';
+    }
+    *pch = '\0';
+    insert_string(s, spaces);
 }
 
 void insert_string(char *buff, char *s) {

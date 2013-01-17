@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS := -std=c99 -g -O3 -I/opt/AMD-APP-SDK-v2.7-RC-lnx64/include/CL/ -pthread
+CFLAGS := -std=c99 -g -O3 -I/opt/AMD-APP-SDK-v2.7-RC-lnx64/include/CL/ -pthread -D_BSD_SOURCE
 
 all: difference difference_ocl
 
