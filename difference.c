@@ -69,6 +69,7 @@ void *find_difference_set(void *ptr);
 void *search_next(DIFF_VARS *pdv, int candidate);
 bool push(int a, DIFF_VARS *pdv);
 int pop(DIFF_VARS *pdv);
+void shift(int delta, DIFF_VARS *pdv);
 void reset_status();
 void print_status();
 
@@ -179,8 +180,8 @@ int main(int argc, char *argv[]) {
 
         if (singer_flag) {
             singer_theorem(prime, &parent_diff);
-            print_trace(&parent_diff);
-            continue;
+            parent_diff.prefix_size = parent_diff.current;
+            parent_diff.target_depth = parent_diff.prefix_size + 1;
         }
 
         find_difference_set(&parent_diff);
@@ -214,6 +215,8 @@ int main(int argc, char *argv[]) {
                         print_ints(stdout, diff_vars[i].current, diff_vars[i].s);
                         fputc('\n', stdout);
                         num_solved++;
+                    } else {
+                        print_trace(&diff_vars[i]);
                     }
                     // Fall through
                 case thread_idle:
@@ -365,8 +368,6 @@ void *search_next(DIFF_VARS *pdv, int candidate) {
 
 // Try powers of prime power (k - 1).
 void singer_theorem(int prime, DIFF_VARS *pdv) {
-    int pp = prime;
-
     pdv->trials = 0;
     pdv->low = 0;
     pdv->diffs[0] = true;
@@ -376,14 +377,18 @@ void singer_theorem(int prime, DIFF_VARS *pdv) {
 
     pdv->current = 0;
 
-    for (int i = 0; i < pdv->k; i++) {
-        if (push(pp, pdv) == false) {
-            fprintf(stderr, "Can't add %d\n", pp);
-            return;
-        }
+    int pp = prime;
+    while (push(pp, pdv)) {
         pp *= prime;
         pp %= pdv->v;
     }
+
+    fprintf(stderr, "Powers of %3d: ", prime);
+    print_trace(pdv);
+
+    shift(-pdv->s[pdv->current - 1], pdv);
+    fprintf(stderr, "Shifted      : ");
+    print_trace(pdv);
 }
 
 bool push(int a, DIFF_VARS *pdv) {
@@ -432,6 +437,15 @@ int pop(DIFF_VARS *pdv) {
         }
     }
     return a;
+}
+
+void shift(int delta, DIFF_VARS *pdv) {
+    if (delta < 0) {
+        delta += pdv->v;
+    }
+    for (int i = 0; i < pdv->current; i++) {
+        pdv->s[i] = (pdv->s[i] + delta) % pdv->v;
+    }
 }
 
 void print_trace(DIFF_VARS *pdv) {
