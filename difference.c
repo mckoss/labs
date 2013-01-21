@@ -4,6 +4,9 @@
    Calculate difference sets of various sizes - using threading library
    to maximize CPU cores in the search.
 
+   This program implements exhaustive search and ensures finding the
+   difference set with smallest topological value.
+
    Copyright 2013, Mike Koss
 
    Todo:
@@ -32,7 +35,12 @@ long all_trials;
 time_t last_time;
 long last_trials;
 
-int primes[MAX_SET];
+typedef struct {
+    int prime;
+    int prime_power;
+} PRIME_POWER;
+
+PRIME_POWER prime_powers[MAX_SET];
 int pcount = 0;
 
 typedef enum {thread_idle, thread_running, thread_complete} thread_status;
@@ -41,7 +49,7 @@ typedef struct {
     int thread_num;
     thread_status status;
     int k;
-    int m;
+    int v;
     long trials;
     int prefix_size;
     int target_depth;
@@ -56,13 +64,16 @@ DIFF_VARS *diff_vars = NULL;
 void expect(int value, int expected, char *message);
 void usage();
 void sieve(void);
-int cmp_int(const void *a, const void *b);
+int cmp_prime_powers(const void *a, const void *b);
 void *find_difference_set(void *ptr);
 void *search_next(DIFF_VARS *pdv, int candidate);
 bool push(int a, DIFF_VARS *pdv);
 int pop(DIFF_VARS *pdv);
+void shift(int delta, DIFF_VARS *pdv);
 void reset_status();
 void print_status();
+
+void singer_theorem(int root, DIFF_VARS *pdv);
 
 void print_trace(DIFF_VARS *pdv);
 void print_ints(FILE *pfile, int count, int nums[]);
@@ -76,6 +87,7 @@ int main(int argc, char *argv[]) {
     int end;
     pthread_t threads[NUM_THREADS];
     bool continue_flag = false;
+    bool singer_flag = false;
 
     int iarg = 1;
     while (iarg < argc && argv[iarg][0] == '-') {
@@ -87,6 +99,9 @@ int main(int argc, char *argv[]) {
             break;
         case 'c':
             continue_flag = true;
+            break;
+        case 's':
+            singer_flag = true;
             break;
         default:
             fprintf(stderr, "Unknown flag -%c.\n", argv[iarg][1]);
@@ -118,6 +133,7 @@ int main(int argc, char *argv[]) {
     int prefix_size = 0;
     int prefix[MAX_SET];
     if (argc > iarg) {
+        expect(singer_flag, false, "Cannot use Singer theorem with a provided prefix.");
         prefix_size = argc - iarg;
         for (int i = 0; i < prefix_size; i++) {
             sscanf(argv[iarg + i], "%d", &prefix[i]);
@@ -138,8 +154,9 @@ int main(int argc, char *argv[]) {
     fputc('\n', stderr);
 
     for (int i = 0; i < pcount; i++) {
-        int k = primes[i] + 1;
-        int m = k * (k - 1) + 1;
+        int k = prime_powers[i].prime_power + 1;
+        int prime = prime_powers[i].prime;
+        int v = k * (k - 1) + 1;
         DIFF_VARS parent_diff;
 
         if (k < start) {
@@ -150,27 +167,33 @@ int main(int argc, char *argv[]) {
             break;
         }
 
-        fprintf(stderr, "\nDifference set (k = %d, m = %d):\n", k, m);
+        fprintf(stderr, "\nDifference set (k = %d, v = %d, lambda = 1):\n", k, v);
 
         memset(&parent_diff, 0, sizeof(parent_diff));
 
         parent_diff.thread_num = -1;
         parent_diff.k = k;
-        parent_diff.m = m;
+        parent_diff.v = v;
         parent_diff.prefix_size = prefix_size;
         parent_diff.target_depth = prefix_size + 2;
         memcpy(parent_diff.s, prefix, sizeof(int) * prefix_size);
+
+        if (singer_flag) {
+            singer_theorem(prime, &parent_diff);
+            parent_diff.prefix_size = parent_diff.current;
+            parent_diff.target_depth = parent_diff.prefix_size + 1;
+        }
+
+        find_difference_set(&parent_diff);
+        if (continue_flag) {
+            parent_diff.target_depth = 0;
+        }
 
         if (parent_diff.current == parent_diff.k) {
             printf("%3d: ", parent_diff.k);
             print_ints(stdout, parent_diff.current, parent_diff.s);
             fputc('\n', stdout);
             continue;
-        }
-
-        find_difference_set(&parent_diff);
-        if (continue_flag) {
-            parent_diff.prefix_size = 0;
         }
 
         diff_vars = calloc(NUM_THREADS, sizeof(DIFF_VARS));
@@ -199,7 +222,7 @@ int main(int argc, char *argv[]) {
                         memcpy(&diff_vars[i], &parent_diff, sizeof(DIFF_VARS));
                         diff_vars[i].thread_num = i;
                         diff_vars[i].prefix_size = parent_diff.current;
-                        diff_vars[i].target_depth = 0;
+                        diff_vars[i].target_depth = parent_diff.current - 1;
                         diff_vars[i].status = thread_running;
 
                         pthread_create(&threads[i],
@@ -240,12 +263,13 @@ void expect(int value, int expected, char *message) {
 }
 
 void usage() {
-    fprintf(stderr, "Usage: difference -h [k-start] [k-end]]\n");
-    fprintf(stderr, "       difference -hc [k] [prefix1 prefix 2 ...]\n");
+    fprintf(stderr, "Usage: difference [-s] [k-start] [k-end]]\n");
+    fprintf(stderr, "       difference [-c] [k] [prefix1 prefix 2 ...]\n");
     fprintf(stderr, "Find difference sets of order k.\n");
     fputc('\n', stderr);
     fprintf(stderr, "    -h: Help - print this usage statement.\n");
     fprintf(stderr, "    -c: Continue beyond point where prefix is exhausted.\n");
+    fprintf(stderr, "    -s: Use Singer theorem to construct prime-power order v-1 sets.\n");
     exit(1);
 }
 
@@ -289,10 +313,6 @@ void print_status(int sig_num) {
     }
 }
 
-int cmp_int(const void *a, const void *b) {
-    return *(int *)a - *(int *)b;
-}
-
 void *find_difference_set(void *ptr) {
     int candidate;
     DIFF_VARS *pdv = (DIFF_VARS *) ptr;
@@ -301,7 +321,7 @@ void *find_difference_set(void *ptr) {
     pdv->trials = 0;
     pdv->low = 0;
     pdv->diffs[0] = true;
-    for (int i = 1; i <= pdv->m / 2; i++) {
+    for (int i = 1; i <= pdv->v / 2; i++) {
         pdv->diffs[i] = false;
     }
 
@@ -314,18 +334,19 @@ void *find_difference_set(void *ptr) {
 }
 
 void *search_next(DIFF_VARS *pdv, int candidate) {
+    int target_depth = pdv->target_depth;
+    int k = pdv->k;
+
     FOREVER {
+        if (pdv->current == target_depth || pdv->current == k) {
+            pdv->status = thread_complete;
+            return NULL;
+        }
+
         pdv->trials++;
 
         // if candidate is feasible, push on
         if (push(candidate, pdv)) {
-            if (pdv->current == pdv->k) {
-                pdv->status = thread_complete;
-                return NULL;
-            } else if (pdv->current == pdv->target_depth) {
-                pdv->status = thread_complete;
-                return NULL;
-            }
             candidate += pdv->low + 1;
             continue;
         }
@@ -334,33 +355,60 @@ void *search_next(DIFF_VARS *pdv, int candidate) {
         candidate++;
 
         // Can't work - backtrack
-        if (candidate + (pdv->low + 1) * (pdv->k - pdv->current - 1) >= pdv->m - pdv->low) {
-            if (pdv->current <= pdv->prefix_size) {
-                pdv->status = thread_complete;
-                return NULL;
-            }
+        if (candidate + (pdv->low + 1) * (pdv->k - pdv->current - 1) >= pdv->v - pdv->low) {
             candidate = pop(pdv) + 1;
         }
     }
 }
 
+// Try powers of prime power (k - 1).
+void singer_theorem(int prime, DIFF_VARS *pdv) {
+    pdv->trials = 0;
+    pdv->low = 0;
+    pdv->diffs[0] = true;
+    for (int i = 1; i <= pdv->v / 2; i++) {
+        pdv->diffs[i] = false;
+    }
+
+    pdv->current = 0;
+
+    int pp = prime;
+    while (push(pp, pdv)) {
+        pp *= prime;
+        pp %= pdv->v;
+    }
+
+    fprintf(stderr, "Powers of %3d: ", prime);
+    print_trace(pdv);
+
+    shift(-pdv->s[pdv->current - 1], pdv);
+    fprintf(stderr, "Shifted      : ");
+    print_trace(pdv);
+}
+
 bool push(int a, DIFF_VARS *pdv) {
     int d;
 
-    if (a >= pdv->m) {
+    if (a >= pdv->v) {
         return false;
     }
 
     for (int i = 0; i < pdv->current; i++) {
         d = a - pdv->s[i];
-        if (d > pdv->m / 2) {
-            d = pdv->m - d;
+        if (d < 0) {
+            d += pdv->v;
+        }
+        if (d > pdv->v / 2) {
+            d = pdv->v - d;
         }
         if (pdv->diffs[d]) {
             for (int j = 0; j < i; j++) {
                 d = a - pdv->s[j];
-                if (d > pdv->m / 2) {
-                    d = pdv->m - d;
+                if (d < 0) {
+                    d += pdv->v;
+                }
+                if (d > pdv->v / 2) {
+                    d = pdv->v - d;
                 }
                 pdv->diffs[d] = false;
             }
@@ -370,7 +418,7 @@ bool push(int a, DIFF_VARS *pdv) {
     }
     pdv->s[pdv->current++] = a;
 
-    while (pdv->low < pdv->m / 2 && pdv->diffs[pdv->low + 1]) {
+    while (pdv->low < pdv->v / 2 && pdv->diffs[pdv->low + 1]) {
         pdv->low++;
     }
 
@@ -381,8 +429,11 @@ int pop(DIFF_VARS *pdv) {
     int a = pdv->s[--pdv->current];
     for (int i = 0; i < pdv->current; i++) {
         int d = a - pdv->s[i];
-        if (d > pdv->m / 2) {
-            d = pdv->m - d;
+        if (d < 0) {
+            d += pdv->v;
+        }
+        if (d > pdv->v / 2) {
+            d = pdv->v - d;
         }
         pdv->diffs[d] = false;
         if (d <= pdv->low) {
@@ -390,6 +441,15 @@ int pop(DIFF_VARS *pdv) {
         }
     }
     return a;
+}
+
+void shift(int delta, DIFF_VARS *pdv) {
+    if (delta < 0) {
+        delta += pdv->v;
+    }
+    for (int i = 0; i < pdv->current; i++) {
+        pdv->s[i] = (pdv->s[i] + delta) % pdv->v;
+    }
 }
 
 void print_trace(DIFF_VARS *pdv) {
@@ -400,9 +460,42 @@ void print_trace(DIFF_VARS *pdv) {
     commas(pdv->trials, trials_string);
     right_justify(trials_string, 15);
 
-    fprintf(stderr, "%d%s: (%d, %d) @%s: ", pdv->thread_num, complete, pdv->k, pdv->m, trials_string);
+    fprintf(stderr, "%d%s: (%d, %d) @%s: ", pdv->thread_num, complete, pdv->k, pdv->v, trials_string);
     print_ints(stderr, pdv->current, pdv->s);
     fprintf(stderr, " (low = %d)%s\n", pdv->low, solved);
+}
+
+// Return all prime powers less than or equal to n in prime_powers[]
+void sieve() {
+    int s[MAX_SET];
+    for (int i = 0; i < MAX_SET; i++) {
+        s[i] = 0;
+    }
+
+    int sq = (int) sqrt((float) MAX_SET);
+
+    prime_powers[pcount].prime = 1;
+    prime_powers[pcount++].prime_power = 1;
+    for (int i = 2; i < MAX_SET; i++) {
+        if (s[i]) continue;
+        prime_powers[pcount].prime = i;
+        prime_powers[pcount++].prime_power = i;
+        if (i > sq) continue;
+        for (int j = i * i; j < MAX_SET; j += i) {
+            s[j] = true;
+        }
+        int power = i * i;
+        while (power < MAX_SET) {
+            prime_powers[pcount].prime = i;
+            prime_powers[pcount++].prime_power = power;
+            power *= i;
+        }
+    }
+    qsort(prime_powers, pcount, sizeof(PRIME_POWER), cmp_prime_powers);
+}
+
+int cmp_prime_powers(const void *a, const void *b) {
+    return ((PRIME_POWER *) a)->prime_power - ((PRIME_POWER *) b)->prime_power;
 }
 
 void print_ints(FILE *pfile, int count, int nums[]) {
@@ -450,30 +543,4 @@ void insert_string(char *buff, char *s) {
     while (pchTo >= buff) {
         *pchTo-- = *pchFrom--;
     }
-}
-
-void sieve() {
-    /// Return all prime powers less than or equal to n in primes[]
-    int s[MAX_SET];
-    for (int i = 0; i < MAX_SET; i++) {
-        s[i] = 0;
-    }
-
-    int sq = (int) sqrt((float) MAX_SET);
-
-    primes[pcount++] = 1;
-    for (int i = 2; i < MAX_SET; i++) {
-        if (s[i]) continue;
-        primes[pcount++] = i;
-        if (i > sq) continue;
-        for (int j = i * i; j < MAX_SET; j += i) {
-            s[j] = true;
-        }
-        int power = i * i;
-        while (power < MAX_SET) {
-            primes[pcount++] = power;
-            power *= i;
-        }
-    }
-    qsort(primes, pcount, sizeof(int), cmp_int);
 }
