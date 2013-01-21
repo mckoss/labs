@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
 
         find_difference_set(&parent_diff);
         if (continue_flag) {
-            parent_diff.prefix_size = 0;
+            parent_diff.target_depth = 0;
         }
 
         if (parent_diff.current == parent_diff.k) {
@@ -215,8 +215,6 @@ int main(int argc, char *argv[]) {
                         print_ints(stdout, diff_vars[i].current, diff_vars[i].s);
                         fputc('\n', stdout);
                         num_solved++;
-                    } else {
-                        print_trace(&diff_vars[i]);
                     }
                     // Fall through
                 case thread_idle:
@@ -224,7 +222,7 @@ int main(int argc, char *argv[]) {
                         memcpy(&diff_vars[i], &parent_diff, sizeof(DIFF_VARS));
                         diff_vars[i].thread_num = i;
                         diff_vars[i].prefix_size = parent_diff.current;
-                        diff_vars[i].target_depth = 0;
+                        diff_vars[i].target_depth = parent_diff.current - 1;
                         diff_vars[i].status = thread_running;
 
                         pthread_create(&threads[i],
@@ -336,18 +334,19 @@ void *find_difference_set(void *ptr) {
 }
 
 void *search_next(DIFF_VARS *pdv, int candidate) {
+    int target_depth = pdv->target_depth;
+    int k = pdv->k;
+
     FOREVER {
+        if (pdv->current == target_depth || pdv->current == k) {
+            pdv->status = thread_complete;
+            return NULL;
+        }
+
         pdv->trials++;
 
         // if candidate is feasible, push on
         if (push(candidate, pdv)) {
-            if (pdv->current == pdv->k) {
-                pdv->status = thread_complete;
-                return NULL;
-            } else if (pdv->current == pdv->target_depth) {
-                pdv->status = thread_complete;
-                return NULL;
-            }
             candidate += pdv->low + 1;
             continue;
         }
@@ -357,10 +356,6 @@ void *search_next(DIFF_VARS *pdv, int candidate) {
 
         // Can't work - backtrack
         if (candidate + (pdv->low + 1) * (pdv->k - pdv->current - 1) >= pdv->v - pdv->low) {
-            if (pdv->current <= pdv->prefix_size) {
-                pdv->status = thread_complete;
-                return NULL;
-            }
             candidate = pop(pdv) + 1;
         }
     }
@@ -400,12 +395,18 @@ bool push(int a, DIFF_VARS *pdv) {
 
     for (int i = 0; i < pdv->current; i++) {
         d = a - pdv->s[i];
+        if (d < 0) {
+            d += pdv->v;
+        }
         if (d > pdv->v / 2) {
             d = pdv->v - d;
         }
         if (pdv->diffs[d]) {
             for (int j = 0; j < i; j++) {
                 d = a - pdv->s[j];
+                if (d < 0) {
+                    d += pdv->v;
+                }
                 if (d > pdv->v / 2) {
                     d = pdv->v - d;
                 }
@@ -428,6 +429,9 @@ int pop(DIFF_VARS *pdv) {
     int a = pdv->s[--pdv->current];
     for (int i = 0; i < pdv->current; i++) {
         int d = a - pdv->s[i];
+        if (d < 0) {
+            d += pdv->v;
+        }
         if (d > pdv->v / 2) {
             d = pdv->v - d;
         }
