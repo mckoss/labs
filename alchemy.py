@@ -124,27 +124,31 @@ class Alchemy(Interactive):
             super(Alchemy, self).on_unknown(*args)
             return
         for i in (0, 2):
-            args[i] = args[i].lower()
-            if args[i] not in elements:
+            if args[i] not in self.elements:
                 print "%s is not an element." % args[i]
                 return
             if args[i] not in self.inventory:
                 print "You don't have %s." % args[i]
         element = self.combine(args[0], args[2])
         if element is None:
-            print "Nothing happens."
+            print "I got nothin'."
+            return
         self.inventory.append(element)
         print "%s + %s make %s!" % (args[0], args[2], element)
 
     def combine(self, *elements):
-        elements.sort()
-        for (element, recipes) in elements:
-            for recipe in recipes:
-                pass
+        ingredients = list(elements)
+        ingredients.sort()
+        for (element, components) in self.elements.items():
+            if components is None:
+                continue
+            for c in components:
+                if c == ingredients:
+                    return element
+        return None
 
 
-ELEMENT_RECIPES = \
-"""acid rain=rain+smoke
+ELEMENT_RECIPES = """acid rain=rain+smoke
 airplane=metal+bird, steel+bird
 alcohol=time+fruit, juice+time
 algae=plant+ocean, plant+water, plant+sea
