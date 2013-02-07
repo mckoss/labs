@@ -114,10 +114,35 @@ class Alchemy(Interactive):
 
     def on_start(self):
         print "You start with 4 elements: %s.  From these" % ', '.join(self.inventory)
-        print "you must created the other %d elements." % (len(self.elements) - 4)
+        print "you must created the other %d elements." % len(self.elements)
+        print "Combine elements using '+': e.g., 'air + water'"
 
     def inventory_command(self, *args):
-        print "You have %s." % ', '.join(self.inventory)
+        print "You have %d or %d total elements.\n" % (len(self.inventory), len(self.elements))
+        print "Inventory:"
+        self.print_list(self.inventory)
+        makeable = []
+        for (product, combinations) in self.elements.items():
+            if combinations is None or product in self.inventory:
+                continue
+            for c in combinations:
+                if all([e in self.inventory for e in c]):
+                    makeable.append(product)
+                    break
+        print "You can now make:"
+        self.print_list(makeable)
+
+    @staticmethod
+    def print_list(strings):
+        """
+        >>> Alchemy.print_list(['a', 'c', 'b'])
+        a, b, c
+        <BLANKLINE>
+        """
+        strings.sort()
+        for i in range(len(strings) / 10 + 1):
+            print ', '.join(strings[i * 10: (i + 1) * 10])
+        print
 
     def on_unknown(self, *args):
         if len(args) != 3 or args[1] != '+':
@@ -129,12 +154,16 @@ class Alchemy(Interactive):
                 return
             if args[i] not in self.inventory:
                 print "You don't have %s." % args[i]
+                return
         element = self.combine(args[0], args[2])
         if element is None:
             print "I got nothin'."
             return
-        self.inventory.append(element)
+        if element in self.inventory:
+            print "You already have %s." % element
+            return
         print "%s + %s make %s!" % (args[0], args[2], element)
+        self.inventory.append(element)
 
     def combine(self, *elements):
         ingredients = list(elements)
