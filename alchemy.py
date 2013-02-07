@@ -115,7 +115,7 @@ class Alchemy(Interactive):
     def on_start(self):
         print "You start with 4 elements: %s.  From these" % ', '.join(self.inventory)
         print "you must created the other %d elements." % len(self.elements)
-        print "Combine elements using '+': e.g., 'air + water'"
+        print "Combine elements using '+': e.g., air + water"
 
     def inventory_command(self, *args):
         print "You have %d or %d total elements.\n" % (len(self.inventory), len(self.elements))
