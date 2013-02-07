@@ -21,10 +21,10 @@ def main():
 
 class Alchemy(Interactive):
     """
-    Welcome to Alchemy - Command Line Edition.
+    Welcome to Alchemy - command line edition!
 
-    See also a very cool Chrome Web App at: http://littlealchemy.com/
-
+    (See also a very cool Chrome Web App at: http://littlealchemy.com/
+    on which this program is based.)
     """
     def __init__(self, **kwargs):
         self.inventory = ['earth', 'air', 'fire', 'water']
@@ -63,16 +63,26 @@ class Alchemy(Interactive):
     def on_start(self):
         print "You start with 4 elements: %s.  From these" % ', '.join(self.inventory)
         print "you must created the other %d elements." % len(self.elements)
-        print "Combine elements using '+': e.g., air + water"
+
+    def help_command(self, *args):
+        """ Prints a helpful message. """
+        super(Alchemy, self).help_command(*args)
+        print "Create new elements by adding two elements in your existing inventory"
+        print "together like this:"
+        print
+        print "    air + water"
+        self.inventory_command(*args)
 
     def inventory_command(self, *args):
         """
         Display the elements you've made, and the ones you can make in a
         single combination.
         """
-        print "You have %d or %d total elements.\n" % (len(self.inventory), len(self.elements))
+        print "You have %d of %d total elements.\n" % (len(self.inventory), len(self.elements))
         print "Inventory:"
         self.print_list(self.inventory)
+
+        print "You can make these elements in one step:"
         makeable = self.makeable_from(self.inventory)
         self.print_list(makeable)
 

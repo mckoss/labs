@@ -12,8 +12,8 @@ class Interactive(object):
         print self.__doc__
 
         self.on_start()
-
-        print "\nCommands: %s" % ', '.join(self.get_commands())
+        print
+        self.help_command()
 
         while True:
             s = raw_input(self.prompt)
@@ -47,10 +47,11 @@ class Interactive(object):
 
     def help_command(self, *args):
         """ Print this help message. """
+        print "Commands:"
         for cmd in self.get_commands():
             doc = getattr(self, cmd + SUFFIX).__doc__
             if doc is None:
                 doc = "(undocumented)"
             else:
                 doc = doc.strip()
-            print "    %s: %s" % (cmd, doc)
+            print "  {:12s}{:s}\n".format(cmd, doc)
