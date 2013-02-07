@@ -19,7 +19,7 @@ def main():
         game.on_stop()
 
 
-reg_line = re.compile(r'\w+|\+|\-|\*|\\|\?')
+reg_line = re.compile(r'[a-zA-Z09_\-\.]+|\+|\-|\*|\\|\?')
 
 
 class Interactive(object):
@@ -88,6 +88,26 @@ class Alchemy(Interactive):
 
     def inventory_command(self, *args):
         print "You have %s." % ', '.join(self.inventory)
+
+    def on_unknown(self, *args):
+        if len(args) != 3 or args[1] != '+':
+            super(Alchemy, self).on_unknown(*args)
+            return
+        for i in (0, 2):
+            args[i] = args[i].lower()
+            if args[i] not in elements:
+                print "%s is not an element." % args[i]
+                return
+            if args[i] not in self.inventory:
+                print "You don't have %s." % args[i]
+        element = self.combine(args[0], args[2])
+        if element is None:
+            print "Nothing happens."
+        self.inventory.append(element)
+        print "%s + %s make %s!" % (args[0], args[2], element)
+
+    def combine(self, *elements):
+        pass
 
 
 elements = {
