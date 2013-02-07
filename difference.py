@@ -19,6 +19,7 @@ def main():
     args = parser.parse_args()
 
     primes = sieve(args.end + 1, prime_power=True)
+    print "Primes: %r" % primes
 
     for k in range(args.start, args.end + 1):
         print "\nDifference set (k = %d, m = %d)" % (k, k * (k -1) + 1)
@@ -27,7 +28,7 @@ def main():
             print "Theorem: set k = %d does not exist (since %d is not a prime power)." % (k, k - 1)
             continue
 
-        ds = DiffState(k, start=args.prefix, end=[1])
+        ds = DiffState(k, start=args.prefix, stop=[1])
         unique_solutions = []
         while True:
             ds.search()
@@ -63,6 +64,8 @@ class DiffState(SearchProgress, SearchSpace):
         candidate = self.choose(min=min,
                                 limit=self.m - self.low - \
                                     (self.low + 1) * (self.k - len(self.current) - 1))
+        if candidate is None:
+            return
         if self.is_feasible(candidate):
             self.accept()
             if self.is_solved():
@@ -130,14 +133,13 @@ def sieve(n, prime_power=False):
         for j in range(i * i, n + 1, i):
             comp.add(j)
 
-    if prime_power:
-        for i in range(2, sqrt + 1):
+        if prime_power:
             power = i * i
             while power <= n:
                 primes.append(power)
                 power *= i
 
-        primes.sort()
+    primes.sort()
 
     return primes
 

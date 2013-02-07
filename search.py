@@ -1,4 +1,5 @@
-import multiprocessing
+import os
+from multiprocessing import cpu_count, Pool
 
 from progress import Progress
 
@@ -41,18 +42,18 @@ class SearchSpace(object):
     function is given, search will call your restart function, and restart the search from the root
     of the search tree (similar to use of the McCarthy's ambiguous function).
     """
-    def __init__(self, start=None, end=None):
+    def __init__(self, start=None, stop=None):
         if start is None:
             start = []
         self.choices = list(start)
-        if end is None:
+        if stop is None:
             self.guard = len(start) - 1
             if self.guard >= 0:
                 self.guard_value = start[self.guard] + 1
         else:
-            self.guard = len(end) - 1
+            self.guard = len(stop) - 1
             if self.guard >= 0:
-                self.guard_value = end[self.guard]
+                self.guard_value = stop[self.guard]
         self.steps = []
         self.limits = []
 
@@ -71,6 +72,27 @@ class SearchSpace(object):
 
         self.complete()
 
+    def advance_to_depth(self, target_depth):
+        """ Advance to next feasible prefix of a given length. """
+        if self.is_finished():
+            return None
+
+        while self.depth > target_depth:
+            self.advance()
+
+        if self.depth == target_depth:
+            self.depth -= 1
+            if hasattr(self, 'backtrack'):
+                self.backtrack(self.choices[self.depth])
+            self.advance()
+
+        while not self.is_finished() and self.depth < target_depth:
+            self.step()
+            self.next()
+
+        if not self.is_finished():
+            return self.choices[:self.depth]
+
     def step(self):
         pass
 
@@ -87,10 +109,11 @@ class SearchSpace(object):
             self.choices.append(min)
             self.limits.append(limit)
             self.steps.append(step)
-            return min
-        if self.depth == len(self.limits):
+        elif self.depth == len(self.limits):
             self.limits.append(limit)
             self.steps.append(step)
+        if min >= limit:
+            return None
         return self.choices[self.depth]
 
     def accept(self):
@@ -102,20 +125,20 @@ class SearchSpace(object):
             self.accepted = False
             return
 
-        # Backtrack to prior depth
-        latest = self.depth
+        self.advance()
+
+    def advance(self):
+        provisional = self.depth
         depth = self.depth
         while depth >= 0:
-            if depth < latest and hasattr(self, 'backtrack'):
+            if depth < provisional and hasattr(self, 'backtrack'):
                 self.backtrack(self.choices[depth])
             self.choices[depth] += self.steps[depth]
             if self.choices[depth] < self.limits[depth]:
                 break
             depth -= 1
-            if depth == -1:
-                break
 
-        if depth < latest:
+        if depth < provisional:
             self.depth = depth
             del self.choices[depth + 1:]
             del self.steps[depth + 1:]
@@ -144,15 +167,48 @@ class SearchProgress(object):
 
 class MultiSearch(object):
     """ Employ mulitple worker processes to carry out a coordinated search. """
-    def __init__(self, searcher=None, **kwargs):
+    def __init__(self, searcher=None, start=None, preorder=False, max_solutions=1, **kwargs):
         self.searcher = searcher
+        self.max_solutions = max_solutions
+        self.start = start
         self.kwargs = kwargs
+        self.child_length = len(start) + 1 if start is not None else 1
+        self.parent = self.searcher(**self.kwargs)
+        self.worker_count = cpu_count()
+        self.pool = Pool(self.worker_count)
+        self.searchers = []
 
-    def search(self):
-        cpu_count = multiprocessing.cpu_count()
-        print "CPU count = %d" % cpu_count
-        if cpu_count == 1:
-            s = self.searcher(**self.kwargs)
-            return s.search()
+    def search(self, callback):
+        self.callback = callback
 
-        raise RuntimeError("NYI")
+        while True:
+            prefix = self.parent.advance_to_depth(self.child_length)
+            if prefix is None:
+                break
+            self.pool.apply_async(search_wrapper,
+                                  args=(self.searcher, prefix),
+                                  kwds=self.kwargs,
+                                  callback=self.search_results)
+
+    def search_results(self, result):
+        print "search_results(%r)" % result
+        self.max_solutions -= 1
+        self.callback(result)
+
+    def join(self):
+        """ Wait until all workers stopped. """
+        if self.max_solutions <= 0:
+            self.pool.terminate()
+        else:
+            self.pool.close()
+        self.pool.join()
+
+
+def search_wrapper(Searcher, prefix, **kwargs):
+    print "search_wrapper(%r)" % kwargs
+    s = Searcher(start=prefix, **kwargs)
+    return s.search()
+
+
+if __name__ == '__main__':
+    print "Root"

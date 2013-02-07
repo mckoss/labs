@@ -49,16 +49,40 @@ class TestSearch(unittest.TestCase):
         self.assertEqual(q.progress.get_count(), 11194)
 
     def test_end(self):
-        q = BacktrackQueens(20, start=[0, 2, 4, 1, 3, 12], end=[0, 2, 4, 1, 3, 12, 14])
+        q = BacktrackQueens(20, start=[0, 2, 4, 1, 3, 12], stop=[0, 2, 4, 1, 3, 12, 14])
         self.assertEqual(q.search(), None)
         self.assertEqual(q.choices, [0, 2, 4, 1, 3, 12, 14])
+
+    def test_advance(self):
+        q = BacktrackQueens(20)
+        self.assertEqual(q.advance_to_depth(5), [0, 2, 4, 1, 3])
+        for i in range(7, 20):
+            self.assertEqual(q.advance_to_depth(5), [0, 2, 4, 1, i])
+        self.assertEqual(q.advance_to_depth(5), [0, 2, 4, 6, 1])
+
+    def test_advance_one(self):
+        q = BacktrackQueens(5)
+        for i in range(5):
+            self.assertEqual(q.advance_to_depth(1), [i])
+        self.assertIsNone(q.advance_to_depth(1), None)
 
 
 class TestMulti(unittest.TestCase):
     def test_basic(self):
+        def on_result(result):
+            self.assertEqual(len(result), 8)
+
         ms = MultiSearch(searcher=BacktrackQueens, size=8)
-        self.assertEqual(ms.search(),
-                         [(0, 0), (1, 4), (2, 7), (3, 5), (4, 2), (5, 6), (6, 1), (7, 3)])
+        ms.search(callback=on_result)
+        ms.join()
+
+    def test_long(self):
+        def on_result(result):
+            self.assertEqual(len(result), 20)
+
+        ms = MultiSearch(searcher=BacktrackQueens, size=20)
+        ms.search(callback=on_result)
+        ms.join()
 
 
 class Queens(SearchProgress, SearchSpace):
