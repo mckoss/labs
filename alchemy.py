@@ -7,7 +7,7 @@
 """
 import re
 
-SUFFIX = '_command'
+from interact import Interactive
 
 
 def main():
@@ -17,58 +17,6 @@ def main():
     except KeyboardInterrupt:
         print "Terminated ..."
         game.on_stop()
-
-
-reg_line = re.compile(r'[a-zA-Z09_\-\.]+|\+|\-|\*|\\|\?')
-
-
-class Interactive(object):
-    def __init__(self, prompt=None):
-        self.prompt = prompt or self.__class__.__name__ + '> '
-
-    def run(self):
-        print self.__doc__
-
-        self.on_start()
-
-        print "\nCommands: %s" % ', '.join(self.get_commands())
-
-        while True:
-            s = raw_input(self.prompt)
-            parts = reg_line.findall(s)
-            if len(parts) == 0:
-                continue
-            if parts[0] == '?':
-                parts[0] = 'help'
-            func = getattr(self, parts[0] + SUFFIX, self.on_unknown)
-            func(*parts)
-
-    def on_unknown(self, *args):
-        print "Unknown command: '%s'" % args[0]
-
-    def quit_command(self, *args):
-        """ Exit this interactive session. """
-        self.on_stop()
-        exit(1)
-
-    def on_start(self):
-        pass
-
-    def on_stop(self):
-        pass
-
-    def get_commands(self):
-        return [attr[:-len(SUFFIX)] for attr in dir(self) if attr.endswith(SUFFIX)]
-
-    def help_command(self, *args):
-        """ Print this help message. """
-        for cmd in self.get_commands():
-            doc = getattr(self, cmd + SUFFIX).__doc__
-            if doc is None:
-                doc = "(undocumented)"
-            else:
-                doc = doc.strip()
-            print "    %s: %s" % (cmd, doc)
 
 
 class Alchemy(Interactive):
@@ -118,19 +66,84 @@ class Alchemy(Interactive):
         print "Combine elements using '+': e.g., air + water"
 
     def inventory_command(self, *args):
+        """
+        Display the elements you've made, and the ones you can make in a
+        single combination.
+        """
         print "You have %d or %d total elements.\n" % (len(self.inventory), len(self.elements))
         print "Inventory:"
         self.print_list(self.inventory)
+        makeable = self.makeable_from(self.inventory)
+        self.print_list(makeable)
+
+    def from_command(self, *args):
+        """ Spoiler: this command tells what you can make from the given elements. """
+        makeable = self.makeable_from(args[1:])
+        print "Makeable:"
+        self.print_list(makeable)
+
+    def solve_command(self, *args):
+        """
+        Spoiler: Display the all the elements, grouped by earliest to latest in makability
+        (the later elements require the former for their composition).
+        """
+        inventory = ['earth', 'air', 'fire', 'water']
+        i = 0
+        print "Level 0."
+        self.print_list(inventory)
+        while True:
+            next_level = self.makeable_from(inventory)
+            if len(next_level) == 0:
+                break
+            i += 1
+            print "Level %d." % i
+            self.print_list(next_level)
+            inventory.extend(next_level)
+
+    def substance_command(self, *args):
+        """
+        Spoiler: Shows complete recipe content for a given element.
+        """
+        defined = set()
+        self.ensure_defined(args[1], defined)
+
+    def ensure_defined(self, element, defined):
+        if element in defined:
+            return
+        if element not in self.elements:
+            print "%s is not an element." % element
+            return
+        combinations = self.elements[element]
+        if combinations is None:
+            return
+        ingredients = combinations[0]
+        self.ensure_defined(ingredients[0], defined)
+        self.ensure_defined(ingredients[1], defined)
+        defined.add(element)
+        self.print_recipe(len(defined), element)
+
+    def print_recipe(self, index, element):
+        combinations = self.elements[element]
+        if combinations is None:
+            return
+        ingredients = combinations[0]
+        print "%2d. %s = %s + %s" % (index, element, ingredients[0], ingredients[1])
+
+    def makeable_from(self, provided):
+        for e in provided:
+            if e not in self.elements:
+                print "%s is not an element." % e
+                return None
+
         makeable = []
         for (product, combinations) in self.elements.items():
-            if combinations is None or product in self.inventory:
+            if combinations is None or product in provided:
                 continue
             for c in combinations:
-                if all([e in self.inventory for e in c]):
+                if all([e in provided for e in c]):
                     makeable.append(product)
                     break
-        print "You can now make:"
-        self.print_list(makeable)
+        return makeable
 
     @staticmethod
     def print_list(strings):
@@ -166,6 +179,7 @@ class Alchemy(Interactive):
         self.inventory.append(element)
 
     def combine(self, *elements):
+        # TODO: I think there are some recipes that produce multiple outputs.
         ingredients = list(elements)
         ingredients.sort()
         for (element, components) in self.elements.items():
@@ -482,7 +496,47 @@ wire=electricity+metal
 wolf=dog+forest, wild animal+dog, wild animal+moon
 wood=tree+tool
 yogurt=bacteria+milk
-zombie=life+corpse, human+zombie"""
+zombie=life+corpse, human+zombie
+alien=life+space
+avalanche=energy+snow
+batman=bat+human
+book=story+paper
+dam=river+wall
+faun=goat+human
+internet=computer+computer, wire+computer
+leather=blade+cow
+motorcycle=energy+bicycle
+wizard=energy+human
+butter=pressure+milk
+egg timer=clock+egg
+gold=sun+metal
+moss=algae+stone
+oxygen=sun+plant
+pond=water+garden
+pyramid=desert+grave
+sandcastle=sand+castle
+umbrella=rain+tool
+yoda=jedi+swamp
+bridge=steel+river, metal+river, wood+river
+broom=hay+wood
+candy cane=sugar+christmas tree
+carbon dioxide=human+oxygen, plant+night
+chimney=house+fireplace
+christmas stocking=wool+fireplace
+fridge=cold+metal, cold+electricity
+gift=santa+christmas tree, santa+chimney, fireplace+santa, santa+christmas  stocking,  santa+cookies
+king=human+castle
+leaf=tree+wind
+printer=paper+computer
+reindeer=wild animal+santa
+santa=human+christmas tree
+scarecrow=human+hay
+scorpion=wild animal+sand, wild animal+dune
+sledge=snow+wagon, snow+cart
+snowball=snow+human
+snowboard=snow+wood
+sweater=woot+tool
+wool=sheep+tool"""
 
 
 if __name__ == '__main__':
