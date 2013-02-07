@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 """
-    A command line version of Little Alchemy.
+    A command line version of Alchemy Game.
 
+    Element rules from:
     http://littlealchemy.blogspot.com/
 """
 import re
@@ -11,10 +12,14 @@ SUFFIX = '_command'
 
 def main():
     game = Alchemy()
-    game.run()
+    try:
+        game.run()
+    except KeyboardInterrupt:
+        print "Terminated ..."
+        game.on_stop()
 
 
-reg_line = re.compile(r'\s')
+reg_line = re.compile(r'\w+|\+|\-|\*|\\|\?')
 
 
 class Interactive(object):
@@ -23,24 +28,33 @@ class Interactive(object):
 
     def run(self):
         print self.__doc__
+
+        self.on_start()
+
         print "\nCommands: %s" % ', '.join(self.get_commands())
+
         while True:
             s = raw_input(self.prompt)
-            parts = reg_line.split(s)
-            if len(parts) == 1 and parts[0] == '':
+            parts = reg_line.findall(s)
+            if len(parts) == 0:
                 continue
-            func = getattr(self, parts[0] + SUFFIX, None)
-            if func is None:
-                print "Unknown command: '%s'" % parts[0]
-                continue
-            func(*parts[1:])
+            if parts[0] == '?':
+                parts[0] = 'help'
+            func = getattr(self, parts[0] + SUFFIX, self.on_unknown)
+            func(*parts)
+
+    def on_unknown(self, *args):
+        print "Unknown command: '%s'" % args[0]
 
     def quit_command(self, *args):
         """ Exit this interactive session. """
-        self.on_quit()
+        self.on_stop()
         exit(1)
 
-    def on_quit(self):
+    def on_start(self):
+        pass
+
+    def on_stop(self):
         pass
 
     def get_commands(self):
@@ -59,16 +73,21 @@ class Interactive(object):
 
 class Alchemy(Interactive):
     """
-    Welcome to Little Alchemy - Command Line Edition.
+    Welcome to Alchemy - Command Line Edition.
 
-    You start with 4 elements: earth, air, fire, and water.  From these
-    you must created the other %d elements.
+    See also a very cool Chrome Web App at: http://littlealchemy.com/
+
     """
-    def help_quit(self):
-        print "Exit (and save save)."
+    def __init__(self, **kwargs):
+        self.inventory = ['earth', 'air', 'fire', 'water']
+        super(Alchemy, self).__init__(**kwargs)
 
-    def do_make(self, s):
-        pass
+    def on_start(self):
+        print "You start with 4 elements: %s.  From these" % ', '.join(self.inventory)
+        print "you must created the other %d elements." % (len(elements) - 4)
+
+    def inventory_command(self, *args):
+        print "You have %s." % ', '.join(self.inventory)
 
 
 elements = {
