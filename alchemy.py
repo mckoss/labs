@@ -111,6 +111,10 @@ class Alchemy(Interactive):
             self.print_list(next_level)
             inventory.extend(next_level)
 
+        if len(inventory) < len(self.elements):
+            print "No recipe for these elements: %s" % \
+                ', '.join([e for e in self.elements if e not in inventory])
+
     def hint_command(self, *args):
         """
         Shows recipe for a given element.
@@ -252,7 +256,7 @@ boiler=metal+steam
 bone=time+corpse
 bread=fire+dough, fire+flour
 brick=fire+mud, fire+clay, sun+clay, sun+mud
-bullet=gun powder+metal
+bullet=gunpowder+metal
 butcher=human+meat
 cactus=desert+plant, plant+sand
 camel=desert+horse, desert+wild animal
@@ -558,7 +562,7 @@ scorpion=wild animal+sand, wild animal+dune
 sledge=snow+wagon, snow+cart
 snowball=snow+human
 snowboard=snow+wood
-sweater=woot+tool
+sweater=wool+tool
 wool=sheep+tool"""
 
 
