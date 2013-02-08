@@ -124,7 +124,11 @@ class Alchemy(Interactive):
         By default shows only the last (1) step in the recipe.
         Use 'all' to show all steps.
         """
-        steps = args[2] if len(args) > 2 else 1
+        import pdb; pdb.set_trace()
+        if len(args) not in (2, 3):
+            print "Usage: hint <element> [<number-of-steps> | all]"
+            return
+        steps = args[2] if len(args) == 3 else 1
         if steps == 'all':
             steps = 999
         else:
@@ -132,7 +136,7 @@ class Alchemy(Interactive):
         defined = set()
         all_steps = self.get_steps(args[1], defined)
         print '\n'.join(["%2d. %s" % (index + 1, step)
-                         for (index, step) in enumerate(all_steps)][-steps:])
+                         for (index, step) in list(enumerate(all_steps))[-steps:]])
 
     def get_steps(self, element, defined, show=None):
         steps = []
