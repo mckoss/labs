@@ -124,7 +124,6 @@ class Alchemy(Interactive):
         By default shows only the last (1) step in the recipe.
         Use 'all' to show all steps.
         """
-        import pdb; pdb.set_trace()
         if len(args) not in (2, 3):
             print "Usage: hint <element> [<number-of-steps> | all]"
             return
