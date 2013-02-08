@@ -71,6 +71,7 @@ class Alchemy(Interactive):
         print "together like this:"
         print
         print "    air + water"
+        print
         self.inventory_command(*args)
 
     def inventory_command(self, *args):
@@ -110,34 +111,46 @@ class Alchemy(Interactive):
             self.print_list(next_level)
             inventory.extend(next_level)
 
-    def substance_command(self, *args):
+    def hint_command(self, *args):
         """
-        Spoiler: Shows complete recipe content for a given element.
-        """
-        defined = set()
-        self.ensure_defined(args[1], defined)
+        Shows recipe for a given element.
 
-    def ensure_defined(self, element, defined):
+        hint <element> [steps]
+
+        By default shows only the last (1) step in the recipe.
+        Use 'all' to show all steps.
+        """
+        steps = args[2] if len(args) > 2 else 1
+        if steps == 'all':
+            steps = 999
+        else:
+            steps = int(steps)
+        defined = set()
+        all_steps = self.get_steps(args[1], defined)
+        print '\n'.join(["%2d. %s" % (index + 1, step)
+                         for (index, step) in enumerate(all_steps)][-steps:])
+
+    def get_steps(self, element, defined, show=None):
+        steps = []
         if element in defined:
-            return
+            return steps
         if element not in self.elements:
             print "%s is not an element." % element
-            return
+            return steps
         combinations = self.elements[element]
         if combinations is None:
-            return
+            return steps
         ingredients = combinations[0]
-        self.ensure_defined(ingredients[0], defined)
-        self.ensure_defined(ingredients[1], defined)
+        steps.extend(self.get_steps(ingredients[0], defined))
+        steps.extend(self.get_steps(ingredients[1], defined))
         defined.add(element)
-        self.print_recipe(len(defined), element)
 
-    def print_recipe(self, index, element):
         combinations = self.elements[element]
         if combinations is None:
-            return
+            return steps
         ingredients = combinations[0]
-        print "%2d. %s = %s + %s" % (index, element, ingredients[0], ingredients[1])
+        steps.append("%s = %s + %s" % (element, ingredients[0], ingredients[1]))
+        return steps
 
     def makeable_from(self, provided):
         for e in provided:
