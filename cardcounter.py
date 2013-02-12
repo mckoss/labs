@@ -12,7 +12,7 @@ SUIT_NAMES = [u'\u2660', u'\u2665', u'\u2666', u'\u2663']
 
 def main():
     bj = BlackJack(BasicStrategy)
-    bj.simulate()
+    bj.simulate(10)
 
 
 class Game(object):
@@ -20,6 +20,7 @@ class Game(object):
         self.players = [Players[i](GameProxy(self, i)) for i in range(len(Players))]
 
     def _play_game(self):
+        self._game_over = False
         while not self.is_game_over():
             for player in self.players:
                 player.play()
@@ -27,10 +28,13 @@ class Game(object):
                     return
 
     def is_game_over(self):
-        return False
+        return self._game_over
+
+    def set_game_over(self):
+        self._game_over = True
 
     def record(self, **kwargs):
-        print '\n'.join(['%s: %s' % (key, value) for (key, value) in kwargs.items])
+        print '\n'.join(['%s: %s' % (key, value) for (key, value) in kwargs.items()])
 
 
 class GameProxy(object):
@@ -54,12 +58,11 @@ class BlackJack(Game):
         self._player_winnings = 0
 
     def simulate(self, total_hands=1):
-        for hand in xrange(1, hands + 1):
+        for hand in xrange(1, total_hands + 1):
             self.record(hand=hand)
             self._play_game()
 
     def _play_game(self):
-        self._game_over = False
         if self._deck.depth() < 10:
             self._deck.reshuffle()
         self._player_cards = []
@@ -67,15 +70,15 @@ class BlackJack(Game):
         self._wager = 0
         super(BlackJack, self)._play_game()
 
-    @staticmethod
-    def sum(cards):
+    @classmethod
+    def sum(cls, cards):
         total = Deck.sum(cards)
         if 1 in Deck.card_values(cards) and total + 10 <= 21:
             return total + 10
         return total
 
-    def is_game_over(self):
-        return self._game_over
+    def get_my_cards(self):
+        return self._player_cards
 
     def get_dealer_card(self):
         return self._dealer_cards[0]
@@ -83,15 +86,24 @@ class BlackJack(Game):
     def bet(self, amount):
         if len(self._player_cards) != 0:
             raise ValueError("Cannot bet during play.")
+        if amount <= 0:
+            raise ValueError("Illegal bet: %d" % amount)
         self._wager = amount
         self._dealer_cards = self._deck.deal_cards(2)
         self._player_cards = self._deck.deal_cards(2)
         self.record(bet=amount,
                     dealer_shows=Deck.card_name(self.get_dealer_card()),
-                    player_has=Deck.card_names(self._player_cards))
+                    player_has=u', '.join(Deck.card_names(self._player_cards)))
+
+    def hit(self):
+        if self._wager == 0:
+            raise ValueError("No bet.")
+        self._player_cards.extend(self._deck.deal_cards(1))
+        self.record(player_hits=Deck.card_name(self._player_cards[-1]),
+                    player_total=self.sum(self._player_cards))
 
     def stand(self):
-        if self._game_over:
+        if self.is_game_over():
             raise ValueError("Game is already over.")
         if self._wager == 0:
             raise ValueError("No bet.")
@@ -128,10 +140,10 @@ class BlackJack(Game):
         self._record_game_over(-self._wager)
 
     def _record_game_over(self, delta, **kwargs):
-        if self._game_over:
+        if self.is_game_over():
             raise ValueError("Game is already over.")
         self._player_winnings += delta
-        self._games_over = True
+        self.set_game_over()
         if delta == 0:
             self.record(balance=self._player_winnings,
                         **kwargs)
@@ -178,7 +190,7 @@ class Deck(object):
 
     @staticmethod
     def card_names(cards):
-        return map(self.card_name, cards)
+        return map(Deck.card_name, cards)
 
     @staticmethod
     def card_name(card):
@@ -216,12 +228,12 @@ class BasicStrategy(object):
         """
         Action: one of 'hit', 'stand', 'split', 'double'.
         """
-        cards = self.game.my_cards()
+        cards = self.game.get_my_cards()
         if len(cards) == 0:
-            return game.bet(1)
+            return self.game.bet(1)
         if self.game.sum(cards) < 17:
-            return game.hit()
-        return game.stand()
+            return self.game.hit()
+        return self.game.stand()
 
 
 if __name__ == '__main__':
