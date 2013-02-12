@@ -2,6 +2,7 @@
 """
    cardcounter.py - Test card counting strategies against simulated card deals.
 """
+from math import sqrt
 from types import MethodType
 from random import shuffle
 from functools import partial
@@ -12,19 +13,32 @@ SUIT_NAMES = [u'\u2660', u'\u2665', u'\u2666', u'\u2663']
 
 def main():
     bj = BlackJack(BasicStrategy)
-    bj.simulate(1000)
+    bj.simulate()
 
 
 class Game(object):
     def __init__(self, *Players):
-        num_players = len(Players)
-        self._players = [Players[i](GameProxy(self, i)) for i in range(num_players)]
-        self._scores = [0] * num_players
+        self._num_players = len(Players)
+        self._players = [Players[i](GameProxy(self, i)) for i in xrange(self._num_players)]
+        self._trials = 0
+        self._scores = [0] * self._num_players
+        self._sums = [0] * self._num_players
+        self._sum_squares = [0] * self._num_players
+        self._min = [0] * self._num_players
+        self._max = [0] * self._num_players
+        self.silent = False
 
-    def simulate(self, total_games=1):
-        for i in xrange(1, total_games + 1):
-            self.record(game=i)
-            self._play_game()
+    def simulate(self, total_games=100, trials=100):
+        for _trial in xrange(trials):
+            for i in xrange(1, total_games + 1):
+                self.record(game=i)
+                self._play_game()
+            if trials > 1 and _trial == 0:
+                print "..."
+                self.silent = True
+
+            self.accumulate_stats()
+        self.print_stats()
 
     def _play_game(self):
         self._game_over = False
@@ -34,16 +48,53 @@ class Game(object):
                 if self.is_game_over():
                     return
 
+    def accumulate_stats(self):
+        self._trials += 1
+        for i in xrange(self._num_players):
+            self._sums[i] += self._scores[i]
+            self._sum_squares[i] += self._scores[i] ** 2
+            self._min[i] = min(self._min[i], self._scores[i])
+            self._max[i] = max(self._max[i], self._scores[i])
+        self._scores = [0] * self._num_players
+
+    def print_stats(self):
+        print "Trials: %d" % self._trials
+        averages = [self._sums[i] / self._trials for i in xrange(self._num_players)]
+        errors = [sqrt((self._sum_squares[i] - averages[i] ** 2) / self._trials)
+                  for i in xrange(self._num_players)]
+        fmt_string = "P{:d}: {:0.2f} +/- {:0.2f} (min={:0.2f}, max={:0.2f}"
+        scores = ', '.join([fmt_string.format(i,
+                                              averages[i],
+                                              errors[i],
+                                              self._min[i],
+                                              self._max[i])
+                            for i in xrange(self._num_players)])
+        print "Trial Scores:" + scores
+
     def is_game_over(self):
         return self._game_over
 
+    def get_score_player(self, i):
+        return self._scores[i]
+
+    def set_score_player(self, i, new_score):
+        self._scores[i] = new_score
+
+    def add_score_player(self, i, delta):
+        self._scores[i] += delta
+
     def set_game_over(self):
         self._game_over = True
-        scores = ', '.join(['P%d = %s' % (i, self._scores[i]) for i in range(len(self._scores))])
+        if self.silent:
+            return
+        scores = ', '.join(['P%d = %s' % (i, self._scores[i])
+                            for i in xrange(self._num_players)])
         print '--- Player Scores: ' + scores
 
     def record(self, **kwargs):
-        print ', '.join(['%s=%s' % (key, value) for (key, value) in kwargs.items()])
+        if self.silent:
+            return
+        print u', '.join(['%s=%s' % (key, value) for (key, value) in kwargs.items()])
 
 
 class GameProxy(object):
@@ -152,13 +203,13 @@ class BlackJack(Game):
     def _record_game_over(self, delta, **kwargs):
         if self.is_game_over():
             raise ValueError("Game is already over.")
-        self._scores[0] += delta
+        self.add_score_player(0, delta)
         if delta == 0:
             self.record(**kwargs)
         elif delta > 0:
             self.record(win=delta, **kwargs)
         else:
-            self.record(lose=delta, **kwargs)
+            self.record(lose=-delta, **kwargs)
         self.set_game_over()
 
 
@@ -225,9 +276,6 @@ class BasicStrategy(object):
     """
     def __init__(self, game):
         self.game = game
-
-    def bet(self):
-        return 1
 
     def play(self):
         """
