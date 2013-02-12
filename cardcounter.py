@@ -2,7 +2,7 @@
 """
    cardcounter.py - Test card counting strategies against simulated card deals.
 """
-from types import FunctionType
+from types import MethodType
 from random import shuffle
 from functools import partial
 
@@ -12,17 +12,24 @@ SUIT_NAMES = [u'\u2660', u'\u2665', u'\u2666', u'\u2663']
 
 def main():
     bj = BlackJack(BasicStrategy)
-    bj.simulate(10)
+    bj.simulate(1000)
 
 
 class Game(object):
     def __init__(self, *Players):
-        self.players = [Players[i](GameProxy(self, i)) for i in range(len(Players))]
+        num_players = len(Players)
+        self._players = [Players[i](GameProxy(self, i)) for i in range(num_players)]
+        self._scores = [0] * num_players
+
+    def simulate(self, total_games=1):
+        for i in xrange(1, total_games + 1):
+            self.record(game=i)
+            self._play_game()
 
     def _play_game(self):
         self._game_over = False
         while not self.is_game_over():
-            for player in self.players:
+            for player in self._players:
                 player.play()
                 if self.is_game_over():
                     return
@@ -32,9 +39,11 @@ class Game(object):
 
     def set_game_over(self):
         self._game_over = True
+        scores = ', '.join(['P%d = %s' % (i, self._scores[i]) for i in range(len(self._scores))])
+        print '--- Player Scores: ' + scores
 
     def record(self, **kwargs):
-        print '\n'.join(['%s: %s' % (key, value) for (key, value) in kwargs.items()])
+        print ', '.join(['%s=%s' % (key, value) for (key, value) in kwargs.items()])
 
 
 class GameProxy(object):
@@ -43,24 +52,25 @@ class GameProxy(object):
         self.i = i
 
     def __getattr__(self, name):
-        if name.startswith('_') or not hasattr(self.game, name):
-            raise AttributeError("Game has no %s" % name)
-        value = getattr(self.game, name)
-        if type(value) != FunctionType:
-            return value
-        return partial(value, self.game.players[self.i])
+        if name.startswith('_'):
+            raise AttributeError("Cannot access protected game attribute: %s" % name)
+        if hasattr(self.game, name + '_player'):
+            value = getattr(self.game, name + '_player')
+        elif hasattr(self.game, name):
+            value = getattr(self.game, name)
+        else:
+            raise AttributeError("No such attribute: %s" % name)
+        if type(value) != MethodType:
+            raise AttributeError("Cannot access %r type game attributes." % type(value))
+        if name.endswith('_player'):
+            return partial(value, self.i)
+        return value
 
 
 class BlackJack(Game):
     def __init__(self, Strategy, num_decks=1):
         super(BlackJack, self).__init__(Strategy)
         self._deck = Deck(num_decks=num_decks)
-        self._player_winnings = 0
-
-    def simulate(self, total_hands=1):
-        for hand in xrange(1, total_hands + 1):
-            self.record(hand=hand)
-            self._play_game()
 
     def _play_game(self):
         if self._deck.depth() < 10:
@@ -99,7 +109,7 @@ class BlackJack(Game):
         if self._wager == 0:
             raise ValueError("No bet.")
         self._player_cards.extend(self._deck.deal_cards(1))
-        self.record(player_hits=Deck.card_name(self._player_cards[-1]),
+        self.record(player_hits=u', '.join(Deck.card_names(self._player_cards)),
                     player_total=self.sum(self._player_cards))
 
     def stand(self):
@@ -118,7 +128,7 @@ class BlackJack(Game):
         while dealer_sum < 17:
             self._dealer_cards.extend(self._deck.deal_cards(1))
             dealer_sum = self.sum(self._dealer_cards)
-            self.record(dealer_hits=Deck.card_name(self._dealer_cards[-1]),
+            self.record(dealer_hits=u', '.join(Deck.card_names(self._dealer_cards)),
                         dealer_total=dealer_sum)
 
         if dealer_sum > 21:
@@ -129,7 +139,7 @@ class BlackJack(Game):
             self._record_game_over(0, message="Push.")
             return
 
-        if player_sum == 21:
+        if player_sum == 21 and len(self._player_cards) == 2:
             self._record_game_over(1.5 * self._wager, message="Blackjack!")
             return
 
@@ -142,19 +152,14 @@ class BlackJack(Game):
     def _record_game_over(self, delta, **kwargs):
         if self.is_game_over():
             raise ValueError("Game is already over.")
-        self._player_winnings += delta
-        self.set_game_over()
+        self._scores[0] += delta
         if delta == 0:
-            self.record(balance=self._player_winnings,
-                        **kwargs)
+            self.record(**kwargs)
         elif delta > 0:
-            self.record(win=delta,
-                        balance=self._player_winnings,
-                        **kwargs)
+            self.record(win=delta, **kwargs)
         else:
-            self.record(lose=delta,
-                        balance=self._player_winnings,
-                        **kwargs)
+            self.record(lose=delta, **kwargs)
+        self.set_game_over()
 
 
 class Deck(object):
