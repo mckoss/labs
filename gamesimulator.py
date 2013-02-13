@@ -3,6 +3,7 @@ from types import MethodType
 from collections import deque
 from functools import partial
 
+
 class Game(object):
     def __init__(self, *Players):
         self._num_players = len(Players)
@@ -61,8 +62,9 @@ class Game(object):
         averages = [self._sums[i] / self._trials for i in xrange(self._num_players)]
         errors = [sqrt(self._sum_squares[i] / self._trials - averages[i] ** 2)
                   for i in xrange(self._num_players)]
-        fmt_string = "P{:d}: {:0.2f} +/- {:0.2f} (min={:0.2f}, max={:0.2f} ({:0.2f} per game))"
+        fmt_string = "{:d}:{:s}: {:0.2f} +/- {:0.2f} (min={:0.2f}, max={:0.2f} ({:0.2f} per game))"
         scores = ', '.join([fmt_string.format(i,
+                                              self._players[i].__class__.__name__,
                                               averages[i],
                                               errors[i],
                                               self._min[i],
@@ -87,9 +89,11 @@ class Game(object):
         self._game_over = True
         if self.silent:
             return
-        scores = ', '.join(['P%d = %s' % (i, self._scores[i])
+        scores = ', '.join(["{:d}:{:s} = {:0.2f}".format(i,
+                                                         self._players[i].__class__.__name__,
+                                                         self._scores[i])
                             for i in xrange(self._num_players)])
-        self._record('--- Player Scores: ' + scores)
+        self._record('    ' + scores)
 
     def record(self, **kwargs):
         line = u', '.join(['%s=%s' % (key, value) for (key, value) in kwargs.items()])

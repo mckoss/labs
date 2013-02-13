@@ -13,6 +13,7 @@ def main():
 
 class BlackJack(Game):
     class DealerGame(Game):
+        """ Mini-game to encapsulate DealerStrategy to play the house's hand. """
         def __init__(self, game):
             super(BlackJack.DealerGame, self).__init__(DealerStrategy)
             self.game = game
