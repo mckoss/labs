@@ -7,7 +7,7 @@ from cards import Deck
 
 
 def main():
-    bj = BlackJack(DealerStrategy)
+    bj = BlackJack(DealerStrategy, DealerStrategy)
     bj.simulate()
 
 
@@ -37,9 +37,9 @@ class BlackJack(Game):
             self.game.record(dealer_hits=u', '.join(Deck.card_names(self.game._dealer_cards)),
                              dealer_total=dealer_sum)
 
-    def __init__(self, Strategy, num_decks=1):
-        super(BlackJack, self).__init__(Strategy)
-        self._deck = Deck(num_decks=num_decks)
+    def __init__(self, *Strategy):
+        super(BlackJack, self).__init__(*Strategy)
+        self._deck = Deck(num_decks=1)
         self.dealer_game = BlackJack.DealerGame(self)
 
     def _play_game(self):
@@ -144,7 +144,8 @@ class DealerStrategy(object):
         cards = self.game.get_my_cards()
         if len(cards) == 0:
             return self.game.bet(1)
-        if self.game.sum(cards) < 17:
+        # Hit on soft 17
+        if self.game.sum(cards) < (18 if 1 in Deck.card_values(cards) else 17):
             return self.game.hit()
         return self.game.stand()
 

@@ -17,7 +17,7 @@ class Game(object):
         self.silent = False
         self.history = deque(maxlen=100)
 
-    def simulate(self, total_games=100, trials=100):
+    def simulate(self, total_games=100, trials=1000):
         self._games_per_trial = total_games
         for _trial in xrange(trials):
             for i in xrange(1, total_games + 1):
@@ -60,10 +60,10 @@ class Game(object):
         self._record("Trials: %d (%d games per trial)." % (self._trials, self._games_per_trial),
                      force=True)
         averages = [self._sums[i] / self._trials for i in xrange(self._num_players)]
-        errors = [sqrt(self._sum_squares[i] / self._trials - averages[i] ** 2)
+        errors = [sqrt(self._sum_squares[i] / self._trials - averages[i] ** 2) / sqrt(self._trials)
                   for i in xrange(self._num_players)]
         fmt_string = "{:d}:{:s}: {:0.2f} +/- {:0.2f} (min={:0.2f}, max={:0.2f} ({:0.2f} per game))"
-        scores = ', '.join([fmt_string.format(i,
+        scores = '\n'.join([fmt_string.format(i,
                                               self._players[i].__class__.__name__,
                                               averages[i],
                                               errors[i],
@@ -71,7 +71,7 @@ class Game(object):
                                               self._max[i],
                                               averages[i] / self._games_per_trial)
                             for i in xrange(self._num_players)])
-        self._record("Trial Scores:" + scores, force=True)
+        self._record("Trial Scores:\n" + scores, force=True)
 
     def is_game_over(self):
         return self._game_over
