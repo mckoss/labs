@@ -30,7 +30,8 @@ class Game(object):
         self.silent = False
         self.history = deque(maxlen=100)
 
-    def simulate(self, total_games=100, trials=1000):
+    def simulate(self, total_games=100, trials=100):
+        self._games_per_trial = total_games
         for _trial in xrange(trials):
             for i in xrange(1, total_games + 1):
                 self.record(game=i)
@@ -69,16 +70,18 @@ class Game(object):
         self._scores = [0] * self._num_players
 
     def print_stats(self):
-        self._record("Trials: %d" % self._trials, force=True)
+        self._record("Trials: %d (%d games per trial)." % (self._trials, self._games_per_trial),
+                     force=True)
         averages = [self._sums[i] / self._trials for i in xrange(self._num_players)]
-        errors = [sqrt((self._sum_squares[i] - averages[i] ** 2) / self._trials)
+        errors = [sqrt(self._sum_squares[i] / self._trials - averages[i] ** 2)
                   for i in xrange(self._num_players)]
-        fmt_string = "P{:d}: {:0.2f} +/- {:0.2f} (min={:0.2f}, max={:0.2f})"
+        fmt_string = "P{:d}: {:0.2f} +/- {:0.2f} (min={:0.2f}, max={:0.2f} ({:0.2f} per game))"
         scores = ', '.join([fmt_string.format(i,
                                               averages[i],
                                               errors[i],
                                               self._min[i],
-                                              self._max[i])
+                                              self._max[i],
+                                              averages[i] / self._games_per_trial)
                             for i in xrange(self._num_players)])
         self._record("Trial Scores:" + scores, force=True)
 
@@ -220,6 +223,7 @@ class BlackJack(Game):
         if self.is_game_over():
             raise ValueError("Game is already over.")
         self.add_score_player(0, delta)
+        kwargs['deck_depth'] = self._deck.depth()
         if delta == 0:
             self.record(**kwargs)
         elif delta > 0:
