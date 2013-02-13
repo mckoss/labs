@@ -138,9 +138,34 @@ class GameProxy(object):
 
 
 class BlackJack(Game):
+    class DealerGame(Game):
+        def __init__(self, game):
+            super(BlackJack.DealerGame, self).__init__(DealerStrategy)
+            self.game = game
+            self.silent = True
+
+        def get_my_cards(self):
+            return self.game._dealer_cards
+
+        def bet(self, amount):
+            pass
+
+        def sum(self, cards):
+            return self.game.sum(cards)
+
+        def stand(self):
+            self.set_game_over()
+
+        def hit(self):
+            self.game._dealer_cards.extend(self.game._deck.deal_cards(1))
+            dealer_sum = self.sum(self.game._dealer_cards)
+            self.game.record(dealer_hits=u', '.join(Deck.card_names(self.game._dealer_cards)),
+                             dealer_total=dealer_sum)
+
     def __init__(self, Strategy, num_decks=1):
         super(BlackJack, self).__init__(Strategy)
         self._deck = Deck(num_decks=num_decks)
+        self.dealer_game = BlackJack.DealerGame(self)
 
     def _play_game(self):
         self._player_cards = []
@@ -198,11 +223,9 @@ class BlackJack(Game):
             self._record_game_over(1.5 * self._wager, message="Blackjack!")
             return
 
-        while dealer_sum < 17:
-            self._dealer_cards.extend(self._deck.deal_cards(1))
-            dealer_sum = self.sum(self._dealer_cards)
-            self.record(dealer_hits=u', '.join(Deck.card_names(self._dealer_cards)),
-                        dealer_total=dealer_sum)
+        # Simulated mini-game using DealerStrategy to play the Dealer's cards
+        self.dealer_game._play_game()
+        dealer_sum = self.sum(self._dealer_cards)
 
         if dealer_sum > 21:
             self._record_game_over(self._wager, message="Dealer busts.")
