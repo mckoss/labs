@@ -6,6 +6,7 @@ from math import sqrt
 from types import MethodType
 from random import shuffle
 from functools import partial
+from collections import deque
 
 CARD_NAMES = ['A'] + map(unicode, range(2, 11)) + ['J', 'Q', 'K']
 SUIT_NAMES = [u'\u2660', u'\u2665', u'\u2666', u'\u2663']
@@ -27,8 +28,9 @@ class Game(object):
         self._min = [0] * self._num_players
         self._max = [0] * self._num_players
         self.silent = False
+        self.history = deque(maxlen=100)
 
-    def simulate(self, total_games=100, trials=100):
+    def simulate(self, total_games=100, trials=1000):
         for _trial in xrange(trials):
             for i in xrange(1, total_games + 1):
                 self.record(game=i)
@@ -41,6 +43,15 @@ class Game(object):
         self.print_stats()
 
     def _play_game(self):
+        try:
+            self._play_game_inner()
+        except KeyboardInterrupt:
+            if self.silent:
+                print "Aborting - recent history:"
+                print '\n'.join(self.history)
+            exit(1)
+
+    def _play_game_inner(self):
         self._game_over = False
         while not self.is_game_over():
             for player in self._players:
@@ -58,18 +69,18 @@ class Game(object):
         self._scores = [0] * self._num_players
 
     def print_stats(self):
-        print "Trials: %d" % self._trials
+        self._record("Trials: %d" % self._trials, force=True)
         averages = [self._sums[i] / self._trials for i in xrange(self._num_players)]
         errors = [sqrt((self._sum_squares[i] - averages[i] ** 2) / self._trials)
                   for i in xrange(self._num_players)]
-        fmt_string = "P{:d}: {:0.2f} +/- {:0.2f} (min={:0.2f}, max={:0.2f}"
+        fmt_string = "P{:d}: {:0.2f} +/- {:0.2f} (min={:0.2f}, max={:0.2f})"
         scores = ', '.join([fmt_string.format(i,
                                               averages[i],
                                               errors[i],
                                               self._min[i],
                                               self._max[i])
                             for i in xrange(self._num_players)])
-        print "Trial Scores:" + scores
+        self._record("Trial Scores:" + scores, force=True)
 
     def is_game_over(self):
         return self._game_over
@@ -89,12 +100,17 @@ class Game(object):
             return
         scores = ', '.join(['P%d = %s' % (i, self._scores[i])
                             for i in xrange(self._num_players)])
-        print '--- Player Scores: ' + scores
+        self._record('--- Player Scores: ' + scores)
 
     def record(self, **kwargs):
-        if self.silent:
+        line = u', '.join(['%s=%s' % (key, value) for (key, value) in kwargs.items()])
+        self._record(line)
+
+    def _record(self, s, force=False):
+        self.history.append(s)
+        if not force and self.silent:
             return
-        print u', '.join(['%s=%s' % (key, value) for (key, value) in kwargs.items()])
+        print s
 
 
 class GameProxy(object):
