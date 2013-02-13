@@ -143,8 +143,6 @@ class BlackJack(Game):
         self._deck = Deck(num_decks=num_decks)
 
     def _play_game(self):
-        if self._deck.depth() < 10:
-            self._deck.reshuffle()
         self._player_cards = []
         self._dealer_cards = []
         self._wager = 0
@@ -246,8 +244,9 @@ class Deck(object):
     >>> d.depth()
     208
     """
-    def __init__(self, num_decks=1):
+    def __init__(self, num_decks=1, min_cards=13):
         self.num_decks = num_decks
+        self.min_cards = 13
         self.reshuffle()
 
     def reshuffle(self):
@@ -257,6 +256,8 @@ class Deck(object):
         shuffle(self.cards)
 
     def deal_cards(self, num=1):
+        if self.depth() - num < self.min_cards:
+            self.reshuffle()
         cards = self.cards[:num]
         del self.cards[:num]
         return cards
