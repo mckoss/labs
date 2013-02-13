@@ -13,7 +13,7 @@ SUIT_NAMES = [u'\u2660', u'\u2665', u'\u2666', u'\u2663']
 
 
 def main():
-    bj = BlackJack(BasicStrategy)
+    bj = BlackJack(DealerStrategy)
     bj.simulate()
 
 
@@ -193,6 +193,11 @@ class BlackJack(Game):
             return
 
         dealer_sum = self.sum(self._dealer_cards)
+
+        if player_sum == 21 and len(self._player_cards) == 2 and dealer_sum != 21:
+            self._record_game_over(1.5 * self._wager, message="Blackjack!")
+            return
+
         while dealer_sum < 17:
             self._dealer_cards.extend(self._deck.deal_cards(1))
             dealer_sum = self.sum(self._dealer_cards)
@@ -205,10 +210,6 @@ class BlackJack(Game):
 
         if player_sum == dealer_sum:
             self._record_game_over(0, message="Push.")
-            return
-
-        if player_sum == 21 and len(self._player_cards) == 2:
-            self._record_game_over(1.5 * self._wager, message="Blackjack!")
             return
 
         if player_sum > dealer_sum:
@@ -291,7 +292,7 @@ class Deck(object):
         return u', '.join(self.card_names(self.cards))
 
 
-class BasicStrategy(object):
+class DealerStrategy(object):
     """
     Default player strategy.  Bet $1 per play.
     """
