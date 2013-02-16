@@ -43,9 +43,10 @@ class BlackJack(Game):
         self.dealer_game = BlackJack.DealerGame(self)
 
     def _play_game(self):
-        self._player_cards = []
+        self._player_cards = [[] for _i in range(self._num_players)]
+        self._player_over = [False for _i in range(self._num_players)]
         self._dealer_cards = []
-        self._wager = 0
+        self._wagers = [0 for _i in range(self._num_players)]
         super(BlackJack, self)._play_game()
 
     @classmethod
@@ -55,79 +56,86 @@ class BlackJack(Game):
             return total + 10
         return total
 
-    def get_my_cards(self):
-        return self._player_cards
+    def get_my_cards_player(self, i):
+        return self._player_cards[i]
 
     def get_dealer_card(self):
         return self._dealer_cards[0]
 
-    def bet(self, amount):
-        if len(self._player_cards) != 0:
+    def bet_player(self, i, amount):
+        if len(self._player_cards[i]) != 0:
             raise ValueError("Cannot bet during play.")
         if amount <= 0:
             raise ValueError("Illegal bet: %d" % amount)
-        self._wager = amount
-        self._dealer_cards = self._deck.deal_cards(2)
-        self._player_cards = self._deck.deal_cards(2)
-        self.record(bet=amount,
-                    dealer_shows=Deck.card_name(self.get_dealer_card()),
-                    player_has=u', '.join(Deck.card_names(self._player_cards)))
+        self._wagers[i] = amount
+        self._player_cards[i] = self._deck.deal_cards(2)
+        self.record_player(i, bet=amount,
+                           player_has=u', '.join(Deck.card_names(self._player_cards[i])))
+        if i == self._num_players - 1:
+            self._dealer_cards = self._deck.deal_cards(2)
+            self.record(dealer_shows=Deck.card_name(self.get_dealer_card()))
 
-    def hit(self):
-        if self._wager == 0:
+    def hit_player(self, i):
+        if self._wagers[i] == 0:
             raise ValueError("No bet.")
-        self._player_cards.extend(self._deck.deal_cards(1))
-        self.record(player_hits=u', '.join(Deck.card_names(self._player_cards)),
-                    player_total=self.sum(self._player_cards))
+        self._player_cards[i].extend(self._deck.deal_cards(1))
+        self.record_player(i, player_hits=u', '.join(Deck.card_names(self._player_cards[i])),
+                           player_total=self.sum(self._player_cards[i]))
 
-    def stand(self):
+    def stand_player(self, i):
         if self.is_game_over():
             raise ValueError("Game is already over.")
-        if self._wager == 0:
+        if self._wagers[i] == 0:
             raise ValueError("No bet.")
-        if len(self._player_cards) == 0:
+        if len(self._player_cards[i]) == 0:
             raise ValueError("No cards.")
-        player_sum = self.sum(self._player_cards)
+        player_sum = self.sum(self._player_cards[i])
         if player_sum > 21:
-            self._record_game_over(-self._wager, message="Player busts.",)
+            self._record_game_over_player(i, -self._wagers[i], message="Player busts.",)
             return
 
         dealer_sum = self.sum(self._dealer_cards)
 
-        if player_sum == 21 and len(self._player_cards) == 2 and dealer_sum != 21:
-            self._record_game_over(1.5 * self._wager, message="Blackjack!")
+        if player_sum == 21 and len(self._player_cards[i]) == 2 and dealer_sum != 21:
+            self._record_game_over_player(i, 1.5 * self._wagers[i], message="Blackjack!")
             return
 
         # Simulated mini-game using DealerStrategy to play the Dealer's cards
+        if i < self._num_players - 1:
+            return
+
         self.dealer_game._play_game()
         dealer_sum = self.sum(self._dealer_cards)
 
         if dealer_sum > 21:
-            self._record_game_over(self._wager, message="Dealer busts.")
+            self._record_game_over_player(i, self._wagers[i], message="Dealer busts.")
             return
 
         if player_sum == dealer_sum:
-            self._record_game_over(0, message="Push.")
+            self._record_game_over_player(i, 0, message="Push.")
             return
 
         if player_sum > dealer_sum:
-            self._record_game_over(self._wager)
+            self._record_game_over_player(i, self._wagers[i])
             return
 
-        self._record_game_over(-self._wager)
+        self._record_game_over_player(i, -self._wagers[i])
 
-    def _record_game_over(self, delta, **kwargs):
-        if self.is_game_over():
+    def _record_game_over_player(self, i, delta, **kwargs):
+        if self._player_over[i]:
             raise ValueError("Game is already over.")
         self.add_score_player(0, delta)
         kwargs['deck_depth'] = self._deck.depth()
         if delta == 0:
-            self.record(**kwargs)
+            self.record_player(i, **kwargs)
         elif delta > 0:
-            self.record(win=delta, **kwargs)
+            self.record_player(i, win=delta, **kwargs)
         else:
-            self.record(lose=-delta, **kwargs)
-        self.set_game_over()
+            self.record_player(i, lose=-delta, **kwargs)
+        self._player_over[i] = True
+        import pdb; pdb.set_trace()
+        if all(self._player_over):
+            self.set_game_over()
 
 
 class DealerStrategy(object):

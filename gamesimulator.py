@@ -95,6 +95,10 @@ class Game(object):
                             for i in xrange(self._num_players)])
         self._record('    ' + scores)
 
+    def record_player(self, i, **kwargs):
+        line = u', '.join(['%s=%s' % (key, value) for (key, value) in kwargs.items()])
+        self._record(u'%d: %s' % (i, line))
+
     def record(self, **kwargs):
         line = u', '.join(['%s=%s' % (key, value) for (key, value) in kwargs.items()])
         self._record(line)
@@ -115,11 +119,10 @@ class GameProxy(object):
         if name.startswith('_'):
             raise AttributeError("Cannot access protected game attribute: %s" % name)
         if hasattr(self.game, name + '_player'):
-            value = getattr(self.game, name + '_player')
-        elif hasattr(self.game, name):
-            value = getattr(self.game, name)
-        else:
+            name += '_player'
+        if not hasattr(self.game, name):
             raise AttributeError("No such attribute: %s" % name)
+        value = getattr(self.game, name)
         if type(value) != MethodType:
             raise AttributeError("Cannot access %r type game attributes." % type(value))
         if name.endswith('_player'):
