@@ -44,7 +44,6 @@ class BlackJack(Game):
 
     def _play_game(self):
         self._player_cards = [[] for _i in range(self._num_players)]
-        self._player_over = [False for _i in range(self._num_players)]
         self._dealer_cards = []
         self._wagers = [0 for _i in range(self._num_players)]
         super(BlackJack, self)._play_game()
@@ -83,8 +82,8 @@ class BlackJack(Game):
                            player_total=self.sum(self._player_cards[i]))
 
     def stand_player(self, i):
-        if self.is_game_over():
-            raise ValueError("Game is already over.")
+        if self.is_game_over_player(i):
+            raise ValueError("Game is already over (player %d)." % i)
         if self._wagers[i] == 0:
             raise ValueError("No bet.")
         if len(self._player_cards[i]) == 0:
@@ -94,35 +93,37 @@ class BlackJack(Game):
             self._record_game_over_player(i, -self._wagers[i], message="Player busts.",)
             return
 
-        dealer_sum = self.sum(self._dealer_cards)
-
-        if player_sum == 21 and len(self._player_cards[i]) == 2 and dealer_sum != 21:
-            self._record_game_over_player(i, 1.5 * self._wagers[i], message="Blackjack!")
-            return
-
-        # Simulated mini-game using DealerStrategy to play the Dealer's cards
         if i < self._num_players - 1:
             return
 
+        # Simulated mini-game using DealerStrategy to play the Dealer's cards
         self.dealer_game._play_game()
         dealer_sum = self.sum(self._dealer_cards)
 
-        if dealer_sum > 21:
-            self._record_game_over_player(i, self._wagers[i], message="Dealer busts.")
-            return
+        for i in range(self._num_players):
+            if self.is_game_over_player(i):
+                continue
 
-        if player_sum == dealer_sum:
-            self._record_game_over_player(i, 0, message="Push.")
-            return
+            if player_sum == 21 and len(self._player_cards[i]) == 2 and dealer_sum != 21:
+                self._record_game_over_player(i, 1.5 * self._wagers[i], message="Blackjack!")
+                continue
 
-        if player_sum > dealer_sum:
-            self._record_game_over_player(i, self._wagers[i])
-            return
+            if dealer_sum > 21:
+                self._record_game_over_player(i, self._wagers[i], message="Dealer busts.")
+                continue
 
-        self._record_game_over_player(i, -self._wagers[i])
+            if player_sum == dealer_sum:
+                self._record_game_over_player(i, 0, message="Push.")
+                continue
+
+            if player_sum > dealer_sum:
+                self._record_game_over_player(i, self._wagers[i])
+                continue
+
+            self._record_game_over_player(i, -self._wagers[i])
 
     def _record_game_over_player(self, i, delta, **kwargs):
-        if self._player_over[i]:
+        if self.is_game_over_player(i):
             raise ValueError("Game is already over.")
         self.add_score_player(0, delta)
         kwargs['deck_depth'] = self._deck.depth()
@@ -132,10 +133,7 @@ class BlackJack(Game):
             self.record_player(i, win=delta, **kwargs)
         else:
             self.record_player(i, lose=-delta, **kwargs)
-        self._player_over[i] = True
-        import pdb; pdb.set_trace()
-        if all(self._player_over):
-            self.set_game_over()
+        self.set_game_over_player(i)
 
 
 class DealerStrategy(object):
@@ -149,13 +147,16 @@ class DealerStrategy(object):
         """
         Action: one of 'hit', 'stand', 'split', 'double'.
         """
-        cards = self.game.get_my_cards()
-        if len(cards) == 0:
-            return self.game.bet(1)
-        # Hit on soft 17
-        if self.game.sum(cards) < (18 if 1 in Deck.card_values(cards) else 17):
-            return self.game.hit()
-        return self.game.stand()
+        while True:
+            cards = self.game.get_my_cards()
+            if len(cards) == 0:
+                self.game.bet(1)
+                continue
+            # Hit on soft 17
+            if self.game.sum(cards) < (18 if 1 in Deck.card_values(cards) else 17):
+                self.game.hit()
+                continue
+            return self.game.stand()
 
 
 if __name__ == '__main__':

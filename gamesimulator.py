@@ -40,7 +40,7 @@ class Game(object):
             exit(1)
 
     def _play_game_inner(self):
-        self._game_over = False
+        self._player_over = [False for _i in range(self._num_players)]
         while not self.is_game_over():
             for player in self._players:
                 player.play()
@@ -73,9 +73,6 @@ class Game(object):
                             for i in xrange(self._num_players)])
         self._record("Trial Scores:\n" + scores, force=True)
 
-    def is_game_over(self):
-        return self._game_over
-
     def get_score_player(self, i):
         return self._scores[i]
 
@@ -85,8 +82,18 @@ class Game(object):
     def add_score_player(self, i, delta):
         self._scores[i] += delta
 
+    def is_game_over(self):
+        return all(self._player_over)
+
+    def is_game_over_player(self, i):
+        return self._player_over[i]
+
+    def set_game_over_player(self, i):
+        self._player_over[i] = True
+        if self.is_game_over():
+            self.set_game_over()
+
     def set_game_over(self):
-        self._game_over = True
         if self.silent:
             return
         scores = ', '.join(["{:d}:{:s} = {:0.2f}".format(i,
