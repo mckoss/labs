@@ -7,7 +7,7 @@ from cards import Deck
 
 
 def main():
-    bj = BlackJack(DealerStrategy, DealerStrategy)
+    bj = BlackJack(DealerStrategy, BasicStrategy)
     bj.simulate()
 
 
@@ -130,6 +130,46 @@ class DealerStrategy(object):
                 continue
 
             return
+
+
+class BasicStrategy(object):
+    def __init__(self, game):
+        self.game = game
+
+    def play(self):
+        while True:
+            cards = self.game.get_my_cards()
+            if len(cards) == 0:
+                self.game.bet(1)
+                return
+
+            total = self.game.sum(cards)
+            dealer_card = Deck.card_value(self.game.get_dealer_card())
+            if 1 in Deck.card_values(cards):
+                if total >= 19:
+                    return
+
+                if total <= 17:
+                    self.game.hit()
+                    continue
+
+                # A-7 == 18
+                if dealer_card in (2, 7, 8):
+                    return
+
+                self.game.hit()
+                continue
+
+            if total >= 17:
+                return
+
+            if total >= 13 and dealer_card in (2, 3, 4, 5, 6):
+                return
+
+            if total == 12 and dealer_card in (4, 5, 6):
+                return
+
+            self.game.hit()
 
 
 if __name__ == '__main__':

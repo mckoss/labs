@@ -51,14 +51,15 @@ class Deck(object):
         return sum(Deck.card_values(cards))
 
     @staticmethod
-    def card_values(cards):
-        def card_value(card):
-            value = card % 13 + 1
-            if value >= 10:
-                return 10
-            return value
+    def card_value(card):
+        value = card % 13 + 1
+        if value >= 10:
+            return 10
+        return value
 
-        return map(card_value, cards)
+    @staticmethod
+    def card_values(cards):
+        return map(Deck.card_value, cards)
 
     def __unicode__(self):
         return u', '.join(self.card_names(self.cards))
