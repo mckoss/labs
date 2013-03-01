@@ -2,12 +2,14 @@ from math import sqrt
 from types import MethodType
 from collections import deque
 from functools import partial
+import traceback
 
 
 class Game(object):
     def __init__(self, *Players):
         self._num_players = len(Players)
         self._players = [Players[i](GameProxy(self, i)) for i in xrange(self._num_players)]
+        self._player_over = [False] * self._num_players
         self._trials = 0
         self._scores = [0] * self._num_players
         self._sums = [0] * self._num_players
@@ -16,6 +18,10 @@ class Game(object):
         self._max = [0] * self._num_players
         self.silent = False
         self.history = deque(maxlen=100)
+
+    def init_game(self):
+        self._player_over = [False] * self._num_players
+        self.turn = 0
 
     def simulate(self, total_games=100, trials=1000):
         self._games_per_trial = total_games
@@ -31,21 +37,35 @@ class Game(object):
         self.print_stats()
 
     def _play_game(self):
+        self.init_game()
         try:
             self._play_game_inner()
         except KeyboardInterrupt:
             if self.silent:
                 print "Aborting - recent history:"
+                traceback.print_exc()
                 print '\n'.join(self.history)
             exit(1)
 
     def _play_game_inner(self):
-        self._player_over = [False for _i in range(self._num_players)]
-        while not self.is_game_over():
-            for player in self._players:
-                player.play()
+        while True:
+            for i in xrange(self._num_players):
                 if self.is_game_over():
                     return
+                if self.is_game_over_player(i):
+                    continue
+                self._players[i].play()
+                self.on_turn_player(i)
+            self.on_turn_over()
+            self.turn += 1
+
+    def on_turn_player(self, i):
+        """ Called after each player's turn is over. """
+        pass
+
+    def on_turn_over(self):
+        """ Called after all players have completed each turn. """
+        pass
 
     def accumulate_stats(self):
         self._trials += 1
