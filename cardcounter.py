@@ -177,6 +177,10 @@ class BasicStrategy(object):
                     continue
 
                 # A-7 == 18
+                if self.game.can_double() and dealer_card in (3, 4, 5, 6):
+                    self.game.double()
+                    return
+
                 if dealer_card in (2, 3, 4, 5, 6, 7, 8):
                     return
 
