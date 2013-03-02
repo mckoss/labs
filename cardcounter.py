@@ -21,6 +21,7 @@ class BlackJack(Game):
     def _play_game(self):
         self._player_cards = [[] for _i in range(self._num_players)]
         self._wagers = [0 for _i in range(self._num_players)]
+        self._double = [False] * self._num_players
         super(BlackJack, self)._play_game()
 
     @classmethod
@@ -46,11 +47,27 @@ class BlackJack(Game):
         self.record_player(i, bet=amount,
                            player_has=u', '.join(Deck.card_names(self._player_cards[i])))
 
+    def can_double_player(self, i):
+        return len(self._player_cards[i]) == 2 and not self._double[i]
+
+    def double_player(self, i):
+        if len(self._player_cards[i]) != 2:
+            raise ValueError("Can only double on first two cards.")
+        if self._double[i]:
+            raise ValueError("Cannot re-double.")
+        self._wagers[i] *= 2
+        self._double[i] = True
+        self.record_player(i, double=self._wagers[i],
+                           player_has=u', '.join(Deck.card_names(self._player_cards[i])))
+        self.hit_player(i)
+
     def hit_player(self, i):
         if self._wagers[i] == 0:
             raise ValueError("No bet.")
+        if self._double[i] and len(self._player_cards[i]) != 2:
+            raise ValueError("Cannot hit more than once.")
         self._player_cards[i].extend(self._deck.deal_cards(1))
-        self.record_player(i, player_hits=u', '.join(Deck.card_names(self._player_cards[i])),
+        self.record_player(i, hit=u', '.join(Deck.card_names(self._player_cards[i])),
                            player_total=self.sum(self._player_cards[i]))
 
     def on_turn_player(self, i):
@@ -150,11 +167,17 @@ class BasicStrategy(object):
                     return
 
                 if total <= 17:
+                    if self.game.can_double() and (
+                        dealer_card in (5, 6) or
+                        dealer_card == 4 and total >= 15 or
+                        dealer_card == 3 and total == 17):
+                        self.game.double()
+                        return
                     self.game.hit()
                     continue
 
                 # A-7 == 18
-                if dealer_card in (2, 7, 8):
+                if dealer_card in (2, 3, 4, 5, 6, 7, 8):
                     return
 
                 self.game.hit()
@@ -167,6 +190,14 @@ class BasicStrategy(object):
                 return
 
             if total == 12 and dealer_card in (4, 5, 6):
+                return
+
+            if self.game.can_double() and total >= 9 and total <= 11 and (
+                dealer_card in (3, 4, 5, 6) or
+                total >= 10 and dealer_card in (2, 7, 8, 9) or
+                total == 11 and dealer_card == 10
+                ):
+                self.game.double()
                 return
 
             self.game.hit()

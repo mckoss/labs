@@ -82,7 +82,7 @@ class Game(object):
         averages = [self._sums[i] / self._trials for i in xrange(self._num_players)]
         errors = [sqrt(self._sum_squares[i] / self._trials - averages[i] ** 2) / sqrt(self._trials)
                   for i in xrange(self._num_players)]
-        fmt_string = "{:d}:{:s}: {:0.2f} +/- {:0.2f} (min={:0.2f}, max={:0.2f} ({:0.2f} per game))"
+        fmt_string = "{:d}:{:s}: {:0.2f} +/- {:0.2f} (min={:0.2f}, max={:0.2f} ({:0.3f} per game))"
         scores = '\n'.join([fmt_string.format(i,
                                               self._players[i].__class__.__name__,
                                               averages[i],
@@ -131,6 +131,7 @@ class Game(object):
         self._record(line)
 
     def _record(self, s, force=False):
+        s = s.encode('utf-8')
         self.history.append(s)
         if not force and self.silent:
             return
