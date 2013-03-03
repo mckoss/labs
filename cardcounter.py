@@ -12,6 +12,8 @@ def main():
 
 
 class Blackjack(Game):
+    silent_methods = ('get_my_cards', 'can_double')
+
     def __init__(self, *Strategy):
         # Put the dealer at the end of the player list.
         Strategy += (DealerStrategy,)
@@ -37,8 +39,6 @@ class Blackjack(Game):
             raise ValueError("Illegal bet: %d" % amount)
         hand.wager = amount
         hand.add_cards(self._deck.deal_cards(2))
-        self.record_player(i, bet=amount,
-                           player_has=u', '.join(BlackjackDeck.card_names(hand.cards)))
 
     def can_double_player(self, i):
         hand = self.hands[i]
@@ -52,8 +52,6 @@ class Blackjack(Game):
             raise ValueError("Cannot re-double.")
         hand.wager *= 2
         hand.double = True
-        self.record_player(i, double=hand.wager,
-                           player_has=u', '.join(BlackjackDeck.card_names(hand.cards)))
         self.hit_player(i)
 
     def hit_player(self, i):
@@ -63,8 +61,6 @@ class Blackjack(Game):
         if hand.double and hand.num_cards() != 2:
             raise ValueError("Cannot hit more than once.")
         hand.add_cards(self._deck.deal_cards(1))
-        self.record_player(i, hit=u', '.join(BlackjackDeck.card_names(hand.cards)),
-                           player_total=hand.sum())
 
     def on_turn_player(self, i):
         hand = self.hands[i]
@@ -76,6 +72,11 @@ class Blackjack(Game):
             raise ValueError("No bet.")
         if hand.num_cards() == 0:
             raise ValueError("No cards.")
+        self.record('status',
+                    player=i,
+                    total=hand.sum(),
+                    wager=hand.wager,
+                    cards=u' '.join(BlackjackDeck.card_names(hand.cards)))
 
     def on_turn_over(self):
         # Do nothing after first round of betting and initial cards dealt.
@@ -119,11 +120,11 @@ class Blackjack(Game):
         self.add_score_player(i, delta)
         kwargs['deck_depth'] = self._deck.depth()
         if delta == 0:
-            self.record_player(i, **kwargs)
+            self.record('draw', player=i, **kwargs)
         elif delta > 0:
-            self.record_player(i, win=delta, **kwargs)
+            self.record('win', player=i, amount=delta, **kwargs)
         else:
-            self.record_player(i, lose=-delta, **kwargs)
+            self.record('lose', player=i, amount=-delta, **kwargs)
         self.set_game_over_player(i)
 
 

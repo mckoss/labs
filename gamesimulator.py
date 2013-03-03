@@ -6,6 +6,8 @@ import traceback
 
 
 class Game(object):
+    silent_methods = ()
+
     def __init__(self, *Players):
         self._num_players = len(Players)
         self._players = [Players[i](GameProxy(self, i)) for i in xrange(self._num_players)]
@@ -27,7 +29,7 @@ class Game(object):
         self._games_per_trial = total_games
         for _trial in xrange(trials):
             for i in xrange(1, total_games + 1):
-                self.record(game=i)
+                self.record('play_game', i)
                 self._play_game()
             if trials > 1 and _trial == 0:
                 print "..."
@@ -122,12 +124,19 @@ class Game(object):
                             for i in xrange(self._num_players)])
         self._record('    ' + scores)
 
-    def record_player(self, name, **kwargs):
-        line = u', '.join(['%s=%s' % (key, value) for (key, value) in kwargs.items()])
-        self._record(u'%s: %s' % (name, line))
-
-    def record(self, **kwargs):
-        line = u', '.join(['%s=%s' % (key, value) for (key, value) in kwargs.items()])
+    def record(self, method_name, *args, **kwargs):
+        if method_name in self.silent_methods:
+            return
+        args_string = u', '.join([unicode(a) for a in args])
+        kwargs_string = u', '.join(['%s=%s' % (key, value) for (key, value) in kwargs.items()])
+        line = '%s(' % method_name
+        sep = ''
+        if len(args_string) > 0:
+            line += args_string
+            sep = ', '
+        if len(kwargs_string) > 0:
+            line += sep + kwargs_string
+        line += ')'
         self._record(line)
 
     def _record(self, s, force=False):
@@ -163,11 +172,6 @@ class GameProxy(object):
         return value
 
     def _stub(self, method_name, original_name, *args, **kwargs):
+        self.game.record(original_name, *args, player=self.i, **kwargs)
         method = getattr(self.game, method_name)
-        if len(args) == 1:
-            d = dict(kwargs)
-            d[original_name] = args[0]
-            self.game.record_player(self.i, **d)
-        else:
-            self.game.record_player(self.i, do=original_name, **kwargs)
         return method(self.i, *args, **kwargs)
