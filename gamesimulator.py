@@ -122,9 +122,9 @@ class Game(object):
                             for i in xrange(self._num_players)])
         self._record('    ' + scores)
 
-    def record_player(self, i, **kwargs):
+    def record_player(self, name, **kwargs):
         line = u', '.join(['%s=%s' % (key, value) for (key, value) in kwargs.items()])
-        self._record(u'%d: %s' % (i, line))
+        self._record(u'%s: %s' % (name, line))
 
     def record(self, **kwargs):
         line = u', '.join(['%s=%s' % (key, value) for (key, value) in kwargs.items()])
@@ -142,17 +142,22 @@ class GameProxy(object):
     def __init__(self, game, i):
         self.game = game
         self.i = i
+        self.memo = {}
 
     def __getattr__(self, name):
+        if name in self.memo:
+            return self.memo[name]
+        original_name = name
         if name.startswith('_'):
-            raise AttributeError("Cannot access protected game attribute: %s" % name)
+            raise AttributeError("Cannot access protected game method: %s" % name)
         if hasattr(self.game, name + '_player'):
             name += '_player'
         if not hasattr(self.game, name):
-            raise AttributeError("No such attribute: %s" % name)
+            raise AttributeError("No such method: %s" % name)
         value = getattr(self.game, name)
         if type(value) != MethodType:
             raise AttributeError("Cannot access %r type game attributes." % type(value))
         if name.endswith('_player'):
-            return partial(value, self.i)
+            value = partial(value, self.i)
+        self.memo[original_name] = value
         return value

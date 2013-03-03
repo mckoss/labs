@@ -111,6 +111,7 @@ class BlackJack(Game):
 
             self._record_game_over_player(i, -self._wagers[i])
 
+        # Dealer game over when all players are over
         self.set_game_over_player(-1)
 
     def _record_game_over_player(self, i, delta, **kwargs):
