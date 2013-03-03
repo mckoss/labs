@@ -3,81 +3,78 @@
    cardcounter.py - Test card counting strategies against simulated card deals.
 """
 from gamesimulator import Game
-from cards import Deck
+from cards import BlackjackDeck
 
 
 def main():
-    bj = BlackJack(DealerStrategy, BasicStrategy)
+    bj = Blackjack(DealerStrategy, BasicStrategy)
     bj.simulate()
 
 
-class BlackJack(Game):
+class Blackjack(Game):
     def __init__(self, *Strategy):
         # Put the dealer at the end of the player list.
         Strategy += (DealerStrategy,)
-        super(BlackJack, self).__init__(*Strategy)
-        self._deck = Deck(num_decks=1)
+        super(Blackjack, self).__init__(*Strategy)
+        self._deck = BlackjackDeck(num_decks=1)
 
     def _play_game(self):
-        self._player_cards = [[] for _i in range(self._num_players)]
-        self._wagers = [0 for _i in range(self._num_players)]
-        self._double = [False] * self._num_players
-        super(BlackJack, self)._play_game()
-
-    @classmethod
-    def sum(cls, cards):
-        total = Deck.sum(cards)
-        if 1 in Deck.card_values(cards) and total + 10 <= 21:
-            return total + 10
-        return total
+        self.hands = [Hand(i) for i in range(self._num_players)]
+        self.dealer_index = self._num_players - 1
+        super(Blackjack, self)._play_game()
 
     def get_my_cards_player(self, i):
-        return self._player_cards[i]
+        return self.hands[i].cards
 
     def get_dealer_card(self):
-        return self._player_cards[-1][0]
+        return self.hands[self.dealer_index].cards[0]
 
     def bet_player(self, i, amount):
-        if len(self._player_cards[i]) != 0:
+        hand = self.hands[i]
+        if hand.num_cards() != 0:
             raise ValueError("Cannot bet during play.")
         if amount <= 0:
             raise ValueError("Illegal bet: %d" % amount)
-        self._wagers[i] = amount
-        self._player_cards[i] = self._deck.deal_cards(2)
+        hand.wager = amount
+        hand.add_cards(self._deck.deal_cards(2))
         self.record_player(i, bet=amount,
-                           player_has=u', '.join(Deck.card_names(self._player_cards[i])))
+                           player_has=u', '.join(BlackjackDeck.card_names(hand.cards)))
 
     def can_double_player(self, i):
-        return len(self._player_cards[i]) == 2 and not self._double[i]
+        hand = self.hands[i]
+        return hand.num_cards() == 2 and not hand.double
 
     def double_player(self, i):
-        if len(self._player_cards[i]) != 2:
+        hand = self.hands[i]
+        if hand.num_cards() != 2:
             raise ValueError("Can only double on first two cards.")
-        if self._double[i]:
+        if hand.double:
             raise ValueError("Cannot re-double.")
-        self._wagers[i] *= 2
-        self._double[i] = True
-        self.record_player(i, double=self._wagers[i],
-                           player_has=u', '.join(Deck.card_names(self._player_cards[i])))
+        hand.wager *= 2
+        hand.double = True
+        self.record_player(i, double=hand.wager,
+                           player_has=u', '.join(BlackjackDeck.card_names(hand.cards)))
         self.hit_player(i)
 
     def hit_player(self, i):
-        if self._wagers[i] == 0:
+        hand = self.hands[i]
+        if hand.wager == 0:
             raise ValueError("No bet.")
-        if self._double[i] and len(self._player_cards[i]) != 2:
+        if hand.double and hand.num_cards() != 2:
             raise ValueError("Cannot hit more than once.")
-        self._player_cards[i].extend(self._deck.deal_cards(1))
-        self.record_player(i, hit=u', '.join(Deck.card_names(self._player_cards[i])),
-                           player_total=self.sum(self._player_cards[i]))
+        hand.add_cards(self._deck.deal_cards(1))
+        self.record_player(i, hit=u', '.join(BlackjackDeck.card_names(hand.cards)),
+                           player_total=hand.sum())
 
     def on_turn_player(self, i):
-        if len(self._player_cards[i]) == 0:
+        hand = self.hands[i]
+        if hand.num_cards() == 0:
             return
         if self.is_game_over_player(i):
             raise ValueError("Game is already over (player %d)." % i)
-        if self._wagers[i] == 0:
+        if hand.wager == 0:
             raise ValueError("No bet.")
-        if len(self._player_cards[i]) == 0:
+        if hand.num_cards() == 0:
             raise ValueError("No cards.")
 
     def on_turn_over(self):
@@ -85,20 +82,22 @@ class BlackJack(Game):
         if self.turn == 0:
             return
 
-        dealer_sum = self.sum(self._player_cards[-1])
+        dealer_sum = self.hands[self.dealer_index].sum()
 
         for i in range(self._num_players - 1):
-            player_sum = self.sum(self._player_cards[i])
+            hand = self.hands[i]
+            player_sum = hand.sum()
             if player_sum > 21:
-                self._record_game_over_player(i, -self._wagers[i], message="Player busts.",)
+                self._record_game_over_player(i, -hand.wager, message="Player busts.",)
                 continue
 
-            if player_sum == 21 and len(self._player_cards[i]) == 2 and dealer_sum != 21:
-                self._record_game_over_player(i, 1.5 * self._wagers[i], message="Blackjack!")
+            if player_sum == 21 and hand.num_cards() == 2 and dealer_sum != 21:
+                mult = 1.5 if not hand.split else 1.0
+                self._record_game_over_player(i, mult * hand.wager, message="Blackjack!")
                 continue
 
             if dealer_sum > 21:
-                self._record_game_over_player(i, self._wagers[i], message="Dealer busts.")
+                self._record_game_over_player(i, hand.wager, message="Dealer busts.")
                 continue
 
             if player_sum == dealer_sum:
@@ -106,13 +105,13 @@ class BlackJack(Game):
                 continue
 
             if player_sum > dealer_sum:
-                self._record_game_over_player(i, self._wagers[i])
+                self._record_game_over_player(i, hand.wager)
                 continue
 
-            self._record_game_over_player(i, -self._wagers[i])
+            self._record_game_over_player(i, -hand.wager)
 
         # Dealer game over when all players are over
-        self.set_game_over_player(-1)
+        self.set_game_over_player(self.dealer_index)
 
     def _record_game_over_player(self, i, delta, **kwargs):
         if self.is_game_over_player(i):
@@ -128,9 +127,27 @@ class BlackJack(Game):
         self.set_game_over_player(i)
 
 
+class Hand(object):
+    def __init__(self, player_number):
+        self.player_number = player_number
+        self.cards = []
+        self.wager = 0
+        self.double = False
+        self.split = False
+
+    def add_cards(self, cards):
+        self.cards.extend(cards)
+
+    def sum(self):
+        return BlackjackDeck.sum(self.cards)
+
+    def num_cards(self):
+        return len(self.cards)
+
+
 class DealerStrategy(object):
     """
-    Default player strategy.  Bet $1 per play.
+    Dealer (house) strategy.
     """
     def __init__(self, game):
         self.game = game
@@ -143,7 +160,7 @@ class DealerStrategy(object):
                 return
 
             # Hit on soft 17
-            if self.game.sum(cards) < (18 if 1 in Deck.card_values(cards) else 17):
+            if BlackjackDeck.sum(cards) < (18 if 1 in BlackjackDeck.card_values(cards) else 17):
                 self.game.hit()
                 continue
 
@@ -161,9 +178,9 @@ class BasicStrategy(object):
                 self.game.bet(1)
                 return
 
-            total = self.game.sum(cards)
-            dealer_card = Deck.card_value(self.game.get_dealer_card())
-            if 1 in Deck.card_values(cards):
+            total = BlackjackDeck.sum(cards)
+            dealer_card = BlackjackDeck.card_value(self.game.get_dealer_card())
+            if 1 in BlackjackDeck.card_values(cards):
                 if total >= 19:
                     return
 
