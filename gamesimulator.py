@@ -158,6 +158,16 @@ class GameProxy(object):
         if type(value) != MethodType:
             raise AttributeError("Cannot access %r type game attributes." % type(value))
         if name.endswith('_player'):
-            value = partial(value, self.i)
+            value = partial(self._stub, name, original_name)
         self.memo[original_name] = value
         return value
+
+    def _stub(self, method_name, original_name, *args, **kwargs):
+        method = getattr(self.game, method_name)
+        if len(args) == 1:
+            d = dict(kwargs)
+            d[original_name] = args[0]
+            self.game.record_player(self.i, **d)
+        else:
+            self.game.record_player(self.i, do=original_name, **kwargs)
+        return method(self.i, *args, **kwargs)
