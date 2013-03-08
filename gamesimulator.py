@@ -24,6 +24,7 @@ class Game(object):
     def init_game(self):
         self._player_over = [False] * self._num_players
         self.turn = 0
+        self._current_player = 0
 
     def simulate(self, total_games=100, trials=1000):
         self._games_per_trial = total_games
@@ -51,19 +52,22 @@ class Game(object):
 
     def _play_game_inner(self):
         while True:
-            for i in xrange(self._num_players):
-                if self.is_game_over():
-                    return
-                if self.is_game_over_player(i):
-                    continue
-                self._players[i].play()
-                self.on_turn_player(i)
-            self.on_turn_over()
-            self.turn += 1
+            if self.is_game_over():
+                return
+            if not self.is_game_over_player(self._current_player):
+                self._players[self._current_player].play()
+                self.on_turn_player(self._current_player)
+            self.advance_player()
 
     def on_turn_player(self, i):
-        """ Called after each player's turn is over. """
         pass
+
+    def advance_player(self):
+        """ Called after each player's turn is over. """
+        self._current_player = (self._current_player + 1) % self._num_players
+        if self._current_player == 0:
+            self.on_turn_over()
+            self.turn += 1
 
     def on_turn_over(self):
         """ Called after all players have completed each turn. """
