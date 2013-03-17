@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+
 def hanoi(s, a, b, c):
     """
     Move from a to b, using c as intermediary.
@@ -26,4 +27,3 @@ def hanoi(s, a, b, c):
 
 if __name__ == '__main__':
     hanoi(range(1, 7), 'A', 'C', 'B')
-
