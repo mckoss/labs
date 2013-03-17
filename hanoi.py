@@ -1,15 +1,17 @@
 #!/usr/bin/env python
 
 
-def hanoi(s, a, b, c):
+class Hanoi(object):
     """
-    Move from a to b, using c as intermediary.
+    Tower of Hanoi simulator.
 
-    >>> hanoi([1, 2], 'A', 'C', 'B')
+    >>> h = Hanoi(2)
+    >>> h.solve()
     Move 1 from A to B.
     Move 2 from A to C.
     Move 1 from B to C.
-    >>> hanoi([1, 2, 3], 'A', 'C', 'B')
+    >>> h = Hanoi(3)
+    >>> h.solve()
     Move 1 from A to C.
     Move 2 from A to B.
     Move 1 from C to B.
@@ -18,12 +20,36 @@ def hanoi(s, a, b, c):
     Move 2 from B to C.
     Move 1 from A to C.
     """
-    if len(s) == 0:
-        return
-    hanoi(s[:-1], a, c, b)
-    print "Move %s from %s to %s." % (s[-1], a, b)
-    hanoi(s[:-1], c, b, a)
+    peg_names = ('A', 'B', 'C')
+
+    def __init__(self, size, display_steps=False):
+        self.pegs = [range(size, 0, -1), [], []]
+        self.display_steps = display_steps
+
+    def display(self):
+        print self.pegs
+
+    def move(self, from_peg, to_peg):
+        disc = self.pegs[from_peg].pop()
+        self.pegs[to_peg].append(disc)
+        if self.display_steps:
+            self.display()
+        else:
+            print "Move %s from %s to %s." % (disc,
+                                              self.peg_names[from_peg],
+                                              self.peg_names[to_peg])
+
+    def multi_move(self, num_discs, from_peg, to_peg, via_peg):
+        if num_discs == 0:
+            return
+        self.multi_move(num_discs - 1, from_peg, via_peg, to_peg)
+        self.move(from_peg, to_peg)
+        self.multi_move(num_discs - 1, via_peg, to_peg, from_peg)
+
+    def solve(self):
+        self.multi_move(len(self.pegs[0]), 0, 2, 1)
 
 
 if __name__ == '__main__':
-    hanoi(range(1, 7), 'A', 'C', 'B')
+    h = Hanoi(6, display_steps=True)
+    h.solve()
