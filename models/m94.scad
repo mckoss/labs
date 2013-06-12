@@ -5,6 +5,8 @@
 // by Mike Koss, 2013
 // License: CC-Attribution.
 
+use <write.scad>
+
 // Disk dimensions
 OD = 36.5;
 ID = OD - 2.0;
@@ -58,12 +60,27 @@ module disk(letters) {
         cylinder(h=H, r=ID / 2, $fa=1, $fs=1);
         cylinder(h=H, r=OD_A / 2, $fa=1, $fs=1);
       }
+
       // Axle hole
       translate([0, 0, -H/2]) scale([1, 1, 2])
         cylinder(h=H, r=ID_A / 2, $fa=1, $fs=1);
+
+      // Embossed letters
+      alpha(letters);
     }
+
     translate([0, 0, H])
       sprockets();
+  }
+}
+
+module alpha(letters) {
+  for (i = [0 : len(letters) - 1]) {
+    echo(letters[i]);
+    rotate(a=360 * (1 - i / 26), v=[0, 0, 1])
+      translate([OD / 2 - 0.5, 0, H / 2])
+      rotate(a=90, v=[0, 1, 0])
+      write(letters[i], h=3.0, t=1.0, center=true);
   }
 }
 
