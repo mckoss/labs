@@ -1,0 +1,5 @@
+for wheel in {1..25}
+do
+    echo Rendering wheel $wheel.
+    openscad -o m94-${wheel}.stl -D 'REPLICA = false'  -D "WHEEL = ${wheel}" m94.scad
+done

@@ -9,6 +9,7 @@ use <write.scad>
 
 // When true - copies details from the authentic M-94
 REPLICA = true;
+WHEEL = 17;
 
 wheels = ["ABCEIGDJFVUYMHTQKZOLRXSPWN",
           "ACDEHFIJKTLMOUVYGZNPQXRWSB",
@@ -131,4 +132,4 @@ module exploded_wheels() {
 }
 
 // Render the "special" wheel as a sample.
-wheel(17);
+wheel(WHEEL);
