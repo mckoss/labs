@@ -8,7 +8,7 @@
 use <write.scad>
 
 // When true - copies details from the authentic M-94
-REPLICA = true;
+REPLICA = false;
 WHEEL = 17;
 
 wheels = ["ABCEIGDJFVUYMHTQKZOLRXSPWN",
@@ -59,7 +59,11 @@ W_S = 2.46;
 W_P = 1.00;
 L_P = 2.00;
 H_P = H - 0.5;
+W_D = 1.50;
+R_D = R_S - W_D;
 
+// M-94 has a set of interlocking sprockets that engage a peg on the
+// underside of the wheel to the left.
 module sprockets() {
   union() {
     // Ring
@@ -83,6 +87,17 @@ module sprockets() {
   }
 }
 
+// An alternate interlocking mechanism more suitable for 3D printing
+module dimples(n, side) {
+  // Sprockets
+  for (i = [0 : n - 1]) {
+    rotate(a=360 * i / n, v=[0, 0, 1])
+      translate([R_D, 0, -sqrt(2) / 2 * side])
+      rotate([45, 0, 0])
+      cube(side);
+  }
+}
+
 module disk(letters) {
   union() {
     difference() {
@@ -101,12 +116,18 @@ module disk(letters) {
 
       // Etched letters
       alpha(letters);
+
+      if (!REPLICA) {
+        dimples(26, W_D);
+      }
     }
 
-    if (REPLICA) {
-      translate([0, 0, H])
+    translate([0, 0, H])
+      if (REPLICA) {
         sprockets();
-    }
+      } else {
+        dimples(2, W_D * 0.75);
+      }
   }
 }
 
