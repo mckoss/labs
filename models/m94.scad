@@ -1,6 +1,6 @@
 // M-94 Cipher Device Model
 //
-// Version 0.1
+// Version 0.2
 // All dimensions in mm.
 // by Mike Koss, 2013
 // License: CC-Attribution.
@@ -54,13 +54,21 @@ R_S = OD / 2 - 1.0;
 R_S2 = R_S - 2.8;
 R_S3 = R_S - 5.2;
 H_S = 1.0;
+
 // Sprocket and peg width
 W_S = 2.46;
 W_P = 1.00;
 L_P = 2.00;
 H_P = H - 0.5;
+
+// Dimple dimensions
 W_D = 1.50;
 R_D = R_S - W_D;
+
+// Alignment bar dimensions
+B_W = 6.5;
+B_H = 4.4;
+B_H2 = 2.3;
 
 // M-94 has a set of interlocking sprockets that engage a peg on the
 // underside of the wheel to the left.
@@ -98,7 +106,7 @@ module dimples(n, side) {
   }
 }
 
-module disk(letters) {
+module disk(letters, nibs=true) {
   union() {
     difference() {
       cylinder(h=H, r=OD / 2, $fa=1, $fs=1);
@@ -126,7 +134,9 @@ module disk(letters) {
       if (REPLICA) {
         sprockets();
       } else {
-        dimples(2, W_D * 0.75);
+        if (nibs) {
+          dimples(2, W_D * 0.75);
+        }
       }
   }
 }
@@ -142,14 +152,36 @@ module alpha(letters) {
 
 // Wheel 1 through 25
 module wheel(i) {
-  disk(wheels[i - 1]);
+  if (i == 0) {
+    bar();
+  } else {
+    disk(wheels[i - 1]);
+  }
 }
 
-module exploded_wheels() {
-  for (i = [1:25]) {
-    translate([0, 0, -2 * H * i])
-      wheel(i);
-  }
+// Alignment bar
+module bar() {
+  disk("", nibs=false);
+  translate([OD / 2 - .25, 0, H])
+    rotate(a=90, v=[0, 1, 0])
+    difference() {
+      polyhedron(
+        points=[ [0, -B_W / 2, 0], [0, 0, B_H], [0, B_W / 2, 0],
+                 [26 * H, -B_W / 2, 0], [26 * H, 0, B_H2], [26 * H, B_W / 2, 0]
+               ],
+        triangles=[ [0, 2, 1],
+                    [0, 1, 4], [4, 3, 0],
+                    [3, 4, 5],
+                    [5, 4, 1], [1, 2, 5],
+                    [0, 3, 5], [5, 2, 0] ]
+      );
+      union() {
+        for (i = [1 : 4]) {
+          translate([(5 * i + 1) * H, B_W / 2 - 1, -B_H])
+            cube([0.5, 2, 2 * B_H]);
+        }
+      }
+    }
 }
 
 // Render the "special" wheel as a sample.
