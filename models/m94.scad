@@ -8,7 +8,7 @@
 use <write.scad>
 
 // When true - copies details from the authentic M-94
-REPLICA = false;
+REPLICA = true;
 WHEEL = 17;
 
 wheels = ["ABCEIGDJFVUYMHTQKZOLRXSPWN",
@@ -36,21 +36,26 @@ wheels = ["ABCEIGDJFVUYMHTQKZOLRXSPWN",
           "AXKWREVDTUFOYHMLSIQNJCPGBZ",
           "AYJPXMVKBQWUGLOSTECHNZFRID",
           "AZDNBUHYFWJLVGRCQMPSOEXTKI"
-          ];
+         ];
 
 // Disk dimensions
 OD = 36.5;
-ID = OD - 2.0;
+WALL_WIDTH = REPLICA ? 1.0 : 3.0;
+R_O = OD / 2;
+R_I = R_O - WALL_WIDTH;
 H = 3.53;
 T = 1.0;
+
+LETTER_SIZE = 3.5;
 
 // Axle dimensions
 A = 6.15;
 ID_A = A + 0.1;
 OD_A = 12.67;
+R_A = OD_A / 2;
 
 // Sprocket dimensions
-R_S = OD / 2 - 1.0;
+R_S = R_O - 1.0;
 R_S2 = R_S - 2.8;
 R_S3 = R_S - 5.2;
 H_S = 1.0;
@@ -60,10 +65,6 @@ W_S = 2.46;
 W_P = 1.00;
 L_P = 2.00;
 H_P = H - 0.5;
-
-// Dimple dimensions
-W_D = 1.50;
-R_D = R_S - W_D;
 
 // Alignment bar dimensions
 B_W = 6.5;
@@ -90,33 +91,44 @@ module sprockets() {
 
     // Peg
     rotate(a=360/26/2, v=[0, 0, 1])
-      translate([ID / 2 - L_P, -W_P / 2, -H_P])
+      translate([R_I - L_P, -W_P / 2, -H_P])
       cube([L_P, W_P, H_P]);
   }
 }
 
-// An alternate interlocking mechanism more suitable for 3D printing
-module dimples(n, side) {
-  // Sprockets
-  for (i = [0 : n - 1]) {
+module spokes(n) {
+  for (i = [0 : n -1]) {
     rotate(a=360 * i / n, v=[0, 0, 1])
-      translate([R_D, 0, -sqrt(2) / 2 * side])
-      rotate([45, 0, 0])
-      cube(side);
+      translate([R_A - 1, -1, 0])
+      cube([R_I - R_A + 2, 2, H]);
   }
 }
 
-module disk(letters, nibs=true) {
+module basicDisk() {
+  difference() {
+    cylinder(h=H, r=R_O, $fa=1, $fs=1);
+
+    if (REPLICA) {
+      translate([0, 0, -T]) difference () {
+        cylinder(h=H, r=R_I, $fa=1, $fs=1);
+        cylinder(h=H, r=R_A, $fa=1, $fs=1);
+      }
+    } else {
+      translate([0, 0, -H/2]) scale([1, 1, 2]) difference () {
+        cylinder(h=H, r=R_I, $fa=1, $fs=1);
+        cylinder(h=H, r=R_A, $fa=1, $fs=1);
+      }
+    }
+  }
+  if (!REPLICA) {
+    spokes(3);
+  }
+}
+
+module disk(letters) {
   union() {
     difference() {
-      cylinder(h=H, r=OD / 2, $fa=1, $fs=1);
-
-      if (REPLICA) {
-        translate([0,0,-T]) difference () {
-          cylinder(h=H, r=ID / 2, $fa=1, $fs=1);
-          cylinder(h=H, r=OD_A / 2, $fa=1, $fs=1);
-        }
-      }
+      basicDisk();
 
       // Axle hole
       translate([0, 0, -H/2]) scale([1, 1, 2])
@@ -124,19 +136,11 @@ module disk(letters, nibs=true) {
 
       // Etched letters
       alpha(letters);
-
-      if (!REPLICA) {
-        dimples(26, W_D);
-      }
     }
 
     translate([0, 0, H])
       if (REPLICA) {
         sprockets();
-      } else {
-        if (nibs) {
-          dimples(2, W_D * 0.75);
-        }
       }
   }
 }
@@ -144,9 +148,9 @@ module disk(letters, nibs=true) {
 module alpha(letters) {
   for (i = [0 : len(letters) - 1]) {
     rotate(a=360 * (1 - i / 26), v=[0, 0, 1])
-      translate([OD / 2 - 0.5, 0, H / 2])
+      translate([R_I + WALL_WIDTH, 0, H / 2])
       rotate(a=90, v=[0, 1, 0])
-      write(letters[i], h=3.0, t=1.0, center=true);
+      write(letters[i], h=LETTER_SIZE, t=WALL_WIDTH, center=true);
   }
 }
 
@@ -161,8 +165,8 @@ module wheel(i) {
 
 // Alignment bar
 module bar() {
-  disk("", nibs=false);
-  translate([OD / 2 - .25, 0, H])
+  disk("");
+  translate([R_O - .25, 0, H])
     rotate(a=90, v=[0, 1, 0])
     difference() {
       polyhedron(
