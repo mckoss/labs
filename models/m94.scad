@@ -11,6 +11,9 @@ use <write.scad>
 REPLICA = false;
 WHEEL = 17;
 
+// Epsilon - to ensure walls not coincident
+E = 0.01;
+
 wheels = ["ABCEIGDJFVUYMHTQKZOLRXSPWN",
           "ACDEHFIJKTLMOUVYGZNPQXRWSB",
           "ADKOMJUBGEPHSCZINXFYQRTVWL",
@@ -46,7 +49,8 @@ R_I = R_O - WALL_WIDTH;
 H = 3.53;
 T = 1.0;
 
-LETTER_SIZE = 3.5;
+LETTER_SIZE = 3.75;
+LETTER_SHIFT = -0.10;
 
 // Axle dimensions
 A = 6.15;
@@ -148,9 +152,9 @@ module disk(letters) {
 module alpha(letters) {
   for (i = [0 : len(letters) - 1]) {
     rotate(a=360 * (1 - i / 26), v=[0, 0, 1])
-      translate([R_I + WALL_WIDTH, 0, H / 2])
+      translate([R_I + WALL_WIDTH / 2 + 1.0, 0, H / 2 + LETTER_SHIFT])
       rotate(a=90, v=[0, 1, 0])
-      write(letters[i], h=LETTER_SIZE, t=WALL_WIDTH, center=true);
+      write(letters[i], h=LETTER_SIZE, t=WALL_WIDTH, center=true, font="Letters.dxf");
   }
 }
 
