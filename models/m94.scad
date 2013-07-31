@@ -8,7 +8,7 @@
 use <write.scad>
 
 // When true - copies details from the authentic M-94
-REPLICA = true;
+REPLICA = false;
 WHEEL = 17;
 
 wheels = ["ABCEIGDJFVUYMHTQKZOLRXSPWN",
