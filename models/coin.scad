@@ -8,14 +8,33 @@ E = 0.01;
 
 
 module coin(
-       top_text="",      // Text of centered top text
-       bottom_text="",   // Text of centered bottom text
-       size=39,          // Diameter of coin
-       thickness=3.2,    // Total coin thickness
-       relief=0.5,       // Height of raised (relief) features
-       text_height=5.0,  // Height of a text letter
-       rim_width=0.5     // Rim edge thickness
-       ) {
+    top_text="",        // Text of centered top text
+    bottom_text="",     // Text of centered bottom text
+    rev_top_text="",    // Reverse top text
+    rev_bottom_text="", // Reverse bottom text
+    size=39,            // Diameter of coin
+    thickness=3.2,      // Total coin thickness
+    relief=0.5,         // Height of raised (relief) features
+    text_height=5.0,    // Height of a text letter
+    rim_width=0.5       // Rim edge thickness
+    ) {
+  translate([0, 0, relief])
+    cylinder(r=size / 2, h=thickness - 2 * relief, $fa=1);
+  translate([0, 0, thickness - relief])
+    face(top_text, bottom_text, size, relief, text_height, rim_width);
+  translate([0, 0, relief])
+    rotate(a=180, v=[1, 0, 0])
+    face(rev_top_text, rev_bottom_text, size, relief, text_height, rim_width);
+}
+
+module face(
+    top_text="",      // Text of centered top text
+    bottom_text="",   // Text of centered bottom text
+    size=39,          // Diameter of coin
+    relief=0.5,       // Height of raised (relief) features
+    text_height=5.0,  // Height of a text letter
+    rim_width=0.5     // Rim edge thickness
+    ) {
   ring(r=size / 2, thickness=rim_width, height=relief);
   arc_text(text=top_text, text_height=text_height, height=relief,
            r=size / 2 - rim_width * 3, top=true);
