@@ -46,8 +46,8 @@ module face(
   if (rim) {
     ring(r=size / 2, thickness=rim_width, height=relief);
   }
-  arc_text(top_text, size / 2 - rim_width * 3, text_height, relief, spacing, true);
-  arc_text(bottom_text, size / 2 - rim_width * 3, text_height, relief, spacing, false);
+  arc_text(top_text, size / 2 - rim_width * 4, text_height, relief, spacing, true);
+  arc_text(bottom_text, size / 2 - rim_width * 4, text_height, relief, spacing, false);
   if (image_file != "") {
     linear_extrude(height=relief, center=true, convexity=10)
       import_dxf(file=image_file, layer="none");
