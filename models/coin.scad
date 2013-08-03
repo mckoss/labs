@@ -64,4 +64,5 @@ module ring(r, thickness, height) {
   }
 }
 
-coin(top_text="HELLO", bottom_text="World");
+coin(top_text="HELLO", bottom_text="World",
+     rev_top_text="Oh yeah", rev_bottom_text="I went there");
