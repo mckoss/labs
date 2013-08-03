@@ -16,15 +16,16 @@ module coin(
     thickness=3.2,      // Total coin thickness
     relief=0.5,         // Height of raised (relief) features
     text_height=5.0,    // Height of a text letter
+    spacing=1.0,        // 1.0 == nominal spacing (ratio)
     rim_width=0.5       // Rim edge thickness
     ) {
   translate([0, 0, relief])
     cylinder(r=size / 2, h=thickness - 2 * relief, $fa=1);
   translate([0, 0, thickness - relief])
-    face(top_text, bottom_text, size, relief, text_height, rim_width);
+    face(top_text, bottom_text, size, relief, text_height, spacing, rim_width);
   translate([0, 0, relief])
     rotate(a=180, v=[1, 0, 0])
-    face(rev_top_text, rev_bottom_text, size, relief, text_height, rim_width);
+    face(rev_top_text, rev_bottom_text, size, relief, text_height, spacing, rim_width);
 }
 
 module face(
@@ -33,22 +34,28 @@ module face(
     size=39,          // Diameter of coin
     relief=0.5,       // Height of raised (relief) features
     text_height=5.0,  // Height of a text letter
+    spacing=1.0,      // 1.0 == nominal spacing (ratio)
     rim_width=0.5,    // Rim edge thickness
     image_file=""     // Optional face image (DXF file)
     ) {
   ring(r=size / 2, thickness=rim_width, height=relief);
-  arc_text(text=top_text, text_height=text_height, height=relief,
-           r=size / 2 - rim_width * 3, top=true);
-  arc_text(text=bottom_text, text_height=text_height, height=relief,
-           r=size / 2 - rim_width * 3, top=false);
+  arc_text(top_text, size / 2 - rim_width * 3, text_height, relief, spacing, true);
+  arc_text(bottom_text, size / 2 - rim_width * 3, text_height, relief, spacing, false);
   if (image_file != "") {
     linear_extrude(height=relief, center=true, convexity=10)
       import_dxf(file=image_file, layer="none");
   }
 }
 
-module arc_text(text, text_height, height, r, top=true) {
-  ang = 1.1 * atan2(text_height, r);
+module arc_text(
+    text,
+    r,
+    text_height=3.0,
+    height=1.0,
+    spacing=1.0,
+    top=true
+    ) {
+  ang = spacing * atan2(text_height, r);
   start_ang = (len(text) - 1) / 2 * ang;
   ang_sgn = top ? -1 : 1;
   offset_sgn = top ? 1 : -1;
