@@ -33,13 +33,18 @@ module face(
     size=39,          // Diameter of coin
     relief=0.5,       // Height of raised (relief) features
     text_height=5.0,  // Height of a text letter
-    rim_width=0.5     // Rim edge thickness
+    rim_width=0.5,    // Rim edge thickness
+    image_file=""     // Optional face image (DXF file)
     ) {
   ring(r=size / 2, thickness=rim_width, height=relief);
   arc_text(text=top_text, text_height=text_height, height=relief,
            r=size / 2 - rim_width * 3, top=true);
   arc_text(text=bottom_text, text_height=text_height, height=relief,
            r=size / 2 - rim_width * 3, top=false);
+  if (image_file != "") {
+    linear_extrude(height=relief, center=true, convexity=10)
+      import_dxf(file=image_file, layer="none");
+  }
 }
 
 module arc_text(text, text_height, height, r, top=true) {

@@ -26,5 +26,8 @@ bar.stl: m94.scad
 multi-%.stl: multi-print.scad $(WHEELS)
 	openscad -o $@ -D 'GROUP = $*' $<
 
+%.stl : %.scad
+	openscad -o $@ $<
+
 all-wheels.zip: $(WHEELS) bar.stl
 	zip all-wheels $^
