@@ -83,5 +83,8 @@ module ring(r, thickness, height) {
   }
 }
 
-coin(top_text="HELLO", bottom_text="World",
-     rev_top_text="Oh yeah", rev_bottom_text="I went there");
+coin(top_text="Hello, World!",
+     bottom_text="8-2-2013",
+     rev_top_text="Oh yeah",
+     rev_bottom_text="I went there",
+     spacing=0.8);
