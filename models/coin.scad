@@ -19,13 +19,17 @@ module coin(
     spacing=1.0,        // 1.0 == nominal spacing (ratio)
     rim_width=0.5       // Rim edge thickness
     ) {
-  translate([0, 0, relief])
-    cylinder(r=size / 2, h=thickness - 2 * relief, $fa=1);
-  translate([0, 0, thickness - relief])
-    face(top_text, bottom_text, size, relief, text_height, spacing, rim_width);
-  translate([0, 0, relief])
-    rotate(a=180, v=[1, 0, 0])
-    face(rev_top_text, rev_bottom_text, size, relief, text_height, spacing, rim_width);
+  difference() {
+    union() {
+      cylinder(r=size / 2, h=thickness - relief, $fa=1);
+      translate([0, 0, thickness - relief])
+        face(top_text, bottom_text, size, relief, text_height, spacing, rim_width);
+      }
+    translate([0, 0, relief])
+      rotate(a=180, v=[1, 0, 0])
+      face(rev_top_text, rev_bottom_text, size, relief + E, text_height, spacing, rim_width,
+           rim=false);
+  }
 }
 
 module face(
@@ -36,9 +40,12 @@ module face(
     text_height=5.0,  // Height of a text letter
     spacing=1.0,      // 1.0 == nominal spacing (ratio)
     rim_width=0.5,    // Rim edge thickness
+    rim=true,         // Boolean control drawing rim ridge
     image_file=""     // Optional face image (DXF file)
     ) {
-  ring(r=size / 2, thickness=rim_width, height=relief);
+  if (rim) {
+    ring(r=size / 2, thickness=rim_width, height=relief);
+  }
   arc_text(top_text, size / 2 - rim_width * 3, text_height, relief, spacing, true);
   arc_text(bottom_text, size / 2 - rim_width * 3, text_height, relief, spacing, false);
   if (image_file != "") {
