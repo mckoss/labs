@@ -6,8 +6,9 @@ CAP_HEIGHT = 0.4;
 HEMISPHERE = true;
 CAP_WALL = 2.0;
 SQUASH = 0.6;
+GAP = 0.4;
 
-part = "wedge"; // [wedge, cap]
+PART = "wedge"; // [wedge, cap]
 
 // Epsilon
 E = 0.01;
@@ -28,10 +29,10 @@ module wedge(size, inner, squash) {
   difference () {
     sphereoid(size, squash);
     translate([0, 0, size * squash / 2 - cap_height + E])
-      cap(inner, cap_height + E);
+      cap(inner, CAP_WALL, cap_height + E);
     translate([0, 0, cap_height + E])
       rotate(a=180, v=[0, 1, 0])
-      cap(inner, cap_height + E);
+      cap(inner, CAP_WALL, cap_height + E);
     translate([0, -size + inner / 2, -size / 2])
         cube(size + E);
     rotate(a=-60, v=[0, 0, 1])
@@ -43,10 +44,10 @@ module wedge(size, inner, squash) {
   }
 }
 
-module cap(size, height) {
-  ring(r=size/2, thickness=CAP_WALL, height=height);
-  translate([0, 0, height - CAP_WALL])
-    cylinder(r=size/2, h=CAP_WALL);
+module cap(size, thickness, height) {
+  ring(r=size/2, thickness=thickness, height=height);
+  translate([0, 0, height - thickness])
+    cylinder(r=size/2, h=thickness);
 }
 
 // Ring around origin (at z=0)
@@ -63,5 +64,5 @@ if (PART == "wedge") wedge(OUTER, INNER, SQUASH);
 if (PART == "cap") {
   translate([0, 0, OUTER * SQUASH / 2 * CAP_HEIGHT])
     rotate(a=180, v=[0, 1, 0])
-    cap(INNER, OUTER * SQUASH / 2 * CAP_HEIGHT);
+    cap(INNER - GAP, CAP_WALL - GAP, OUTER * SQUASH / 2 * CAP_HEIGHT - GAP);
 }
