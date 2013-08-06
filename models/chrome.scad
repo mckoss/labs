@@ -2,13 +2,15 @@
 
 OUTER = 40;
 INNER = OUTER / 3;
+CAP_HEIGHT = 0.4;
 HEMISPHERE = true;
-CAP_WALL = 3.0;
+CAP_WALL = 2.0;
+SQUASH = 0.6;
 
 // Epsilon
 E = 0.01;
 
-module sphereoid(size, squash) {
+module sphereoid(size, squash=SQUASH) {
   scale([1, 1, 0.6])
     difference() {
       sphere(r=size / 2);
@@ -20,11 +22,14 @@ module sphereoid(size, squash) {
 }
 
 module wedge(size, inner, squash) {
-  cap_height = size * squash * 0.3;
+  cap_height = size * squash / 2 * CAP_HEIGHT;
   difference () {
     sphereoid(size, squash);
     translate([0, 0, size * squash / 2 - cap_height + E])
-      cap(inner, cap_height);
+      cap(inner, cap_height + E);
+    translate([0, 0, cap_height + E])
+      rotate(a=180, v=[0, 1, 0])
+      cap(inner, cap_height + E);
     translate([0, -size + inner / 2, -size / 2])
         cube(size + E);
     rotate(a=-60, v=[0, 0, 1])
@@ -52,7 +57,10 @@ module ring(r, thickness, height) {
   }
 }
 
-wedge(OUTER, INNER, 0.6);
+wedge(OUTER, INNER, SQUASH);
 
-translate([OUTER / 2 * 1.2, 0, 0])
-  cap(INNER, OUTER * 0.6 * 0.3);
+/*
+translate([OUTER / 2 * 1.2, 0, OUTER * SQUASH / 2 * CAP_HEIGHT])
+  rotate(a=180, v=[0, 1, 0])
+  cap(INNER, OUTER * SQUASH / 2 * CAP_HEIGHT);
+*/
