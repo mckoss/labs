@@ -18,13 +18,16 @@ m94-%-repl.stl: m94.scad
 	openscad -o $@ -D 'REPLICA = true' -D 'WHEEL = $*' $<
 
 m94-%.stl: m94.scad
-	openscad -o $@ -D 'WHEEL = $*' m94.scad
+	openscad -o $@ -D 'WHEEL = $*' $<
 
 bar.stl: m94.scad
-	openscad -o $@ -D 'WHEEL = 0' m94.scad
+	openscad -o $@ -D 'WHEEL = 0' $<
 
 multi-%.stl: multi-print.scad $(WHEELS)
 	openscad -o $@ -D 'GROUP = $*' $<
+
+chrome-%.stl: chrome.scad
+	openscad -o $@ -D 'PART = "$*"' $<
 
 %.stl : %.scad
 	openscad -o $@ $<

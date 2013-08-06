@@ -7,6 +7,8 @@ HEMISPHERE = true;
 CAP_WALL = 2.0;
 SQUASH = 0.6;
 
+part = "wedge"; // [wedge, cap]
+
 // Epsilon
 E = 0.01;
 
@@ -57,10 +59,9 @@ module ring(r, thickness, height) {
   }
 }
 
-wedge(OUTER, INNER, SQUASH);
-
-/*
-translate([OUTER / 2 * 1.2, 0, OUTER * SQUASH / 2 * CAP_HEIGHT])
-  rotate(a=180, v=[0, 1, 0])
-  cap(INNER, OUTER * SQUASH / 2 * CAP_HEIGHT);
-*/
+if (PART == "wedge") wedge(OUTER, INNER, SQUASH);
+if (PART == "cap") {
+  translate([0, 0, OUTER * SQUASH / 2 * CAP_HEIGHT])
+    rotate(a=180, v=[0, 1, 0])
+    cap(INNER, OUTER * SQUASH / 2 * CAP_HEIGHT);
+}
