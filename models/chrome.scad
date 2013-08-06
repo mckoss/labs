@@ -1,12 +1,12 @@
 // Google Chrome Logo
 
-OUTER = 40;
-INNER = OUTER / 3;
-CAP_HEIGHT = 0.4;
+OUTER = 50;
+INNER = OUTER * 23 / 50;
+CAP_HEIGHT = 0.75;
 HEMISPHERE = true;
-CAP_WALL = 2.0;
+CAP_WALL = 3.0;
 SQUASH = 0.6;
-GAP = 0.4;
+GAP = 0.5;
 
 PART = "wedge"; // [wedge, cap]
 
@@ -25,13 +25,10 @@ module sphereoid(size, squash=SQUASH) {
 }
 
 module wedge(size, inner, squash) {
-  cap_height = size * squash / 2 * CAP_HEIGHT;
+  cap_height = size * squash * CAP_HEIGHT / (HEMISPHERE ? 2 : 1);
   difference () {
     sphereoid(size, squash);
     translate([0, 0, size * squash / 2 - cap_height + E])
-      cap(inner, CAP_WALL, cap_height + E);
-    translate([0, 0, cap_height + E])
-      rotate(a=180, v=[0, 1, 0])
       cap(inner, CAP_WALL, cap_height + E);
     translate([0, -size + inner / 2, -size / 2])
         cube(size + E);
