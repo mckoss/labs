@@ -11,7 +11,7 @@ SQUASH = 0.6;
 E = 0.01;
 
 module sphereoid(size, squash=SQUASH) {
-  scale([1, 1, 0.6])
+  scale([1, 1, squash])
     difference() {
       sphere(r=size / 2);
       if (HEMISPHERE) {
