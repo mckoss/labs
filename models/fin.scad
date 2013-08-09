@@ -1,4 +1,6 @@
-PART = "box"; // [eliptical, box]
+use <naca.scad>;
+
+PART = "foil"; // [eliptical, foil, box]
 
 TAB_X = 6.3;
 TAB_Y = 20.6;
@@ -34,6 +36,31 @@ module box_fin() {
    }
 }
 
+module foil_fin() {
+  rotate(a=-90, v=[0, 0, 1])
+    tabs();
+  translate([TAB_CENTER - FIN_BASE / 2, 0, 0])
+    naca(FIN_BASE, FIN_BASE * 2, taper=0.5, sweep_ang=15);
+  translate([FIN_BASE * 0.55, 0, FIN_BASE * 2 * 0.9])
+    union() {
+      winglet();
+      reflect_y() winglet();
+    }
+}
+
+module winglet() {
+  rotate(a=90, v=[1, 0, 0])
+    naca(FIN_BASE / 3, FIN_BASE / 3 * 2, taper=0.5, sweep_ang=15);
+}
+
+module reflect_y() {
+  multmatrix(m=[[1, 0, 0, 0],
+                [0, -1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1]])
+    child(0);
+}
+
 module via() {
   translate([0, 0, -2])
     rotate(a=45, v=[0, 1, 0])
@@ -65,8 +92,8 @@ module tab() {
    translate([-TAB_X / 2, 0, -TAB_Z])
      difference () {
        cube([TAB_X, TAB_Y, TAB_Z]);
-       translate([TAB_X / 2, TAB_Y / 2 - TAB_DENT / 2, 7])
-         rotate(a=45, v=[0, 1, 0])
+       translate([-2, TAB_Y / 2 - TAB_DENT / 2, 2])
+         rotate(a=-45, v=[0, 1, 0])
            cube(size=TAB_DENT);
     }
 }
@@ -85,4 +112,5 @@ module center_eliptical() {
 }
 
 if (PART == "eliptical") eliptical_fin();
+if (PART == "foil") foil_fin();
 if (PART == "box") box_fin();
