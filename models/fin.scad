@@ -2,9 +2,9 @@ use <naca.scad>;
 
 PART = "foil"; // [eliptical, foil, box]
 
-TAB_X = 6.3;
+TAB_X = 6.2;
 TAB_Y = 20.6;
-TAB_Z = 14.0;
+TAB_Z = 13.0;
 TAB_SPACING = 33.0;
 TAB_CENTER = TAB_Y + TAB_SPACING / 2;
 TAB_DENT = 7.0;
