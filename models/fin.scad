@@ -40,8 +40,8 @@ module foil_fin() {
   rotate(a=-90, v=[0, 0, 1])
     tabs();
   translate([TAB_CENTER - FIN_BASE / 2, 0, 0])
-    naca(FIN_BASE, FIN_BASE * 2, taper=0.5, sweep_ang=15);
-  translate([FIN_BASE * 0.55, 0, FIN_BASE * 2 * 0.9])
+    naca(FIN_BASE, FIN_BASE * 1.5, taper=0.75, sweep_ang=15);
+  translate([FIN_BASE * 0.5, 0, FIN_BASE * 1.5 * 0.7])
     union() {
       winglet();
       reflect_y() winglet();
@@ -49,8 +49,8 @@ module foil_fin() {
 }
 
 module winglet() {
-  rotate(a=90, v=[1, 0, 0])
-    naca(FIN_BASE / 3, FIN_BASE / 3 * 2, taper=0.5, sweep_ang=15);
+  rotate(a=45, v=[1, 0, 0])
+    naca(FIN_BASE * .4, FIN_BASE * .5, taper=0.75, sweep_ang=15);
 }
 
 module reflect_y() {
