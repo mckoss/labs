@@ -27,7 +27,7 @@ a = [[0.0, y(0.0)],
      [0.7, y(0.7)],
      [0.8, y(0.8)],
      [0.9, y(0.9)],
-     [1.0, y(1.0)],
+     [1.0, 0.0],
      [0.9, -y(0.9)],
      [0.8, -y(0.8)],
      [0.7, -y(0.7)],
@@ -48,6 +48,10 @@ module naca_2d(chord) {
     polygon(points=a);
 }
 
+module naca_25d(chord) {
+  linear_extrude(height=E) naca_2d(chord);
+}
+
 module reflect_z() {
   multmatrix(m=[[1, 0, 0, 0],
                 [0, 1, 0, 0],
@@ -64,12 +68,10 @@ module naca(chord, length, taper=1, sweep_ang=0) {
                  [0, 0, 0, 1]
                ])
    hull() {
-     linear_extrude(height=E)
-       naca_2d(chord);
+     naca_25d(chord);
      translate([0, 0, length - E])
        scale([taper, taper, 1])
-         linear_extrude(height=E)
-           naca_2d(chord);
+         naca_25d(chord);
   }
 }
 

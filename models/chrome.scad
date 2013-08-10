@@ -3,7 +3,7 @@
 OUTER = 50;
 INNER = OUTER * 23 / 50;
 CAP_HEIGHT = 0.75;
-HEMISPHERE = true;
+HEMISPHERE = false;
 CAP_WALL = 3.0;
 SQUASH = 0.6;
 GAP = 0.5;

@@ -15,6 +15,8 @@ FIN_WIDTH = 6.4;
 FIN_LENGTH = 100.0;
 FIN_RADIUS = 400.0;
 
+SUPPORT_BASE = 120;
+
 
 // Epsilon
 E = 0.01;
@@ -39,18 +41,38 @@ module box_fin() {
 module foil_fin() {
   rotate(a=-90, v=[0, 0, 1])
     tabs();
-  translate([TAB_CENTER - FIN_BASE / 2, 0, 0])
-    naca(FIN_BASE, FIN_BASE * 1.5, taper=0.75, sweep_ang=15);
-  translate([FIN_BASE * 0.5, 0, FIN_BASE * 1.5 * 0.7])
-    union() {
-      winglet();
-      reflect_y() winglet();
-    }
+  hull() {
+    translate([TAB_CENTER - SUPPORT_BASE / 2, 0, 0])
+      naca_25d(SUPPORT_BASE);
+    translate([TAB_CENTER - FIN_BASE / 2, 0, FIN_HEIGHT / 5])
+      naca_25d(FIN_BASE);
+  }
+  hull() {
+    translate([TAB_CENTER - FIN_BASE / 2, 0, FIN_HEIGHT / 5])
+      naca_25d(FIN_BASE);
+    translate([TAB_CENTER - FIN_BASE / 2 + FIN_BASE / 4, 0, FIN_HEIGHT])
+        naca_25d(FIN_BASE * 0.75);
+  }
+  wing_extension();
+  reflect_y() wing_extension();
+}
+
+module wing_extension() {
+  hull() {
+    translate([TAB_CENTER - FIN_BASE / 2 + FIN_BASE / 4, 0, FIN_HEIGHT])
+        naca_25d(FIN_BASE * 0.75);
+    translate([TAB_CENTER - FIN_BASE / 2 + FIN_BASE / 4, 0, FIN_HEIGHT])
+      rotate(a=45, v=[1, 0, 0])
+        naca_25d(FIN_BASE * 0.75);
+    translate([TAB_CENTER - FIN_BASE / 2 + FIN_BASE / 2, -25, FIN_HEIGHT + 25])
+      rotate(a=45, v=[1, 0, 0])
+        naca_25d(FIN_BASE * 0.50);
+  }
 }
 
 module winglet() {
   rotate(a=45, v=[1, 0, 0])
-    naca(FIN_BASE * .4, FIN_BASE * .5, taper=0.75, sweep_ang=15);
+    naca(FIN_BASE * .5, FIN_BASE * .5, taper=0.75, sweep_ang=15);
 }
 
 module reflect_y() {
@@ -82,19 +104,19 @@ module center_box(channels=2) {
 
 module tabs() {
   translate([0, 0, E]) {
-    tab();
+    tab(-1);
     translate([0, TAB_Y + TAB_SPACING, 0])
-      tab();
+      tab(1);
   }
 }
 
-module tab() {
-   translate([-TAB_X / 2, 0, -TAB_Z])
+module tab(dir=-1) {
+   translate([0, TAB_Y / 2, -TAB_Z / 2])
      difference () {
-       cube([TAB_X, TAB_Y, TAB_Z]);
-       translate([-2, TAB_Y / 2 - TAB_DENT / 2, 2])
-         rotate(a=-45, v=[0, 1, 0])
-           cube(size=TAB_DENT);
+       cube([TAB_X, TAB_Y, TAB_Z], center=true);
+         translate([dir * TAB_X / 3, 0, 0])
+           rotate(a=-45, v=[0, 1, 0])
+             cube(size=TAB_DENT, center=true);
     }
 }
 
