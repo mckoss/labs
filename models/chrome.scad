@@ -2,7 +2,7 @@
 
 use <Thread_Library.scad>
 
-OUTER = 100;
+OUTER = 50;
 INNER = 23 * OUTER / 50;
 CAP_RATIO = 0.60;
 HEMISPHERE = true;
