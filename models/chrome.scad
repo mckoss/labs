@@ -12,7 +12,7 @@ SQUASH = 1.0;
 GAP = 0.5;
 PITCH = 3 * OUTER / 50;
 
-PART = "blue"; // [red, yellow, green, blue]
+PART = "red"; // [red, yellow, green, blue]
 
 // Epsilon
 E = 0.01;
@@ -38,7 +38,8 @@ module wedge(size, inner, squash, part=0) {
       translate([0, 0, size * squash / 2 - cap_height - GAP - E])
         trapezoidThread(length=cap_height - CAP_WALL - 2 * GAP,
                         pitchRadius=inner / 2 - RING_WIDTH - CAP_WALL,
-                        pitch=PITCH);
+                        pitch=PITCH,
+                        clearance=0.2);
     }
     rotate(a=-120 * part, v=[0, 0, 1])
       cut_away(size, inner);
@@ -72,7 +73,8 @@ module cap(size, inner, squash) {
         trapezoidThreadNegativeSpace(length=cap_height - CAP_WALL - 2 * GAP,
                         pitchRadius=inner / 2 - RING_WIDTH - CAP_WALL,
                         countersunk=0,
-                        pitch=PITCH);
+                        pitch=PITCH,
+                        clearance=0.2);
       }
    }
 }
