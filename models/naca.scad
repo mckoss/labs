@@ -1,12 +1,29 @@
 // Parametric NACA 00xx airfoil.
 // See http://en.wikipedia.org/wiki/NACA_airfoil
 
-// Percentage of chord length at max width.
-t = 0.15;
+// preview[view:south, tilt:top diagonal]
 
+WINGS = 2; // [2:Dual Wings, 1:Single Wing]
+
+// Wing chord (leading edge to trailing edge)
+CHORD = 50;
+
+// Wing length (root to tip)
+LENGTH = 150;
+
+// Max wing thickness (as percentage of chord length)
+t = 15;
+
+// Scale proportion of wing tip vs. wing root
+TAPER = 0.5;
+
+// Sweep back angle of wing
+SWEEP_ANGLE = 20;
+
+/* [Hidden] */
 E = 0.01;
 
-function y(x) = t / 0.2 *
+function y(x) = t / 20.0 *
          (.2969 * sqrt(x)
           -0.1260 * x
           -0.3516 * pow(x, 2)
@@ -75,6 +92,8 @@ module naca(chord, length, taper=1, sweep_ang=0) {
   }
 }
 
-naca(50, 150, taper=0.5, sweep_ang=20);
-reflect_z()
-  naca(50, 150, taper=0.5, sweep_ang=20);
+naca(CHORD, LENGTH, taper=TAPER, sweep_ang=SWEEP_ANGLE);
+if (WINGS == 2) {
+  reflect_z()
+    naca(CHORD, LENGTH, taper=TAPER, sweep_ang=SWEEP_ANGLE);
+}
