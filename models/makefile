@@ -9,7 +9,13 @@ WHEELS=$(foreach n, $(NUMBERS), m94-$(n).stl)
 
 m94: $(WHEELS) bar.stl m94-14-repl.stl all-wheels.zip multi-1.stl multi-2.stl
 
-chrome: chrome-red.stl chrome-yellow.stl chrome-green.stl chrome-blue.stl
+SIZE=50
+
+COLORS=red yellow green blue
+HEMISPHERES=$(foreach color, $(COLORS), chrome-$(color)-$(SIZE).stl)
+SPHERES=$(foreach color, $(COLORS), chrome-$(color)-$(SIZE)s.stl)
+
+chrome: $(HEMISPHERES) $(SPHERES)
 
 clean:
 	rm -f $(m94) $(chrome)
@@ -26,8 +32,11 @@ bar.stl: m94.scad
 multi-%.stl: multi-print.scad $(WHEELS)
 	openscad -o $@ -D 'GROUP = $*' $<
 
-chrome-%.stl: chrome.scad
-	openscad -o $@ -D 'PART = "$*"' $<
+chrome-%-$(SIZE)s.stl: chrome.scad
+	openscad -o $@ -D 'OUTER = $(SIZE)' -D 'PART = "$*"' -D 'HEMISPHERE = false' $<
+
+chrome-%-$(SIZE).stl: chrome.scad
+	openscad -o $@ -D 'OUTER = $(SIZE)' -D 'PART = "$*"' -D 'HEMISPHERE = true' $<
 
 %.stl : %.scad
 	openscad -o $@ $<
