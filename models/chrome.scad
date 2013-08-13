@@ -20,7 +20,7 @@ E = 0.01;
 module sphereoid(size, squash=SQUASH) {
   scale([1, 1, squash])
     difference() {
-      sphere(r=size / 2);
+      sphere(r=size / 2, $fa=3);
       if (HEMISPHERE) {
         translate([0, 0, -size / 2])
           cube(size=size + E, center=true);
