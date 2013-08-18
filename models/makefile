@@ -38,6 +38,9 @@ chrome-%-$(SIZE)s.stl: chrome.scad
 chrome-%-$(SIZE).stl: chrome.scad
 	openscad -o $@ -D 'OUTER = $(SIZE)' -D 'PART = "$*"' -D 'HEMISPHERE = true' $<
 
+spool-%.stl: spool-shelf.scad
+	openscad -o $@ -D 'PART = "$*"' $<
+
 %.stl : %.scad
 	openscad -o $@ $<
 
