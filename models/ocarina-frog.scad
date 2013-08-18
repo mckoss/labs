@@ -6,7 +6,7 @@
 
 E = 0.01;
 
-PART = "lower"; // [upper, lower]
+PART = "test"; // [upper, lower, test]
 
 module ocarina() {
   union () {
@@ -17,6 +17,13 @@ module ocarina() {
           pipes_negative(0);
     }
     //frog_part(1);
+  }
+}
+
+module test() {
+  difference() {
+    cube([20, 38, 10], center=true);
+    # pipes_negative(0);
   }
 }
 
@@ -69,3 +76,4 @@ module pipes_negative(part) {
 
 if (PART == "upper") ocarina();
 if (PART == "lower") frog_part(1);
+if (PART == "test") test();
