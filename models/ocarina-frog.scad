@@ -14,7 +14,7 @@ module ocarina() {
         rotate(a=-20, v=[1, 0, 0])
           pipes_negative(0);
     }
-    //frog_part(1);
+    frog_part(1);
   }
 }
 

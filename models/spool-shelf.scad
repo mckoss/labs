@@ -5,6 +5,7 @@
 */
 
 E = 0.01;
+GAP = 0.25;
 
 SPOOLS = 3;
 
@@ -21,16 +22,22 @@ END_HEIGHT = 30;
 RAIL_WIDTH = END_WIDTH;
 END_DEPTH = RAIL_SEP + 2 * RAIL_WIDTH;
 
+RAIL_CENTER = RAIL_SEP / 2 + RAIL_WIDTH / 2;
+
+SUPPORT_WIDTH = END_WIDTH - 4;
+SUPPORT_HOLE = END_HEIGHT / 2;
+SUPPORT_HEIGHT = SPOOL_R * 2;
+
 module shelf() {
   shelf_end();
   translate([END_WIDTH + SHELF_WIDTH, 0, 0])
     shelf_end();
   difference() {
     union() {
-      translate([END_WIDTH, -RAIL_SEP / 2 - RAIL_WIDTH / 2, 0])
+      translate([END_WIDTH, -RAIL_CENTER, 0])
         rail();
-    translate([END_WIDTH, RAIL_SEP / 2 + RAIL_WIDTH / 2, 0])
-      rail();
+      translate([END_WIDTH, RAIL_CENTER, 0])
+        rail();
     }
     translate([END_WIDTH, 0, 0])
       spool(SHELF_WIDTH);
@@ -43,8 +50,14 @@ module rail() {
 }
 
 module shelf_end() {
-  translate([0, -END_DEPTH / 2, 0])
-    cube([END_WIDTH, END_DEPTH, END_HEIGHT]);
+  difference() {
+    translate([0, -END_DEPTH / 2, 0])
+      cube([END_WIDTH, END_DEPTH, END_HEIGHT]);
+  translate([END_WIDTH / 2, -RAIL_CENTER, END_HEIGHT])
+    cube([SUPPORT_WIDTH, SUPPORT_WIDTH, 2 * SUPPORT_HOLE], center=true);
+  translate([END_WIDTH / 2, RAIL_CENTER, END_HEIGHT])
+    cube([SUPPORT_WIDTH, SUPPORT_WIDTH, 2 * SUPPORT_HOLE], center=true);
+  }
 }
 
 module spool(width=SPOOL_W) {
