@@ -7,7 +7,7 @@
 E = 0.01;
 GAP = 0.1;
 
-PART = "shelf"; // [shelf, post]
+PART = "shelf"; // [shelf, post, post-mirror]
 
 SPOOLS = 1;
 
@@ -27,26 +27,35 @@ END_HEIGHT = SPOOL_CLEARANCE + SPOOL_R - sqrt(pow(SPOOL_R, 2) - pow(END_DEPTH / 
 RAIL_CENTER = RAIL_SEP / 2 + RAIL_WIDTH / 2;
 
 POST_WIDTH = END_WIDTH - 4;
-POST_HOLE = END_HEIGHT / 3;
+POST_HOLE = END_HEIGHT / 2 - 3;
 BRACE_DEPTH = POST_WIDTH / 2;
 BRACE_HEIGHT = SPOOL_R * 2 / 7;
 POST_HEIGHT = SPOOL_R * 2 + BRACE_HEIGHT + POST_HOLE - SPOOL_GAP;
 
 module shelf() {
-  shelf_end();
-  translate([2 * END_WIDTH + SHELF_WIDTH, 0, 0])
-    reflect_x()
-      shelf_end();
   difference() {
     union() {
+      shelf_end();
+      translate([2 * END_WIDTH + SHELF_WIDTH, 0, 0])
+        reflect_x()
+          shelf_end();
       translate([END_WIDTH, -RAIL_CENTER, 0])
         rail();
       translate([END_WIDTH, RAIL_CENTER, 0])
         rail();
     }
-    translate([END_WIDTH, 0, 0])
+    translate([END_WIDTH + E, 0, 0])
       spool(SHELF_WIDTH);
+    # translate([END_WIDTH / 2, -RAIL_CENTER, POST_HOLE / 2])
+      brace_slot();
   }
+  % spools();
+}
+
+module brace_slot() {
+  cube([POST_WIDTH + 2 * GAP, POST_WIDTH + 2 * GAP, POST_HOLE + 2 * E], center=true);
+  translate([POST_WIDTH / 2 + BRACE_HEIGHT / 2 + GAP, 0, 0])
+    cube([BRACE_HEIGHT + 2 * GAP, BRACE_DEPTH + 2 * GAP, POST_HOLE + 2 * E], center=true);
 }
 
 module rail() {
@@ -66,7 +75,8 @@ module shelf_end() {
   % translate([END_WIDTH / 2, -RAIL_CENTER, END_HEIGHT - POST_HOLE])
       post();
   % translate([END_WIDTH / 2, +RAIL_CENTER, END_HEIGHT - POST_HOLE])
-      post();
+      reflect_y()
+        post();
 }
 
 module spool(width=SPOOL_W) {
@@ -85,8 +95,12 @@ module spools() {
 module post() {
   translate([0, 0, POST_HEIGHT / 2])
     cube([POST_WIDTH, POST_WIDTH, POST_HEIGHT], center=true);
-  translate([0, 0, POST_HEIGHT])
+  translate([POST_WIDTH / 2 - E, 0, POST_HEIGHT])
     brace();
+  rotate(a=90, v=[0, 0, 1])
+    translate([POST_WIDTH / 2 - E, (POST_WIDTH - BRACE_DEPTH) / 2, 0])
+      reflect_z()
+        brace();
 }
 
 module brace() {
@@ -103,12 +117,36 @@ module reflect_x() {
     child(0);
 }
 
-if (PART == "shelf") {
-  shelf();
-  spools();
+module reflect_y() {
+  multmatrix(m=[[1, 0, 0, 0],
+                [0, -1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1]])
+    child(0);
 }
-if (PART == "post") {
+
+module reflect_z() {
+  multmatrix(m=[[1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, -1, 0],
+                [0, 0, 0, 1]])
+    child(0);
+}
+
+module print_post() {
   translate([POST_HEIGHT / 2, 0, POST_WIDTH / 2])
     rotate(a=-90, v=[0, 1, 0])
       post();
+}
+
+if (PART == "shelf") {
+  shelf();
+}
+
+if (PART == "post") {
+  print_post();
+}
+
+if (PART == "post-mirror") {
+  reflect_y() print_post();
 }
