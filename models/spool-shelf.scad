@@ -5,7 +5,9 @@
 */
 
 E = 0.01;
-GAP = 0.25;
+GAP = 0.1;
+
+PART = "shelf"; // [shelf, post]
 
 SPOOLS = 1;
 
@@ -21,18 +23,20 @@ END_WIDTH = 10;
 RAIL_WIDTH = END_WIDTH;
 END_DEPTH = RAIL_SEP + 2 * RAIL_WIDTH;
 END_HEIGHT = SPOOL_CLEARANCE + SPOOL_R - sqrt(pow(SPOOL_R, 2) - pow(END_DEPTH / 2, 2));
-echo(END_HEIGHT);
 
 RAIL_CENTER = RAIL_SEP / 2 + RAIL_WIDTH / 2;
 
-SUPPORT_WIDTH = END_WIDTH - 4;
-SUPPORT_HOLE = END_HEIGHT / 2;
-SUPPORT_HEIGHT = SPOOL_R * 2;
+POST_WIDTH = END_WIDTH - 4;
+POST_HOLE = END_HEIGHT / 3;
+BRACE_DEPTH = POST_WIDTH / 2;
+BRACE_HEIGHT = SPOOL_R * 2 / 7;
+POST_HEIGHT = SPOOL_R * 2 + BRACE_HEIGHT + POST_HOLE - SPOOL_GAP;
 
 module shelf() {
   shelf_end();
-  translate([END_WIDTH + SHELF_WIDTH, 0, 0])
-    shelf_end();
+  translate([2 * END_WIDTH + SHELF_WIDTH, 0, 0])
+    reflect_x()
+      shelf_end();
   difference() {
     union() {
       translate([END_WIDTH, -RAIL_CENTER, 0])
@@ -55,10 +59,14 @@ module shelf_end() {
     translate([0, -END_DEPTH / 2, 0])
       cube([END_WIDTH, END_DEPTH, END_HEIGHT]);
   translate([END_WIDTH / 2, -RAIL_CENTER, END_HEIGHT])
-    cube([SUPPORT_WIDTH, SUPPORT_WIDTH, 2 * SUPPORT_HOLE], center=true);
+    cube([POST_WIDTH + 2 * GAP, POST_WIDTH + 2 * GAP, 2 * POST_HOLE], center=true);
   translate([END_WIDTH / 2, RAIL_CENTER, END_HEIGHT])
-    cube([SUPPORT_WIDTH, SUPPORT_WIDTH, 2 * SUPPORT_HOLE], center=true);
+    cube([POST_WIDTH + 2 * GAP, POST_WIDTH + 2 * GAP, 2 * POST_HOLE], center=true);
   }
+  % translate([END_WIDTH / 2, -RAIL_CENTER, END_HEIGHT - POST_HOLE])
+      post();
+  % translate([END_WIDTH / 2, +RAIL_CENTER, END_HEIGHT - POST_HOLE])
+      post();
 }
 
 module spool(width=SPOOL_W) {
@@ -74,6 +82,33 @@ module spools() {
   }
 }
 
+module post() {
+  translate([0, 0, POST_HEIGHT / 2])
+    cube([POST_WIDTH, POST_WIDTH, POST_HEIGHT], center=true);
+  translate([0, 0, POST_HEIGHT])
+    brace();
+}
 
-shelf();
-% spools();
+module brace() {
+  rotate(a=-90, v=[1, 0, 0])
+    linear_extrude(BRACE_DEPTH, center=true)
+      polygon([[0, 0], [BRACE_HEIGHT, 0], [0, BRACE_HEIGHT]]);
+}
+
+module reflect_x() {
+  multmatrix(m=[[-1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1]])
+    child(0);
+}
+
+if (PART == "shelf") {
+  shelf();
+  spools();
+}
+if (PART == "post") {
+  translate([POST_HEIGHT / 2, 0, POST_WIDTH / 2])
+    rotate(a=-90, v=[0, 1, 0])
+      post();
+}
