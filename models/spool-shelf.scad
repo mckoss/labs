@@ -7,7 +7,7 @@
 E = 0.01;
 GAP = 0.1;
 
-PART = "shelf"; // [shelf, post, post-mirror]
+PART = "shelf"; // [shelf, post, post-mirror, test-shelf]
 
 SPOOLS = 1;
 
@@ -67,9 +67,9 @@ module side_cutouts() {
 
 module post_cutout() {
   translate([0, 0, END_HEIGHT - POST_HOLE])
-     post();
+     post(negative=true);
   translate([0, 0, -POST_HEIGHT + POST_HOLE])
-    post();
+    post(negative=true);
 }
 
 module spools() {
@@ -86,21 +86,26 @@ module spool(width=SPOOL_W) {
       cylinder(r=SPOOL_R, h=width, $fa=3);
 }
 
-module post() {
+module post(negative=false) {
   translate([0, 0, POST_HEIGHT / 2])
     cube([POST_WIDTH, POST_WIDTH, POST_HEIGHT], center=true);
   translate([POST_WIDTH / 2 - E, 0, POST_HEIGHT])
-    brace();
+    brace(negative);
   rotate(a=90, v=[0, 0, 1])
     translate([POST_WIDTH / 2 - E, (POST_WIDTH - BRACE_DEPTH) / 2, 0])
       reflect_z()
-        brace();
+        brace(negative);
 }
 
-module brace() {
+module brace(negative=false) {
   rotate(a=-90, v=[1, 0, 0])
-    linear_extrude(BRACE_DEPTH, center=true)
-      polygon([[0, 0], [BRACE_HEIGHT, 0], [0, BRACE_HEIGHT]]);
+    if (negative) {
+      translate([0, 0, -BRACE_DEPTH / 2])
+        cube([BRACE_HEIGHT, BRACE_HEIGHT, BRACE_DEPTH]);
+    } else {
+      linear_extrude(BRACE_DEPTH, center=true)
+        polygon([[0, 0], [BRACE_HEIGHT, 0], [0, BRACE_HEIGHT]]);
+    }
 }
 
 module reflect_x() {
@@ -133,8 +138,20 @@ module print_post() {
       post();
 }
 
+module test_shelf() {
+  difference() {
+    shelf();
+    translate([60, 0, 0])
+      cube([150, 150, 80], center=true);
+  }
+}
+
 if (PART == "shelf") {
   shelf();
+}
+
+if (PART == "test-shelf") {
+  test_shelf();
 }
 
 if (PART == "post") {
