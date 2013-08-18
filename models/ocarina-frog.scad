@@ -2,6 +2,26 @@
    Frog Ocarina - by Mike Koss (August, 2013)
 
    Based on Treefrog model by MorenaP: http://www.thingiverse.com/thing:18479
+
+   Ocarina frequencies:
+      See http://ocarinaforest.com/info/physics/how-ocarinas-work-2/
+
+   f = c / (2 * pi) * sqrt(A/V/L)
+
+   where:
+      c = 340 m/s (speed of sound)
+      A = total area of holes
+      V = static volume
+      L = length of blow hole
+
+   f = 54,000 * sqrt(A/(VL));   - All units in mm.
+
+   Example:
+
+   A = 50 (mm2)
+   V = 50 * 50 * 100 = 25000 mm3;
+   L = 10 mm;
+   f = 54,000 * sqrt(50 / 250,000) = 54,000 * 0.014 = 764 Hz
 */
 
 E = 0.01;
