@@ -6,6 +6,8 @@
 
 E = 0.01;
 
+PART = "lower"; // [upper, lower]
+
 module ocarina() {
   union () {
     difference() {
@@ -14,7 +16,7 @@ module ocarina() {
         rotate(a=-20, v=[1, 0, 0])
           pipes_negative(0);
     }
-    frog_part(1);
+    //frog_part(1);
   }
 }
 
@@ -44,7 +46,7 @@ module frog_part(part) {
         cube([60, 60, 60], center=true);
     }
     if (part == 1) {
-      # translate([0, 0, SPLIT + 30 + E])
+      translate([0, 0, SPLIT + 30 + E])
         cube([60, 60, 60], center=true);
     }
   }
@@ -65,4 +67,5 @@ module pipes_negative(part) {
   }
 }
 
-ocarina();
+if (PART == "upper") ocarina();
+if (PART == "lower") frog_part(1);
