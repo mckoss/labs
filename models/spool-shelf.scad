@@ -5,7 +5,7 @@
 */
 
 E = 0.01;
-GAP = 0.2;
+GAP = 0.3;
 
 PART = "test-shelf"; // [shelf, post, post-mirror, test-shelf]
 
