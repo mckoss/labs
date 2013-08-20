@@ -60,10 +60,20 @@ spool-shelf-%.stl: spool-shelf.scad
 spool-%.stl: spool-shelf.scad
 	openscad -o $@ -D 'PART = "$*"' $<
 
+#
+# Yes and No sculpture
+# Inspired by Marcus Raetz
+# http://www.maricazottino.com/blog/yesno-sculpture-by-markus-raetz/
+#
+YES_FILES=yes-and-no-y.stl yes-and-no-e.stl yes-and-no-s.stl yes-and-no-all.stl
+yes-and-no: $(YES_FILES)
+
+yes-and-no-%.stl: yes-and-no.scad
+	openscad -o $@ -D 'PART = "$*"' $<
 
 # Generic stl file builder
 %.stl : %.scad
 	openscad -o $@ $<
 
 clean:
-	rm -f $(M94_FILES) $(CHROME_FILES) $(SHELF_FILES)
+	rm -f $(M94_FILES) $(CHROME_FILES) $(SHELF_FILES) $(YES_FILES)
