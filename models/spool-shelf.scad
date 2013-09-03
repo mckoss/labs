@@ -6,10 +6,12 @@
 
 E = 0.01;
 GAP = 0.3;
+$fa=3;
+$fs=1;
 
-PART = "test-shelf"; // [shelf, post, post-mirror, test-shelf]
+PART = "shelf"; // [shelf, post, post-mirror, test-shelf]
 
-SPOOLS = 1;
+SPOOLS = 3;
 
 SPOOL_R = 100;
 SPOOL_W = 75;
@@ -22,6 +24,9 @@ RAIL_SEP = SPOOL_R;
 END_WIDTH = 10;
 END_DEPTH = RAIL_SEP + 2 * END_WIDTH;
 END_HEIGHT = SPOOL_CLEARANCE + SPOOL_R - sqrt(pow(SPOOL_R, 2) - pow(END_DEPTH / 2, 2));
+
+GUIDE_HEIGHT= END_HEIGHT / 2;
+GUIDE_DIAMETER = 3;
 
 RAIL_CENTER = RAIL_SEP / 2 + END_WIDTH / 2;
 
@@ -41,6 +46,8 @@ module shelf() {
       reflect_x()
         side_cutouts();
     spool(SHELF_WIDTH - 2 * E);
+
+    guides();
   }
   % spools();
 }
@@ -74,6 +81,23 @@ module spools() {
     translate([i * (SPOOL_W + SPOOL_GAP), 0, 0])
       spool();
   }
+}
+
+module guides() {
+  translate([-((SPOOLS - 1) * (SPOOL_W + SPOOL_GAP)) / 2, 0, 0])
+  for (i = [0 : SPOOLS-1]) {
+    translate([i * (SPOOL_W + SPOOL_GAP), 0, 0])
+      guide();
+  }
+}
+
+module guide() {
+  translate([0, -RAIL_SEP / 2 + E, GUIDE_HEIGHT])
+    rotate(a=90, v=[1, 0, 0])
+      union() {
+        cylinder(r1=GUIDE_DIAMETER / 2 + 1, r2=GUIDE_DIAMETER / 2, h=3);
+        cylinder(r=GUIDE_DIAMETER / 2, h=END_WIDTH + 2 * E);
+      }
 }
 
 module spool(width=SPOOL_W) {
