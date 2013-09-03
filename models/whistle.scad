@@ -1,4 +1,6 @@
 E = 0.01;
+$fa = 3;
+$fs = 1;
 
 WIND_LENGTH = 41;
 WIND_WIDTH = 10;
@@ -15,23 +17,25 @@ module whistle(length=WIND_LENGTH,
               a=EXIT_ANGLE,
               b=EXIT_FLARE) {
         difference() {
-            translate([0, 0, -width / 2])
-                rotate(a=90, v=[0, 1, 0])
-                    difference() {
-                        cylinder(r=width, h=(length - E) * 2, center=true);
-                            translate([0, 0, length / 2])
-                                 cylinder(r=width - 2, h=length + E, center=true);
-                    }
+            pipe(length, width);
             fipple(length, width, height, gap, a, b);
     }
 }
 
-module fipple(length=WIND_LENGTH,
-              width=WIND_WIDTH,
-              height=WIND_HEIGHT,
-              gap=GAP_LENGTH,
-              a=EXIT_ANGLE,
-              b=EXIT_FLARE) {
+module pipe(length, width) {
+    translate([0, 0, -width / 2])
+        rotate(a=90, v=[0, 1, 0])
+            difference() {
+                cylinder(r=width, h=(length - E) * 2, center=true);
+                translate([0, 0, length / 2])
+                    cylinder(r=width / 2, h=length + E, center=true);
+                translate([width * 1.7, 0, -length])
+                    rotate(a=90, v=[1, 0, 0])
+                        cylinder(r=width * 2, h = width * 3, center=true);
+            }
+}
+
+module fipple(length, width, height, gap, a, b) {
     translate([-length / 2, 0 , 0])
         cube([length, width, height], center=true);
     translate([length / 4, 0, -height])
