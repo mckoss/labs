@@ -65,7 +65,7 @@ spool-%.stl: spool-shelf.scad
 # Inspired by Marcus Raetz
 # http://www.maricazottino.com/blog/yesno-sculpture-by-markus-raetz/
 #
-YES_FILES=yes-and-no-y.stl yes-and-no-e.stl yes-and-no-s.stl yes-and-no-all.stl
+YES_FILES=yes-and-no-build.stl yes-and-no-show.stl
 yes-and-no: $(YES_FILES)
 
 yes-and-no-%.stl: yes-and-no.scad
