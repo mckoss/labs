@@ -1,7 +1,5 @@
 use <spiff.scad>;
 
-PART = "all"; // [y, e, s, all]
-
 module y() {
   translate([0, -12, 0])
   intersection() {
@@ -34,33 +32,26 @@ intersection() {
 }
 }
 
-if (PART == "y") {
-   translate([0, 0, 10])
-   rotate(a=180, v=[0, 1, 0])
-     y();
+// Y
+translate([0, 0, 10])
+  rotate(a=180, v=[0, 1, 0])
+    y();
+
+// E
+translate([0, 0, -8])
+rotate(a=-90, v=[0, 1, 0])
+intersection() {
+  translate([8, -10, 0])
+    cube([5, 10, 10]);
+  es();
 }
 
-if (PART == "e") {
-  translate([0, 0, -8])
+
+// S
+  translate([0, 14, -14])
   rotate(a=-90, v=[0, 1, 0])
   intersection() {
-    # translate([8, -10, 0])
-      cube([5, 10, 10]);
-    es();
-  }
-}
-
-if (PART == "s") {
-//  translate([0, 0, -8])
-//  rotate(a=-90, v=[0, 1, 0])
-  intersection() {
-    # translate([14, -10, 0])
+    translate([14, -10, 0])
       cube([6, 10, 10]);
     es();
   }
-}
-
-if (PART == "all") {
-  y();
-  es();
-}
