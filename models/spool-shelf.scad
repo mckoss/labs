@@ -97,6 +97,8 @@ module guide() {
       union() {
         cylinder(r1=GUIDE_DIAMETER / 2 + 1, r2=GUIDE_DIAMETER / 2, h=3);
         cylinder(r=GUIDE_DIAMETER / 2, h=END_WIDTH + 2 * E);
+        translate([0, 0, END_WIDTH + 2 * E - 3])
+            cylinder(r1=GUIDE_DIAMETER / 2, r2=GUIDE_DIAMETER / 2 + 1, h=3);
       }
 }
 
