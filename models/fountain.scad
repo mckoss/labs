@@ -7,6 +7,9 @@ INNER = 50;
 WIDTH = 5;
 INSET = 0.8;
 
+PLAQUE_HEIGHT = 5;
+ETCH_DEPTH = 2;
+
 
 module fountain(height=1) {
   difference() {
@@ -23,4 +26,14 @@ module fountain(height=1) {
       cube([long - 2 * E, WIDTH, height], center=true);
 }
 
-fountain(10);
+module plaque() {
+  translate([0, 0, ETCH_DEPTH + E])
+  difference() {
+    translate([0, 0, -PLAQUE_HEIGHT / 2])
+      cube([OUTER * 1.3, OUTER * 1.3, PLAQUE_HEIGHT], center=true);
+   translate([0, 0, -ETCH_DEPTH + E])
+     fountain(ETCH_DEPTH);
+  }
+}
+
+plaque();
