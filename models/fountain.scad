@@ -81,6 +81,7 @@ module plaque() {
   for (p=[0:len(patterns) - 1]) {
     translate([p % 4 * interval, -floor(p / 4) * interval, 0])
       for (s=[0:len(patterns[p]) - 1]) {
+        base();
         fountain_part(WATER_HEIGHT, side=patterns[p][s][0], line=patterns[p][s][1], curve=patterns[p][s][2]);
       }
   }
