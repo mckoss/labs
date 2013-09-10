@@ -1,7 +1,7 @@
 $fa = 3;
 $fs = 1;
 
-E = 0.1;
+E = 0.4;
 OUTER = 100;
 INNER = 50;
 WIDTH = 5;
@@ -53,14 +53,29 @@ module base() {
 }
 
 module plaque() {
+  full = [[0, true, true], [1, true, true], [2, true, true], [3, true, true]];
+  circle = [[0, false, true], [1, false, true], [2, false, true], [3, false, true]];
+
   patterns=[
     [],
     [[0, true, true], [2, true, true]],
     [[1, true, true], [3, true, true]],
     [[0, true, false], [1, true, false], [2, true, false], [3, true, false]],
-    [[0, true, true], [1, true, true], [2, true, true], [3, true, true]],
+
+    full,
     [[1, true, false], [3, true, false]],
-    [[0, true, false], [1, true, false], [2, true, false], [3, true, false]]
+    [[0, true, false], [1, true, false], [2, true, false], [3, true, false]],
+    [[0, true, false], [2, true, false]],
+
+    circle,
+    [[0, false, true], [2, false, true], [3, false, true]],
+    circle,
+    [[1, false, true], [3, false, true]],
+
+    [[1, true, true], [2, true, true]],
+    full,
+    [[0, true, true], [3, true, true]],
+    circle
   ];
   interval = OUTER * 1.3 - E;
   for (p=[0:len(patterns) - 1]) {
