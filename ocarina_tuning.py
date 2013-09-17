@@ -50,7 +50,34 @@ def closest(value, array):
     return array[len(array) - 1]
 
 
+def low_bit(n):
+    """
+    Return value of lowest 1 bit in number.
+
+    >>> low_bit(0)
+    0
+    >>> low_bit(1)
+    1
+    >>> low_bit(2)
+    2
+    >>> low_bit(3)
+    1
+    >>> low_bit(12)
+    4
+    """
+    return n & ((n - 1) * 2)
+
+
 def pitches_from_holes(holes):
     """
     Relative pitches base on hole area - stated in terms of ratio to fipple opening.
+
+    Pitch proportional to sqrt(A) = sqrt(hole_area + 1)
     """
+    index = 0
+    while index < pow(2, holes):
+        bits = index
+        s = 1
+        while bits > 0:
+            low = bits & ((bits - 1) * 2)
+        index += 1
