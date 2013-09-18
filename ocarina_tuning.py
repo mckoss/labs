@@ -8,7 +8,7 @@
 # total area of open holes.
 #
 from pprint import pprint
-from math import log
+from math import log, sqrt
 
 STEP = pow(2.0, 1.0 / 12.0)
 CHROMATIC = [pow(STEP, i) for i in range(0, 12 + 1)]
@@ -65,19 +65,31 @@ def low_bit(n):
     >>> low_bit(12)
     4
     """
-    return n & ((n - 1) * 2)
+    return n & -n
 
 
 def pitches_from_holes(holes):
     """
-    Relative pitches base on hole area - stated in terms of ratio to fipple opening.
+    Relative pitches based on hole area - stated in terms of ratio to fipple opening.
 
     Pitch proportional to sqrt(A) = sqrt(hole_area + 1)
+
+    >>> pitches_from_holes((1,))
+    [1.0, 1.4142135623730951]
+    >>> pitches_from_holes((3,))
+    [1.0, 2.0]
+    >>> len(pitches_from_holes([1, 2, 3]))
+    8
     """
+    pitches = []
     index = 0
-    while index < pow(2, holes):
+    while index < pow(2, len(holes)):
         bits = index
         s = 1
-        while bits > 0:
-            low = bits & ((bits - 1) * 2)
+        for i in range(len(holes)):
+            if index & (1 << i):
+                s += holes[i]
+        pitches.append(sqrt(s))
         index += 1
+    pitches.sort()
+    return pitches
