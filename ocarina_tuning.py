@@ -8,7 +8,7 @@
 # total area of open holes.
 #
 from pprint import pprint
-from math import log, sqrt
+from math import log, sqrt, ceil
 
 STEP = pow(2.0, 1.0 / 12.0)
 CHROMATIC = [pow(STEP, i) for i in range(0, 12 + 1)]
@@ -50,24 +50,6 @@ def closest(value, array):
     return array[len(array) - 1]
 
 
-def low_bit(n):
-    """
-    Return value of lowest 1 bit in number.
-
-    >>> low_bit(0)
-    0
-    >>> low_bit(1)
-    1
-    >>> low_bit(2)
-    2
-    >>> low_bit(3)
-    1
-    >>> low_bit(12)
-    4
-    """
-    return n & -n
-
-
 def pitches_from_holes(holes):
     """
     Relative pitches based on hole area - stated in terms of ratio to fipple opening.
@@ -83,13 +65,37 @@ def pitches_from_holes(holes):
     """
     pitches = []
     index = 0
-    while index < pow(2, len(holes)):
-        bits = index
+    for index in xrange(pow(2, len(holes))):
         s = 1
         for i in range(len(holes)):
             if index & (1 << i):
                 s += holes[i]
         pitches.append(sqrt(s))
-        index += 1
     pitches.sort()
     return pitches
+
+
+def hole_sizes(num_holes, step_size, max_size):
+    steps = int(ceil(float(max_size) / step_size))
+    for index in xrange(pow(steps, num_holes - 1)):
+        value = index
+        min_value = 0.0
+        holes = []
+        for pos in xrange(num_holes - 1):
+            part = (value % steps + 1) * step_size
+            if part < min_value:
+                break
+            min_value = part
+            holes.append(part)
+            value = int(value / steps)
+        else:
+            holes.append(3.0 - sum(holes))
+            yield holes
+
+
+best_score = 999
+for holes in hole_sizes(5, 0.01, 1.0):
+    hole_score = score(pitches_from_holes(holes), CHROMATIC)
+    if hole_score < best_score:
+        best_score = hole_score
+        print holes, hole_score
