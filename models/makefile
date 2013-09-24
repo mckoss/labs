@@ -40,10 +40,10 @@ CHROME_FILES=$(HEMISPHERES) $(SPHERES)
 chrome: $(CHROME_FILES)
 
 chrome-%-$(SIZE)s.stl: chrome.scad
-	openscad -o $@ -D 'OUTER = $(SIZE)' -D 'PART = "$*"' -D 'HEMISPHERE = false' $<
+	openscad -o $@ -D 'OUTER = $(SIZE)' -D 'PART = "$*"' -D 'SPHERE_PORTION = 0.9' $<
 
 chrome-%-$(SIZE).stl: chrome.scad
-	openscad -o $@ -D 'OUTER = $(SIZE)' -D 'PART = "$*"' -D 'HEMISPHERE = true' $<
+	openscad -o $@ -D 'OUTER = $(SIZE)' -D 'PART = "$*"' -D 'SPHERE_PORTION = 0.5' $<
 
 
 #
