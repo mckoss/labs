@@ -29,7 +29,7 @@ module sphereoid(size, squash=SQUASH) {
     }
 }
 
-module wedge(size, inner, squash, part=0) {
+module wedge(size=OUTER, inner=INNER, squash=SQUASH, part=0) {
   cap_height = size * squash * CAP_RATIO * SPHERE_PORTION;
   difference() {
     sphereoid(size, squash);
@@ -58,7 +58,7 @@ module cut_away(size, inner) {
       cube(size + 2 * E);
 }
 
-module cap(size, inner, squash) {
+module cap(size=OUTER, inner=INNER, squash=SQUASH) {
   cap_height = size * squash * CAP_RATIO * SPHERE_PORTION;
   difference() {
     intersection() {
@@ -90,9 +90,7 @@ module ring(r, thickness, height) {
   }
 }
 
-if (PART == "red") wedge(OUTER, INNER, SQUASH, part=0);
-if (PART == "yellow") wedge(OUTER, INNER, SQUASH, part=1);
-if (PART == "green") rotate(a=-120, v=[0, 0, 1]) wedge(OUTER, INNER, SQUASH, part=2);
-if (PART == "blue") {
-  cap(OUTER, INNER, SQUASH);
-}
+if (PART == "red") wedge(part=0);
+if (PART == "yellow") wedge(part=1);
+if (PART == "green") rotate(a=-120, v=[0, 0, 1]) wedge(part=2);
+if (PART == "blue") cap();
