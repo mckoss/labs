@@ -29,7 +29,7 @@ all-wheels.zip: $(WHEELS) bar.stl
 
 
 #
-# 3D Chrome Logo
+# 3D Chrome Ball
 #
 SIZE=50
 COLORS=red yellow green blue
@@ -40,10 +40,20 @@ CHROME_FILES=$(HEMISPHERES) $(SPHERES)
 chrome: $(CHROME_FILES)
 
 chrome-%-$(SIZE)s.stl: chrome.scad
-	openscad -o $@ -D 'OUTER = $(SIZE)' -D 'PART = "$*"' -D 'HEMISPHERE = false' $<
+	openscad -o $@ -D 'OUTER = $(SIZE)' -D 'PART = "$*"' -D 'SPHERE_PORTION = 0.9' $<
 
 chrome-%-$(SIZE).stl: chrome.scad
-	openscad -o $@ -D 'OUTER = $(SIZE)' -D 'PART = "$*"' -D 'HEMISPHERE = true' $<
+	openscad -o $@ -D 'OUTER = $(SIZE)' -D 'PART = "$*"' -D 'SPHERE_PORTION = 0.5' $<
+
+#
+# GDG DevFest 2013 Chrome Ball
+#
+DEVFEST_FILES=$(foreach color, $(COLORS), devfest-$(color).stl)
+
+devfest: $(DEVFEST_FILES)
+
+devfest-%.stl: gdg-devfest.scad chrome.scad
+	openscad -o $@ -D 'PART = "$*"' -D 'SPHERE_PORTION = 0.9' $<
 
 
 #

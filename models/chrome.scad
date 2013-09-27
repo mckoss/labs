@@ -2,17 +2,18 @@
 
 use <Thread_Library.scad>
 
+PART = "green"; // [red, yellow, green, blue]
+
 OUTER = 50;
 INNER = 23 * OUTER / 50;
 CAP_RATIO = 0.60;
-HEMISPHERE = true;
+SPHERE_PORTION = 0.9;
 CAP_WALL = 3.0 * OUTER / 50;;
 RING_WIDTH = 2.0 * OUTER / 50;
 SQUASH = 1.0;
 GAP = 0.5;
+THREAD_CLEARANCE = 0.2;
 PITCH = 3 * OUTER / 50;
-
-PART = "red"; // [red, yellow, green, blue]
 
 // Epsilon
 E = 0.01;
@@ -21,15 +22,15 @@ module sphereoid(size, squash=SQUASH) {
   scale([1, 1, squash])
     difference() {
       sphere(r=size / 2, $fa=3);
-      if (HEMISPHERE) {
-        translate([0, 0, -size / 2])
+      if (SPHERE_PORTION < 1.0) {
+        translate([0, 0, -size * SPHERE_PORTION])
           cube(size=size + E, center=true);
       }
     }
 }
 
-module wedge(size, inner, squash, part=0) {
-  cap_height = size * squash * CAP_RATIO / (HEMISPHERE ? 2 : 1);
+module wedge(size=OUTER, inner=INNER, squash=SQUASH, part=0) {
+  cap_height = size * squash * CAP_RATIO * SPHERE_PORTION;
   difference() {
     sphereoid(size, squash);
     difference() {
@@ -39,7 +40,7 @@ module wedge(size, inner, squash, part=0) {
         trapezoidThread(length=cap_height - CAP_WALL - 2 * GAP,
                         pitchRadius=inner / 2 - RING_WIDTH - CAP_WALL,
                         pitch=PITCH,
-                        clearance=0.2);
+                        clearance=THREAD_CLEARANCE);
     }
     rotate(a=-120 * part, v=[0, 0, 1])
       cut_away(size, inner);
@@ -57,8 +58,8 @@ module cut_away(size, inner) {
       cube(size + 2 * E);
 }
 
-module cap(size, inner, squash) {
-  cap_height = size * squash * CAP_RATIO / (HEMISPHERE ? 2 : 1);
+module cap(size=OUTER, inner=INNER, squash=SQUASH) {
+  cap_height = size * squash * CAP_RATIO * SPHERE_PORTION;
   difference() {
     intersection() {
       sphereoid(size, squash);
@@ -74,7 +75,7 @@ module cap(size, inner, squash) {
                         pitchRadius=inner / 2 - RING_WIDTH - CAP_WALL,
                         countersunk=0,
                         pitch=PITCH,
-                        clearance=0.2);
+                        clearance=THREAD_CLEARANCE);
       }
    }
 }
@@ -89,9 +90,7 @@ module ring(r, thickness, height) {
   }
 }
 
-if (PART == "red") wedge(OUTER, INNER, SQUASH, part=0);
-if (PART == "yellow") wedge(OUTER, INNER, SQUASH, part=1);
-if (PART == "green") wedge(OUTER, INNER, SQUASH, part=2);
-if (PART == "blue") {
-  cap(OUTER, INNER, SQUASH);
-}
+if (PART == "red") wedge(part=0);
+if (PART == "yellow") wedge(part=1);
+if (PART == "green") rotate(a=-120, v=[0, 0, 1]) wedge(part=2);
+if (PART == "blue") cap();
