@@ -95,7 +95,10 @@ def hole_sizes(num_holes, step_size, max_size):
 
 best_score = 999
 for holes in hole_sizes(5, 0.01, 1.0):
-    hole_score = score(pitches_from_holes(holes), CHROMATIC)
+    hole_score = score(pitches_from_holes(holes), MAJOR)
     if hole_score < best_score:
         best_score = hole_score
+        best_holes = holes
         print holes, hole_score
+
+print fingerings(best_holes, MAJOR)
