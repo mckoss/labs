@@ -1,0 +1,26 @@
+<html ng-app>
+<head>
+<title>Test app.</title>
+<body>
+  <div class="container"
+       ng-controller="SimpleController">
+
+    <h3>Looping</h3>
+    <ul>
+      <li ng-repeat="cust in customers">
+        {{ $index + 1 }}. {{ cust.name }} ({{ cust.city }})</li>
+    </ul>
+  </div>
+<script src="angular.js"></script>
+<script>
+function SimpleController($scope) {
+  $scope.customers = [
+    {name: 'Dave Jones', city: 'Phoenix'},
+    {name: 'Jamie Riley', city: 'Atlanta'},
+    {name: 'Heedy Wahlin', city: 'Chandler'},
+    {name: 'Thomas Winter', city: 'Seattle'}
+  ];
+}
+</script>
+</body>
+</html>
