@@ -32,6 +32,7 @@ THICKNESS = 1.0;
 // Constants
 PI = 3.141592654;
 E = 0.01;
+SOUND = 54000;
 
 /* Create a Helmholtz oscillator with parameters in array:
 
@@ -43,6 +44,8 @@ module helmholtz(p) {
   v = p[0];
   l = p[1];
   a = p[2];
+
+  echo("Predicted frequency", SOUND * sqrt(a / v / l));
 
   r_body = cap_radius(v, TRUNCATE);
   r_body_outer = r_body + THICKNESS;
