@@ -7,9 +7,9 @@
 
    where:
       c = 340 m/s (speed of sound)
-      A = total area of holes
+      A = total cross-sectional area of hole(s)
       V = static volume
-      L = length of blow hole
+      L = length of "neck"
 
    f = 54,000 * sqrt(A/(VL));   - All units in mm.
 
@@ -27,24 +27,45 @@ $fs = 1;
 
 // Ratio of full sphere to print
 TRUNCATE = 0.9;
-SKIN = 1.0;
+THICKNESS = 1.0;
 
 // Constants
 PI = 3.141592654;
+E = 0.01;
 
+/* Create a Helmholtz oscillator with parameters in array:
+
+   p = [volume, length, area]
+
+   TODO: Should the cylinder volume be part of the total static volume?
+*/
 module helmholtz(p) {
   v = p[0];
   l = p[1];
   a = p[2];
-  r = cap_radius(v, TRUNCATE);
-  r_outer = r + SKIN;
+
+  r_body = cap_radius(v, TRUNCATE);
+  r_body_outer = r_body + THICKNESS;
+
+  top = 2 * r_body_outer * TRUNCATE;
+
+  r_neck = circle_radius(a);
+  r_neck_outer = r_neck + THICKNESS;
 
   difference() {
-    trunc_sphere(r_outer);
-    translate([0, 0, SKIN])
-      trunc_sphere(r);
-    cube([200, 200, 200]);
+    trunc_sphere(r_body_outer);
+    translate([0, 0, THICKNESS])
+      trunc_sphere(r_body);
+    translate([0, 0, top / 2])
+      cylinder(r=r_neck, h=top);
   }
+
+  translate([0, 0, top - THICKNESS])
+    difference() {
+      cylinder(r=r_neck_outer, h=l);
+      translate([0, 0, -E])
+        cylinder(r=r_neck, h=l + 2 * E);
+    }
 }
 
 module trunc_sphere(r) {
@@ -86,6 +107,10 @@ module grid_samples(samples, spacing=50) {
    Note full sphere volume is 4/3 PI R^3
 */
 function cap_radius(v, p) = pow(3 * v / (4 * PI * pow(p, 2) * (3 - 2 * p)), 1 / 3);
+
+// A = PI R^2
+// R = sqrt(A / PI)
+function circle_radius(a) = sqrt(a / PI);
 
 v_base = 20 * 20 * 20;
 grid_samples([[v_base, 20, 30], [v_base / 4, 20, 30], [v_base * 4, 20, 30]]);
