@@ -1,5 +1,5 @@
 /* ================================================================
-   difference.c - Difference Set generator.
+   difference.go - Difference Set generator.
 
    Calculate difference sets of various sizes - using threading library
    to maximize CPU cores in the search.
@@ -11,7 +11,6 @@
 
    Todo:
 
-   - Option to continue search from a pause point (not a required prefix)
    - Option to return all solutions (not just first found).
 `================================================================== */
 package main
@@ -21,6 +20,9 @@ import (
 	"fmt"
 	"strconv"
 	"os"
+	"math"
+	"sort"
+	"io"
 )
 
 const (
@@ -46,31 +48,97 @@ func main() {
 	if flag.NArg() >= 1 {
 		start, err = strconv.Atoi(flag.Arg(0))
 		if err != nil || start < minK || start > maxK {
-			fmt.Printf("'%s' is not a valid start number.\n", flag.Arg(0))
+			fmt.Printf("'%s' is not a valid start size.\n", flag.Arg(0))
 			usage()
 		}
 	}
 	if flag.NArg() >= 2 {
-
+		end, err = strconv.Atoi(flag.Arg(1))
+		if err != nil || end < start || end > maxK {
+			fmt.Printf("'%s' is not a valid ending size.\n", flag.Arg(0))
+			usage()
+		}		
 	}
+
 	fmt.Printf("Searching for difference sets between %d and %d elements.\n", start, end)
-	/*
-	       parser.add_argument("--start", default=3, type=int,
-	                       help="Starting point for size (k) of difference set search.")
-	   parser.add_argument("--end", default=103, type=int,
-	                       help="Ending point for size of difference set search.")
-	   parser.add_argument("--all", action="store_true",
-	                       help="Find all difference sets (does not stop a first solution.")
-	   parser.add_argument("prefix", default=[0, 1], type=int, nargs='*',
-	                       help="Search all solutions that have given prefix.")
-	   args = parser.parse_args()
-	*/
+	powers := primePowers(maxK)
+    for i := 0; i < len(powers); i++ {
+    	ds := newDiffSet(powers[i] + 1)
+
+        if (ds.k < start) {
+            continue;
+        }
+
+        if (ds.k > end) {
+            break;
+        }
+
+        ds.WriteInfo(os.Stderr)
+        ds.SearchNext()
+    }
 }
 
 func usage() {
-    fmt.Fprintf(os.Stderr, "Usage: difference [k-start] [k-end]]\n");
-    fmt.Fprintf(os.Stderr, "       difference [-c] [k] [prefix1 prefix 2 ...]\n");
-    fmt.Fprintf(os.Stderr, "Find difference sets of order k.\n\n");
+    fmt.Fprintf(os.Stderr, "Usage: difference [k-start] [k-end]]\n")
+    fmt.Fprintf(os.Stderr, "       difference [-c] [k] [prefix1 prefix 2 ...]\n")
+    fmt.Fprintf(os.Stderr, "Find difference sets of order k.\n\n")
     flag.PrintDefaults()
 	os.Exit(1)
 }
+
+type diffSet struct {
+	k int
+	v int
+	trials int
+	prefixSize int
+	targetDepth int
+	s []int
+	diffs []bool
+}
+
+func newDiffSet(k int) *diffSet {
+	v := k * (k - 1) + 1
+	return &diffSet{
+		k: k,
+		v: v,
+		s: make([]int, k),
+		diffs: make([]bool, v / 2),
+	}
+}
+
+func (ds *diffSet) WriteInfo(w io.Writer) {
+	fmt.Fprintf(w, "\nDifference set (k = %d, v = %d, lambda = 1):\n", ds.k, ds.v);
+}
+
+func (ds *diffSet) SearchNext() {
+	
+}
+
+// primePowers returns 1 and all prime powers less than or equal to max.
+func primePowers(max int) []int {
+	s := make([]bool, max)
+	powers := make([]int, 0)
+	sq := int(math.Sqrt(float64(max)))
+
+	powers = append(powers, 1)
+	for i := 2; i < max; i++ {
+		if (s[i]) {
+			continue
+		}
+		powers = append(powers, i)
+		if (i > sq) {
+			continue
+		}
+		for j := i * i; j < max; j += i {
+			s[j] = true
+		}
+		for power := i * i; power < max; power *= i {
+			powers = append(powers, power)
+		}
+	}
+
+	sort.Ints(powers)
+
+	return powers
+}
+
