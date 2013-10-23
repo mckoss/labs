@@ -117,30 +117,29 @@ const (
 
 type diffSet struct {
 	status      Status
-	k           int
-	v           int
-	trials      int
-	prefixSize  int
-	targetDepth int
-	current     int
-	low         int
-	s           []int
-	diffs       []bool
+	k           int    // Number of elements in set
+	v           int    // Modulus of differences (k * (k-1) + 1)
+	trials      int    // Number of trial so far
+	targetDepth int    // Stop executing when current <= targetDepth
+	current     int    // s[0:current] is current search prefix
+	low         int    // the largest i s.t. all diffs[i] == true
+	s           []int  // Provisional difference set values
+	diffs       []bool // Current differences covered by provisional set
 }
 
 func newDiffSet(k int, prefix []int) *diffSet {
 	v := k*(k-1) + 1
-	initial := make([]int, k)
-
-	for i := 0; i < len(prefix); i++ {
-		initial[i] = prefix[i]
-	}
 
 	ds := diffSet{
 		k:     k,
 		v:     v,
-		s:     initial,
 		diffs: make([]bool, v/2+1),
+	}
+
+	ds.s = make([]int, k)
+
+	for i := 0; i < len(prefix); i++ {
+		ds.s[i] = prefix[i]
 	}
 
 	ds.diffs[0] = true
@@ -163,23 +162,24 @@ func (ds *diffSet) WriteTrace(w io.Writer) {
 	}
 
 	var solvedString string
-	if ds.current == ds.k {
+	if ds.IsSolved() {
 		solvedString = " SOLVED"
 	}
 
-	fmt.Fprintf(w, "%s: (%d, %d) @%s: ", completeString, ds.k, ds.v, ds.trials)
-	fmt.Fprintf(w, "%d%v", ds.current, ds.s)
+	fmt.Fprintf(w, "%s: (%d, %d) @%d: ", completeString, ds.k, ds.v, ds.trials)
+	WriteInts(w, ds.s[0:ds.current])
 	fmt.Fprintf(w, " (low = %d)%s\n", ds.low, solvedString)
 }
 
 func (ds *diffSet) Find() {
+	ds.status = Running
 	ds.SearchNext(ds.s[ds.current-1] + ds.low + 1)
 }
 
 func (ds *diffSet) SearchNext(candidate int) {
 	for {
 		ds.WriteTrace(os.Stderr)
-		if ds.current == ds.targetDepth || ds.current == ds.k {
+		if ds.IsSolved() || ds.current == ds.targetDepth {
 			ds.status = Complete
 			return
 		}
@@ -199,8 +199,11 @@ func (ds *diffSet) SearchNext(candidate int) {
 	}
 }
 
+func (ds *diffSet) IsSolved() bool {
+	return ds.current == ds.k
+}
+
 func (ds *diffSet) push(a int) bool {
-	fmt.Fprintf(os.Stderr, "push %d\n", a)
 	if a >= ds.v {
 		return false
 	}
@@ -228,12 +231,9 @@ func (ds *diffSet) push(a int) bool {
 		}
 		ds.diffs[d] = true
 	}
-	fmt.Fprintf(os.Stderr, "len(s) = %d, current = %d, a = %d\n", len(ds.s), ds.current, a)
 	ds.s[ds.current] = a
 	ds.current++
-	fmt.Fprintf(os.Stderr, "len(s) = %d, current = %d, a = %d\n", len(ds.s), ds.current, a)
 
-	fmt.Fprintf(os.Stderr, "len(diffs) = %d\n", len(ds.diffs))
 	for ds.low < ds.v/2 && ds.diffs[ds.low+1] {
 		ds.low++
 	}
