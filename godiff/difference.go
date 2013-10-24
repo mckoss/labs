@@ -84,7 +84,7 @@ func main() {
 
 	powers := primePowers(maxK)
 	for i := 0; i < len(powers); i++ {
-		ds := newDiffSet(powers[0]+1, prefix)
+		ds := newDiffSet(powers[i]+1, prefix)
 
 		if ds.k < start {
 			continue
@@ -96,6 +96,7 @@ func main() {
 
 		ds.WriteInfo(os.Stderr)
 		ds.Find()
+		ds.WriteTrace(os.Stdout)
 	}
 }
 
@@ -178,7 +179,7 @@ func (ds *diffSet) Find() {
 
 func (ds *diffSet) SearchNext(candidate int) {
 	for {
-		ds.WriteTrace(os.Stderr)
+		// ds.WriteTrace(os.Stderr)
 		if ds.IsSolved() || ds.current == ds.targetDepth {
 			ds.status = Complete
 			return
@@ -203,9 +204,16 @@ func (ds *diffSet) IsSolved() bool {
 	return ds.current == ds.k
 }
 
-func (ds *diffSet) push(a int) bool {
+func (ds *diffSet) push(a int) (ok bool) {
+	/* Debug code
+	debugStatus := func() {
+		fmt.Fprintf(os.Stderr, "push(%d) -> %v\n", a, ok)
+	}
+	defer debugStatus()
+	*/
+
 	if a >= ds.v {
-		return false
+		return
 	}
 
 	for i := 0; i < ds.current; i++ {
@@ -218,7 +226,7 @@ func (ds *diffSet) push(a int) bool {
 		}
 		if ds.diffs[d] {
 			for j := 0; j < i; j++ {
-				d = a - ds.s[i]
+				d = a - ds.s[j]
 				if d < 0 {
 					d += ds.v
 				}
@@ -227,7 +235,7 @@ func (ds *diffSet) push(a int) bool {
 				}
 				ds.diffs[d] = false
 			}
-			return false
+			return
 		}
 		ds.diffs[d] = true
 	}
@@ -238,7 +246,8 @@ func (ds *diffSet) push(a int) bool {
 		ds.low++
 	}
 
-	return true
+	ok = true
+	return
 }
 
 func (ds *diffSet) pop() int {

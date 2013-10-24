@@ -56,7 +56,7 @@ func TestDiffSets_Find4(t *testing.T) {
 	expect(t, "status", ds.status, Complete)
 	expect(t, "k", ds.k, 4)
 	expect(t, "v", ds.v, 13)
-	expect(t, "trials", ds.trials, 52)
+	expect(t, "trials", ds.trials, 4)
 	expect(t, "targetDepth", ds.targetDepth, 0)
 	expect(t, "current", ds.current, 4)
 	expect(t, "s", ds.s, []int{0, 1, 3, 9})
