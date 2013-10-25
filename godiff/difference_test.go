@@ -30,7 +30,6 @@ func TestWriteInts(t *testing.T) {
 
 func TestDiffSets_new(t *testing.T) {
 	ds := newDiffSet(3, []int{0, 1})
-	expect(t, "status", ds.status, Idle)
 	expect(t, "k", ds.k, 3)
 	expect(t, "v", ds.v, 7)
 	expect(t, "trials", ds.trials, 0)
@@ -42,7 +41,6 @@ func TestDiffSets_new(t *testing.T) {
 func TestDiffSets_Find3(t *testing.T) {
 	ds := newDiffSet(3, []int{0, 1})
 	ds.Find()
-	expect(t, "status", ds.status, Complete)
 	expect(t, "k", ds.k, 3)
 	expect(t, "v", ds.v, 7)
 	expect(t, "trials", ds.trials, 1)
@@ -54,7 +52,6 @@ func TestDiffSets_Find3(t *testing.T) {
 func TestDiffSets_Find4(t *testing.T) {
 	ds := newDiffSet(4, []int{0, 1})
 	ds.Find()
-	expect(t, "status", ds.status, Complete)
 	expect(t, "k", ds.k, 4)
 	expect(t, "v", ds.v, 13)
 	expect(t, "trials", ds.trials, 4)
