@@ -62,10 +62,11 @@ func main() {
 
 	// <k> <prefix 0> <prefix 1> ...
 	if flag.NArg() > 2 {
+		end = start
 		for i := 1; i < flag.NArg(); i++ {
 			var p int
 
-			p, err = strconv.Atoi(flag.Arg(1))
+			p, err = strconv.Atoi(flag.Arg(i))
 			if err != nil || p < 0 || p > maxK {
 				fmt.Fprintf(os.Stderr, "'%s' is not a valid number.", flag.Arg(i))
 				usage()
