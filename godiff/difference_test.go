@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -60,6 +61,25 @@ func TestDiffSets_Find4(t *testing.T) {
 	expect(t, "targetDepth", ds.targetDepth, 0)
 	expect(t, "current", ds.current, 4)
 	expect(t, "s", ds.s, []int{0, 1, 3, 9})
+}
+
+func TestCommas(t *testing.T) {
+	commasTests := []struct {
+		value    int
+		expected string
+	}{
+		{0, "0"},
+		{1, "1"},
+		{12, "12"},
+		{123, "123"},
+		{1234, "1,234"},
+		{12345, "12,345"},
+		{123456, "123,456"},
+		{1234567, "1,234,567"},
+	}
+	for _, test := range commasTests {
+		expect(t, fmt.Sprintf("%d", test.value), commas(test.value), test.expected)
+	}
 }
 
 func expect(t *testing.T, what string, got, expected interface{}) {

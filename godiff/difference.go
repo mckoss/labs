@@ -21,6 +21,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"runtime"
 	"sort"
 	"strconv"
 )
@@ -82,19 +83,30 @@ func main() {
 	WriteInts(os.Stderr, prefix)
 	fmt.Fprintf(os.Stderr, "\n")
 
+	fmt.Fprintf(os.Stderr, "Running on %d CPUs.\n", runtime.NumCPU())
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
 	powers := primePowers(maxK)
 	for i := 0; i < len(powers); i++ {
-		ds := newDiffSet(powers[i]+1, prefix)
-
-		if ds.k < start {
+		k := powers[i] + 1
+		if k < start {
 			continue
 		}
 
-		if ds.k > end {
+		if k > end {
 			break
 		}
 
-		ds.WriteInfo(os.Stderr)
+		dsParent := newDiffSet(k, prefix)
+		dsParent.targetDepth = len(prefix) + 2
+		dsParent.Find()
+		dsParent.WriteInfo(os.Stderr)
+		if dsParent.IsSolved() {
+			dsParent.WriteTrace(os.Stdout)
+			continue
+		}
+
+		ds := newDiffSet(k, dsParent.s[0:dsParent.current])
 		ds.Find()
 		ds.WriteTrace(os.Stdout)
 	}
@@ -108,20 +120,11 @@ func usage() {
 	os.Exit(1)
 }
 
-type Status int
-
-const (
-	Idle Status = iota
-	Running
-	Complete
-)
-
 type diffSet struct {
-	status      Status
 	k           int    // Number of elements in set
 	v           int    // Modulus of differences (k * (k-1) + 1)
 	trials      int    // Number of trial so far
-	targetDepth int    // Stop executing when current <= targetDepth
+	targetDepth int    // Stop executing when current == targetDepth
 	current     int    // s[0:current] is current search prefix
 	low         int    // the largest i s.t. all diffs[i] == true
 	s           []int  // Provisional difference set values
@@ -157,23 +160,17 @@ func (ds *diffSet) WriteInfo(w io.Writer) {
 }
 
 func (ds *diffSet) WriteTrace(w io.Writer) {
-	var completeString string
-	if ds.status == Complete {
-		completeString = "*"
-	}
-
 	var solvedString string
 	if ds.IsSolved() {
 		solvedString = " SOLVED"
 	}
 
-	fmt.Fprintf(w, "%s: (%d, %d) @%d: ", completeString, ds.k, ds.v, ds.trials)
+	fmt.Fprintf(w, "(%d, %d) @%s: ", ds.k, ds.v, commas(ds.trials))
 	WriteInts(w, ds.s[0:ds.current])
 	fmt.Fprintf(w, " (low = %d)%s\n", ds.low, solvedString)
 }
 
 func (ds *diffSet) Find() {
-	ds.status = Running
 	ds.SearchNext(ds.s[ds.current-1] + ds.low + 1)
 }
 
@@ -181,7 +178,6 @@ func (ds *diffSet) SearchNext(candidate int) {
 	for {
 		// ds.WriteTrace(os.Stderr)
 		if ds.IsSolved() || ds.current == ds.targetDepth {
-			ds.status = Complete
 			return
 		}
 
@@ -304,4 +300,18 @@ func WriteInts(w io.Writer, a []int) {
 		fmt.Fprintf(w, "%s%d", sep, n)
 		sep = ", "
 	}
+}
+
+// commas converts integer to thousand-seperated string
+func commas(v int) string {
+	s := fmt.Sprintf("%d", v)
+	chars := len(s)
+	result := ""
+	for i, ch := range s {
+		result += string(ch)
+		if (chars-i)%3 == 1 && (chars-i) != 1 {
+			result += ","
+		}
+	}
+	return result
 }
