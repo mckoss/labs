@@ -89,7 +89,7 @@ func main() {
 	workQueue := make(chan diffSet)
 	results := make(chan diffSet)
 	for i := 0; i < maxWorkers; i++ {
-		go Worker(workQueue, results)
+		go Worker(i, workQueue, results)
 	}
 
 	powers := primePowers(maxK)
@@ -115,20 +115,16 @@ func main() {
 
 		working := 0
 		for {
-			for working < maxWorkers {
+			for working < maxWorkers && dsParent.current == dsParent.targetDepth {
 				ds := newDiffSet(k, dsParent.s[0:dsParent.current])
-				fmt.Fprintf(os.Stderr, "Worker: ")
-				ds.WriteTrace(os.Stderr)
-				p := dsParent.pop()
-				dsParent.WriteTrace(os.Stderr)
-				dsParent.SearchNext(p + 1)
-				fmt.Fprintf(os.Stderr, "pop = %d\nParent: ", p)
+				ds.targetDepth = dsParent.targetDepth - 1
+				dsParent.SearchNext(dsParent.pop() + 1)
 				workQueue <- *ds
 				working++
 			}
 			dsResult := <-results
 			working--
-			if dsResult.IsSolved() {
+			if dsResult.IsSolved() || working == 0 {
 				dsResult.WriteTrace(os.Stdout)
 				break
 			}
@@ -160,8 +156,10 @@ type diffSet struct {
 	diffs       []bool // Current differences covered by provisional set
 }
 
-func Worker(work <-chan diffSet, results chan<- diffSet) {
+func Worker(id int, work <-chan diffSet, results chan<- diffSet) {
 	for ds := range work {
+		fmt.Fprintf(os.Stderr, "%d: ", id)
+		ds.WriteTrace(os.Stderr)
 		ds.Find()
 		results <- ds
 	}
@@ -178,13 +176,9 @@ func newDiffSet(k int, prefix []int) *diffSet {
 
 	ds.s = make([]int, k)
 
-	for i := 0; i < len(prefix); i++ {
-		ds.s[i] = prefix[i]
-	}
-
 	ds.diffs[0] = true
 
-	for p := range prefix {
+	for _, p := range prefix {
 		ds.push(p)
 	}
 
