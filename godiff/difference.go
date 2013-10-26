@@ -265,6 +265,10 @@ func (ds *diffSet) SearchNext(candidate int) {
 
 		if candidate+(ds.low+1)*(ds.k-ds.current-1) >= ds.v-ds.low {
 			candidate = ds.pop() + 1
+			// Don't pop off the first two elements - wlg always 0 1
+			if ds.current == 1 {
+				return
+			}
 		}
 	}
 }
