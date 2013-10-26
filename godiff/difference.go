@@ -53,7 +53,7 @@ type workerConnection struct {
 func newWorkerConnection(id int) *workerConnection {
 	return &workerConnection{
 		id:        id,
-		workQueue: make(chan diffSet),
+		workQueue: make(chan diffSet, 1),
 		results:   make(chan diffSet),
 		workLevel: make(chan int),
 		status:    make(chan string),
@@ -142,24 +142,27 @@ func workManager(
 	sets, advance := setGenerator(start, end, prefix)
 
 	for {
-		select {
-		case worker := <-requests:
-			fmt.Fprintf(os.Stderr, "Connecting worker %d\n", worker.id)
-			go func(worker *workerConnection) {
-				ds := <-sets
-				worker.workQueue <- ds
+		worker := <-requests
+		fmt.Fprintf(os.Stderr, "Connecting worker %d\n", worker.id)
+		go func(worker *workerConnection) {
+			working := false
 
-				for {
-					select {
-					case result := <-worker.results:
-						advance()
-						result.WriteTrace(os.Stdout)
-					case status := <-worker.status:
-						fmt.Fprintf(os.Stderr, "Status: %s\n", status)
-					}
+			for {
+				if !working {
+					// workQueue has 1 buffer so no need to call async.
+					worker.workQueue <- <-sets
+					working = true
 				}
-			}(&worker)
-		}
+				select {
+				case result := <-worker.results:
+					working = false
+					advance()
+					result.WriteTrace(os.Stdout)
+				case status := <-worker.status:
+					fmt.Fprintf(os.Stderr, "Status: %s\n", status)
+				}
+			}
+		}(&worker)
 	}
 }
 
@@ -208,14 +211,16 @@ func worker(
 	requests chan<- workerConnection,
 ) {
 	conn := newWorkerConnection(id)
-	requests <- *conn
-	conn.status <- fmt.Sprintf("worker %d starting", id)
+	for {
+		requests <- *conn
+		conn.status <- fmt.Sprintf("worker %d starting", id)
 
-	for ds := range conn.workQueue {
-		fmt.Fprintf(os.Stderr, "%d: ", id)
-		ds.WriteTrace(os.Stderr)
-		ds.Find()
-		conn.results <- ds
+		for ds := range conn.workQueue {
+			fmt.Fprintf(os.Stderr, "%d: ", id)
+			ds.WriteTrace(os.Stderr)
+			ds.Find()
+			conn.results <- ds
+		}
 	}
 }
 
