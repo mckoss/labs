@@ -139,7 +139,7 @@ func workManager(
 	prefix []int,
 	requests <-chan workerConnection,
 ) {
-	sets := setGenerator(start, end, prefix)
+	sets, advance := setGenerator(start, end, prefix)
 
 	for {
 		select {
@@ -152,6 +152,7 @@ func workManager(
 				for {
 					select {
 					case result := <-worker.results:
+						advance()
 						result.WriteTrace(os.Stdout)
 					case status := <-worker.status:
 						fmt.Fprintf(os.Stderr, "Status: %s\n", status)
@@ -162,7 +163,8 @@ func workManager(
 	}
 }
 
-func setGenerator(start, end int, prefix []int) <-chan diffSet {
+func setGenerator(start, end int, prefix []int) (<-chan diffSet, func()) {
+	var advance bool
 	sets := make(chan diffSet)
 	go func() {
 		powers := primePowers(maxK)
@@ -180,6 +182,10 @@ func setGenerator(start, end int, prefix []int) <-chan diffSet {
 			dsParent.targetDepth = len(prefix) + 2
 			dsParent.Find()
 			for {
+				if advance {
+					advance = false
+					break
+				}
 				sets <- *newDiffSet(k, dsParent.s[0:dsParent.current])
 				if dsParent.current == k || dsParent.current != dsParent.targetDepth {
 					break
@@ -189,7 +195,12 @@ func setGenerator(start, end int, prefix []int) <-chan diffSet {
 		}
 		close(sets)
 	}()
-	return sets
+
+	// Generator controller function - kick to next k.
+	doAdvance := func() {
+		advance = true
+	}
+	return sets, doAdvance
 }
 
 func worker(

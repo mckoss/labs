@@ -136,7 +136,7 @@ func TestSetGenerator(t *testing.T) {
 		"(5, 21) @0: 0, 1, 15, 17 (low = 2)\n",
 		"(5, 21) @0: 0, 1, 16, 18 (low = 6)\n",
 	}
-	sets := setGenerator(2, 5, []int{0, 1})
+	sets, _ := setGenerator(2, 5, []int{0, 1})
 	for _, s := range expect {
 		set := <-sets
 		buf.Reset()
@@ -152,6 +152,40 @@ func TestSetGenerator(t *testing.T) {
 		set.WriteTrace(&buf)
 		if count > 1 || set.current != 1 || set.s[0] != 0 {
 			t.Errorf("Generating unexpected set: %q", buf.String())
+		}
+	}
+}
+
+func TestSetGeneratorAdvance(t *testing.T) {
+	var buf bytes.Buffer
+	expect := []string{
+		"(5, 21) @0: 0, 1, 3, 7 (low = 4)\n",
+		"(5, 21) @0: 0, 1, 3, 8 (low = 3)\n",
+		"(5, 21) @0: 0, 1, 3, 9 (low = 3)\n",
+		"(5, 21) @0: 0, 1, 3, 10 (low = 3)\n",
+		"(5, 21) @0: 0, 1, 3, 13 (low = 3)\n",
+		"(5, 21) @0: 0, 1, 3, 14 (low = 3)\n",
+		"(5, 21) @0: 0, 1, 3, 15 (low = 3)\n",
+		"(5, 21) @0: 0, 1, 3, 16 (low = 3)\n",
+		"(5, 21) @0: 0, 1, 3, 17 (low = 5)\n",
+		"(5, 21) @0: 0, 1, 4, 6 (low = 6)\n",
+		"(5, 21) @0: 0, 1, 4, 9 (low = 1)\n",
+		"(5, 21) @0: 0, 1, 4, 10 (low = 1)\n",
+		"(5, 21) @0: 0, 1, 4, 12 (low = 1)\n",
+		"(5, 21) @0: 0, 1, 4, 14 (low = 1)\n",
+		// advance called here
+		"(6, 31) @0: 0, 1, 3, 7 (low = 4)\n",
+	}
+	sets, advance := setGenerator(5, 6, []int{0, 1})
+	for _, s := range expect {
+		set := <-sets
+		buf.Reset()
+		set.WriteTrace(&buf)
+		if buf.String() != s {
+			t.Errorf("Generated %q, but expected %q.\n", buf.String(), s)
+		}
+		if set.s[2] == 4 && set.s[3] == 14 {
+			advance()
 		}
 	}
 }
