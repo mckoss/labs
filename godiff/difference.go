@@ -31,6 +31,35 @@ const (
 	maxK = 103
 )
 
+type diffSet struct {
+	k           int    // Number of elements in set
+	v           int    // Modulus of differences (k * (k-1) + 1)
+	trials      int    // Number of trial so far
+	targetDepth int    // Stop executing when current == targetDepth
+	current     int    // s[0:current] is current search prefix
+	low         int    // the largest i s.t. all diffs[i] == true
+	s           []int  // Provisional difference set values
+	diffs       []bool // Current differences covered by provisional set
+}
+
+type workerConnection struct {
+	id        int
+	workQueue chan diffSet
+	results   chan diffSet
+	workLevel chan int
+	status    chan string
+}
+
+func newWorkerConnection(id int) *workerConnection {
+	return &workerConnection{
+		id:        id,
+		workQueue: make(chan diffSet),
+		results:   make(chan diffSet),
+		workLevel: make(chan int),
+		status:    make(chan string),
+	}
+}
+
 func main() {
 	var err error
 	var start int = 2
@@ -87,55 +116,14 @@ func main() {
 	maxWorkers := runtime.NumCPU()
 	fmt.Fprintf(os.Stderr, "Running on %d CPUs.\n", maxWorkers)
 	runtime.GOMAXPROCS(maxWorkers)
-	workQueue := make(chan diffSet)
-	results := make(chan diffSet)
+
+	requests := make(chan workerConnection)
+
 	for i := 0; i < maxWorkers; i++ {
-		go Worker(i, workQueue, results)
+		go worker(i, requests)
 	}
 
-	powers := primePowers(maxK)
-	for i := 0; i < len(powers); i++ {
-		k := powers[i] + 1
-		if k < start {
-			continue
-		}
-
-		if k > end {
-			break
-		}
-
-		dsParent := newDiffSet(k, prefix)
-		dsParent.targetDepth = len(prefix) + 2
-		dsParent.Find()
-		dsParent.WriteInfo(os.Stderr)
-		dsParent.WriteTrace(os.Stderr)
-		if dsParent.IsSolved() {
-			dsParent.WriteTrace(os.Stdout)
-			continue
-		}
-
-		working := 0
-		for {
-			for working < maxWorkers && dsParent.current == dsParent.targetDepth {
-				ds := newDiffSet(k, dsParent.s[0:dsParent.current])
-				ds.targetDepth = dsParent.targetDepth - 1
-				dsParent.SearchNext(dsParent.pop() + 1)
-				workQueue <- *ds
-				working++
-			}
-			dsResult := <-results
-			working--
-			if dsResult.IsSolved() || working == 0 {
-				dsResult.WriteTrace(os.Stdout)
-				break
-			}
-		}
-		for working != 0 {
-			dsResult := <-results
-			working--
-			dsResult.WriteTrace(os.Stderr)
-		}
-	}
+	workManager(start, end, prefix, requests)
 }
 
 func usage() {
@@ -146,23 +134,77 @@ func usage() {
 	os.Exit(1)
 }
 
-type diffSet struct {
-	k           int    // Number of elements in set
-	v           int    // Modulus of differences (k * (k-1) + 1)
-	trials      int    // Number of trial so far
-	targetDepth int    // Stop executing when current == targetDepth
-	current     int    // s[0:current] is current search prefix
-	low         int    // the largest i s.t. all diffs[i] == true
-	s           []int  // Provisional difference set values
-	diffs       []bool // Current differences covered by provisional set
+func workManager(
+	start, end int,
+	prefix []int,
+	requests <-chan workerConnection,
+) {
+	sets := setGenerator(start, end, prefix)
+
+	for {
+		select {
+		case worker := <-requests:
+			fmt.Fprintf(os.Stderr, "Connecting worker %d\n", worker.id)
+			go func(worker *workerConnection) {
+				ds := <-sets
+				worker.workQueue <- ds
+
+				for {
+					select {
+					case result := <-worker.results:
+						result.WriteTrace(os.Stdout)
+					case status := <-worker.status:
+						fmt.Fprintf(os.Stderr, "Status: %s\n", status)
+					}
+				}
+			}(&worker)
+		}
+	}
 }
 
-func Worker(id int, work <-chan diffSet, results chan<- diffSet) {
-	for ds := range work {
+func setGenerator(start, end int, prefix []int) <-chan diffSet {
+	sets := make(chan diffSet)
+	go func() {
+		powers := primePowers(maxK)
+		for i := 0; i < len(powers); i++ {
+			k := powers[i] + 1
+			if k < start {
+				continue
+			}
+
+			if k > end {
+				break
+			}
+
+			dsParent := newDiffSet(k, prefix)
+			dsParent.targetDepth = len(prefix) + 2
+			dsParent.Find()
+			for {
+				sets <- *newDiffSet(k, dsParent.s[0:dsParent.current])
+				if dsParent.current == k || dsParent.current != dsParent.targetDepth {
+					break
+				}
+				dsParent.SearchNext(dsParent.pop() + 1)
+			}
+		}
+		close(sets)
+	}()
+	return sets
+}
+
+func worker(
+	id int,
+	requests chan<- workerConnection,
+) {
+	conn := newWorkerConnection(id)
+	requests <- *conn
+	conn.status <- fmt.Sprintf("worker %d starting", id)
+
+	for ds := range conn.workQueue {
 		fmt.Fprintf(os.Stderr, "%d: ", id)
 		ds.WriteTrace(os.Stderr)
 		ds.Find()
-		results <- ds
+		conn.results <- ds
 	}
 }
 
@@ -232,11 +274,11 @@ func (ds *diffSet) IsSolved() bool {
 }
 
 func (ds *diffSet) push(a int) (ok bool) {
-	/* Debug code
-	debugStatus := func() {
-		fmt.Fprintf(os.Stderr, "push(%d) -> %v\n", a, ok)
-	}
-	defer debugStatus()
+	/*
+		debugStatus := func() {
+			fmt.Fprintf(os.Stderr, "push(%d) -> %v\n", a, ok)
+		}
+		defer debugStatus()
 	*/
 
 	if a >= ds.v {

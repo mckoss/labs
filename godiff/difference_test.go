@@ -79,6 +79,40 @@ func TestCommas(t *testing.T) {
 	}
 }
 
+func TestSetGenerator(t *testing.T) {
+	var buf bytes.Buffer
+	expect := []string{
+		"(2, 3) @0: 0, 1 (low = 1) SOLVED\n",
+		"(3, 7) @0: 0, 1, 3 (low = 3) SOLVED\n",
+		"(4, 13) @0: 0, 1, 3, 9 (low = 6) SOLVED\n",
+		"(5, 21) @0: 0, 1, 3, 7 (low = 4)\n",
+		"(5, 21) @0: 0, 1, 3, 8 (low = 3)\n",
+		"(5, 21) @0: 0, 1, 3, 9 (low = 3)\n",
+		"(5, 21) @0: 0, 1, 3, 10 (low = 3)\n",
+		"(5, 21) @0: 0, 1, 3, 13 (low = 3)\n",
+		"(5, 21) @0: 0, 1, 3, 14 (low = 3)\n",
+		"(5, 21) @0: 0, 1, 3, 15 (low = 3)\n",
+		"(5, 21) @0: 0, 1, 3, 16 (low = 3)\n",
+		"(5, 21) @0: 0, 1, 3, 17 (low = 5)\n",
+	}
+	sets := setGenerator(2, 5, []int{0, 1})
+	for _, s := range expect {
+		set := <-sets
+		buf.Reset()
+		set.WriteTrace(&buf)
+		if buf.String() != s {
+			t.Errorf("Generated %q, but expected %q.\n", buf.String(), s)
+		}
+	}
+	for set := range sets {
+		buf.Reset()
+		set.WriteTrace(&buf)
+		if set.s[0] != 0 || set.s[1] != 1 {
+			t.Errorf("Generating non-canonical sets: %q", buf.String())
+		}
+	}
+}
+
 func expect(t *testing.T, what string, got, expected interface{}) {
 	if !reflect.DeepEqual(got, expected) {
 		t.Errorf("Expected %s == %v but got %v.\n", what, expected, got)
