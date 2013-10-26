@@ -140,7 +140,7 @@ func workManager(
 	prefix []int,
 	requests <-chan workerConnection,
 ) {
-	sets, advance := setGenerator(start, end, prefix)
+	sets, _ := setGenerator(start, end, prefix)
 
 	traces := make(chan string, 1)
 	results := make(chan string, 1)
@@ -177,13 +177,13 @@ func workManager(
 					var buf bytes.Buffer
 
 					working = false
-					advance()
 
 					fmt.Fprintf(&buf, "Finished(%d): ", worker.id)
 					result.WriteTrace(&buf)
 					traces <- buf.String()
 
 					if result.IsSolved() {
+						// advance()
 						buf.Reset()
 						result.WriteTrace(&buf)
 						results <- buf.String()
