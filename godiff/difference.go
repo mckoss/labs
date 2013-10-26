@@ -16,6 +16,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -141,25 +142,58 @@ func workManager(
 ) {
 	sets, advance := setGenerator(start, end, prefix)
 
-	for {
-		worker := <-requests
+	traces := make(chan string, 1)
+	results := make(chan string, 1)
+
+	// Syncronize trace output
+	go func() {
+		for trace := range traces {
+			fmt.Fprintln(os.Stderr, trace)
+		}
+	}()
+
+	go func() {
+		for result := range results {
+			fmt.Fprintln(os.Stdout, result)
+		}
+	}()
+
+	for worker := range requests {
 		fmt.Fprintf(os.Stderr, "Connecting worker %d\n", worker.id)
 		go func(worker *workerConnection) {
 			working := false
 
 			for {
 				if !working {
-					// workQueue has 1 buffer so no need to call async.
-					worker.workQueue <- <-sets
 					working = true
+					ds := <-sets
+					if ds.k != 0 {
+						// workQueue has 1 buffer so no need to call async.
+						worker.workQueue <- ds
+					}
 				}
 				select {
 				case result := <-worker.results:
+					var buf bytes.Buffer
+
 					working = false
 					advance()
-					result.WriteTrace(os.Stdout)
+
+					fmt.Fprintf(&buf, "Finished(%d): ", worker.id)
+					result.WriteTrace(&buf)
+					traces <- buf.String()
+
+					if result.IsSolved() {
+						buf.Reset()
+						result.WriteTrace(&buf)
+						results <- buf.String()
+					}
+
 				case status := <-worker.status:
-					fmt.Fprintf(os.Stderr, "Status: %s\n", status)
+					var buf bytes.Buffer
+
+					fmt.Fprintf(&buf, "Status(%d): %s", worker.id, status)
+					traces <- buf.String()
 				}
 			}
 		}(&worker)
@@ -183,14 +217,24 @@ func setGenerator(start, end int, prefix []int) (<-chan diffSet, func()) {
 
 			dsParent := newDiffSet(k, prefix)
 			dsParent.targetDepth = len(prefix) + 2
+			if dsParent.targetDepth > dsParent.k {
+				dsParent.targetDepth = dsParent.k
+			}
 			dsParent.Find()
 			for {
 				if advance {
 					advance = false
 					break
 				}
-				sets <- *newDiffSet(k, dsParent.s[0:dsParent.current])
-				if dsParent.current == k || dsParent.current != dsParent.targetDepth {
+
+				dsCopy := *newDiffSet(k, dsParent.s[0:dsParent.current])
+				dsCopy.targetDepth = dsParent.targetDepth
+				if dsParent.current != dsParent.targetDepth ||
+					dsParent.s[1] != 1 {
+					break
+				}
+				sets <- dsCopy
+				if dsCopy.IsSolved() {
 					break
 				}
 				dsParent.SearchNext(dsParent.pop() + 1)
@@ -213,11 +257,13 @@ func worker(
 	conn := newWorkerConnection(id)
 	for {
 		requests <- *conn
-		conn.status <- fmt.Sprintf("worker %d starting", id)
+		conn.status <- fmt.Sprintf("Startup")
 
 		for ds := range conn.workQueue {
-			fmt.Fprintf(os.Stderr, "%d: ", id)
-			ds.WriteTrace(os.Stderr)
+			var buf bytes.Buffer
+			buf.WriteString("Begin ")
+			ds.WriteTrace(&buf)
+			conn.status <- buf.String()
 			ds.Find()
 			conn.results <- ds
 		}
@@ -238,7 +284,9 @@ func newDiffSet(k int, prefix []int) *diffSet {
 	ds.diffs[0] = true
 
 	for _, p := range prefix {
-		ds.push(p)
+		if !ds.push(p) {
+			return nil
+		}
 	}
 
 	return &ds
@@ -256,23 +304,32 @@ func (ds *diffSet) WriteTrace(w io.Writer) {
 
 	fmt.Fprintf(w, "(%d, %d) @%s: ", ds.k, ds.v, commas(ds.trials))
 	WriteInts(w, ds.s[0:ds.current])
-	fmt.Fprintf(w, " (low = %d)%s\n", ds.low, solvedString)
+	fmt.Fprintf(w, " (low = %d)%s", ds.low, solvedString)
 }
 
+// Find the targetDepth or solution with prefix of current set.
 func (ds *diffSet) Find() {
+	if ds.current <= 1 {
+		var buf bytes.Buffer
+		ds.WriteTrace(&buf)
+		panic(fmt.Sprintf("Illegal call to Find: %s", buf.String()))
+	}
 	ds.SearchNext(ds.s[ds.current-1] + ds.low + 1)
 }
 
 func (ds *diffSet) SearchNext(candidate int) {
 	for {
 		// ds.WriteTrace(os.Stderr)
-		if ds.IsSolved() || ds.current == ds.targetDepth {
+		if ds.IsSolved() {
 			return
 		}
 
 		ds.trials++
 
 		if ds.push(candidate) {
+			if ds.current == ds.targetDepth {
+				return
+			}
 			candidate += ds.low + 1
 			continue
 		}
@@ -281,10 +338,6 @@ func (ds *diffSet) SearchNext(candidate int) {
 
 		if candidate+(ds.low+1)*(ds.k-ds.current-1) >= ds.v-ds.low {
 			candidate = ds.pop() + 1
-			// Don't pop off the first two elements - wlg always 0 1
-			if ds.current == 1 {
-				return
-			}
 		}
 	}
 }
@@ -294,13 +347,10 @@ func (ds *diffSet) IsSolved() bool {
 }
 
 func (ds *diffSet) push(a int) (ok bool) {
-	/*
-		debugStatus := func() {
-			fmt.Fprintf(os.Stderr, "push(%d) -> %v\n", a, ok)
-		}
-		defer debugStatus()
-	*/
-
+	//debugStatus := func() {
+	//	fmt.Fprintf(os.Stderr, "push(%d) -> %v\n", a, ok)
+	//}
+	//defer debugStatus()
 	if a >= ds.v {
 		return
 	}
@@ -341,6 +391,9 @@ func (ds *diffSet) push(a int) (ok bool) {
 
 func (ds *diffSet) pop() int {
 	ds.current--
+	if ds.current < 0 {
+		panic("pop error")
+	}
 	a := ds.s[ds.current]
 	for i := 0; i < ds.current; i++ {
 		d := a - ds.s[i]
