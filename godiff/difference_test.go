@@ -179,7 +179,7 @@ func TestSetGeneratorAdvance(t *testing.T) {
 		// advance called here
 		"(6, 31) @0: 0, 1, 3, 7 (low = 4)",
 	}
-	sets, advance := setGenerator(5, 6, []int{0, 1})
+	sets, pass := setGenerator(5, 6, []int{0, 1})
 	for _, s := range expect {
 		set := <-sets
 		buf.Reset()
@@ -188,7 +188,7 @@ func TestSetGeneratorAdvance(t *testing.T) {
 			t.Errorf("Generated %q, but expected %q.\n", buf.String(), s)
 		}
 		if set.s[2] == 4 && set.s[3] == 14 {
-			advance()
+			pass(5)
 		}
 	}
 }

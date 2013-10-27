@@ -140,18 +140,16 @@ func workManager(
 	prefix []int,
 	requests <-chan workerConnection,
 ) {
-	sets, _ := setGenerator(start, end, prefix)
+	sets, pass := setGenerator(start, end, prefix)
 
+	// Syncronize trace and results output
 	traces := make(chan string, 1)
 	results := make(chan string, 1)
-
-	// Syncronize trace output
 	go func() {
 		for trace := range traces {
 			fmt.Fprintln(os.Stderr, trace)
 		}
 	}()
-
 	go func() {
 		for result := range results {
 			fmt.Fprintln(os.Stdout, result)
@@ -183,7 +181,7 @@ func workManager(
 					traces <- buf.String()
 
 					if result.IsSolved() {
-						// advance()
+						pass(result.k)
 						buf.Reset()
 						result.WriteTrace(&buf)
 						results <- buf.String()
@@ -200,14 +198,14 @@ func workManager(
 	}
 }
 
-func setGenerator(start, end int, prefix []int) (<-chan diffSet, func()) {
-	var advance bool
+func setGenerator(start, end int, prefix []int) (<-chan diffSet, func(int)) {
+	var pass int
 	sets := make(chan diffSet)
 	go func() {
 		powers := primePowers(maxK)
 		for i := 0; i < len(powers); i++ {
 			k := powers[i] + 1
-			if k < start {
+			if k < start || k <= pass {
 				continue
 			}
 
@@ -222,8 +220,7 @@ func setGenerator(start, end int, prefix []int) (<-chan diffSet, func()) {
 			}
 			dsParent.Find()
 			for {
-				if advance {
-					advance = false
+				if dsParent.k <= pass {
 					break
 				}
 
@@ -244,10 +241,12 @@ func setGenerator(start, end int, prefix []int) (<-chan diffSet, func()) {
 	}()
 
 	// Generator controller function - kick to next k.
-	doAdvance := func() {
-		advance = true
+	doPass := func(k int) {
+		if k > pass {
+			pass = k
+		}
 	}
-	return sets, doAdvance
+	return sets, doPass
 }
 
 func worker(
