@@ -162,37 +162,34 @@ func workManager(
 
 	for worker := range requests {
 		traces <- Trace{worker.id, "connecting..."}
+
+		// Process status
 		go func(worker workerConnection) {
 			for status := range worker.status {
 				traces <- Trace{worker.id, status}
 			}
 		}(worker)
 
+		// Process work
 		go func(worker workerConnection) {
 			for ds := range sets {
 				// workQueue has 1 buffer so no need to call async.
 				traces <- Trace{worker.id, "Sending work."}
 				worker.workQueue <- ds
 				traces <- Trace{worker.id, "Work sent."}
-			Work:
-				for {
-					select {
-					case result := <-worker.results:
-						var buf bytes.Buffer
 
-						buf.WriteString("Finished ")
-						result.WriteTrace(&buf)
-						traces <- Trace{worker.id, buf.String()}
+				result := <-worker.results
+				var buf bytes.Buffer
 
-						if result.IsSolved() {
-							pass(result.k)
-							buf.Reset()
-							result.WriteTrace(&buf)
-							results <- buf.String()
-						}
+				buf.WriteString("Finished ")
+				result.WriteTrace(&buf)
+				traces <- Trace{worker.id, buf.String()}
 
-						break Work
-					}
+				if result.IsSolved() {
+					pass(result.k)
+					buf.Reset()
+					result.WriteTrace(&buf)
+					results <- buf.String()
 				}
 			}
 		}(worker)
