@@ -55,9 +55,9 @@ func newWorkerConnection(id int) *workerConnection {
 	return &workerConnection{
 		id:        id,
 		workQueue: make(chan diffSet, 1),
-		results:   make(chan diffSet),
+		results:   make(chan diffSet, 1),
 		workLevel: make(chan int),
-		status:    make(chan string),
+		status:    make(chan string, 10),
 	}
 }
 
@@ -143,8 +143,8 @@ func workManager(
 	sets, pass := setGenerator(start, end, prefix)
 
 	// Syncronize trace and results output
-	traces := make(chan string, 1)
-	results := make(chan string, 1)
+	traces := make(chan string)
+	results := make(chan string)
 	go func() {
 		for trace := range traces {
 			fmt.Fprintln(os.Stderr, trace)
@@ -157,44 +157,40 @@ func workManager(
 	}()
 
 	for worker := range requests {
-		fmt.Fprintf(os.Stderr, "Connecting worker %d\n", worker.id)
-		go func(worker *workerConnection) {
-			working := false
+		traces <- fmt.Sprintf("Connecting worker %d", worker.id)
+		go func(worker workerConnection) {
+			for ds := range sets {
+				// workQueue has 1 buffer so no need to call async.
+				traces <- fmt.Sprintf("Sending work to %d", worker.id)
+				worker.workQueue <- ds
+				traces <- fmt.Sprintf("Work to %d sent", worker.id)
+				for {
+					select {
+					case result := <-worker.results:
+						var buf bytes.Buffer
 
-			for {
-				if !working {
-					working = true
-					ds := <-sets
-					if ds.k != 0 {
-						// workQueue has 1 buffer so no need to call async.
-						worker.workQueue <- ds
-					}
-				}
-				select {
-				case result := <-worker.results:
-					var buf bytes.Buffer
-
-					working = false
-
-					fmt.Fprintf(&buf, "Finished(%d): ", worker.id)
-					result.WriteTrace(&buf)
-					traces <- buf.String()
-
-					if result.IsSolved() {
-						pass(result.k)
-						buf.Reset()
+						fmt.Fprintf(&buf, "Finished(%d): ", worker.id)
 						result.WriteTrace(&buf)
-						results <- buf.String()
+						traces <- buf.String()
+
+						if result.IsSolved() {
+							pass(result.k)
+							buf.Reset()
+							result.WriteTrace(&buf)
+							results <- buf.String()
+						}
+
+						// break
+
+					case status := <-worker.status:
+						var buf bytes.Buffer
+
+						fmt.Fprintf(&buf, "Status(%d): %s", worker.id, status)
+						traces <- buf.String()
 					}
-
-				case status := <-worker.status:
-					var buf bytes.Buffer
-
-					fmt.Fprintf(&buf, "Status(%d): %s", worker.id, status)
-					traces <- buf.String()
 				}
 			}
-		}(&worker)
+		}(worker)
 	}
 }
 
@@ -260,11 +256,11 @@ func worker(
 
 		for ds := range conn.workQueue {
 			var buf bytes.Buffer
-			buf.WriteString("Begin ")
 			ds.WriteTrace(&buf)
-			conn.status <- buf.String()
+			fmt.Fprintf(os.Stderr, "Begin %d: %s\n", id, buf.String())
 			ds.Find()
 			conn.results <- ds
+			fmt.Fprintf(os.Stderr, "End %d: %s\n", id, buf.String())
 		}
 	}
 }
