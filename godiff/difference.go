@@ -143,11 +143,15 @@ func workManager(
 	sets, pass := setGenerator(start, end, prefix)
 
 	// Syncronize trace and results output
-	traces := make(chan string)
+	type Trace struct {
+		id int
+		string
+	}
+	traces := make(chan Trace)
 	results := make(chan string)
 	go func() {
 		for trace := range traces {
-			fmt.Fprintln(os.Stderr, trace)
+			fmt.Fprintf(os.Stderr, "%d: %s\n", trace.id, trace.string)
 		}
 	}()
 	go func() {
@@ -157,21 +161,28 @@ func workManager(
 	}()
 
 	for worker := range requests {
-		traces <- fmt.Sprintf("Connecting worker %d", worker.id)
+		traces <- Trace{worker.id, "connecting..."}
+		go func(worker workerConnection) {
+			for status := range worker.status {
+				traces <- Trace{worker.id, status}
+			}
+		}(worker)
+
 		go func(worker workerConnection) {
 			for ds := range sets {
 				// workQueue has 1 buffer so no need to call async.
-				traces <- fmt.Sprintf("Sending work to %d", worker.id)
+				traces <- Trace{worker.id, "Sending work."}
 				worker.workQueue <- ds
-				traces <- fmt.Sprintf("Work to %d sent", worker.id)
+				traces <- Trace{worker.id, "Work sent."}
+			Work:
 				for {
 					select {
 					case result := <-worker.results:
 						var buf bytes.Buffer
 
-						fmt.Fprintf(&buf, "Finished(%d): ", worker.id)
+						buf.WriteString("Finished ")
 						result.WriteTrace(&buf)
-						traces <- buf.String()
+						traces <- Trace{worker.id, buf.String()}
 
 						if result.IsSolved() {
 							pass(result.k)
@@ -180,13 +191,7 @@ func workManager(
 							results <- buf.String()
 						}
 
-						// break
-
-					case status := <-worker.status:
-						var buf bytes.Buffer
-
-						fmt.Fprintf(&buf, "Status(%d): %s", worker.id, status)
-						traces <- buf.String()
+						break Work
 					}
 				}
 			}
