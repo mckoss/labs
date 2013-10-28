@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"time"
 )
 
 const (
@@ -43,23 +44,22 @@ type diffSet struct {
 	low         int    // the largest i s.t. all diffs[i] == true
 	s           []int  // Provisional difference set values
 	diffs       []bool // Current differences covered by provisional set
+	start       time.Time
 }
 
 type workerConnection struct {
 	id        int
-	keepAlive chan bool
 	workQueue chan diffSet
 	results   chan diffSet
-	status    chan string
+	progress  chan diffSet
 }
 
 func newWorkerConnection(id int) *workerConnection {
 	return &workerConnection{
 		id:        id,
-		keepAlive: make(chan bool),
 		workQueue: make(chan diffSet, 1),
 		results:   make(chan diffSet),
-		status:    make(chan string),
+		progress:  make(chan diffSet, 1),
 	}
 }
 
@@ -144,27 +144,41 @@ func workManager(
 ) {
 	var wgManager sync.WaitGroup
 	var wgWorkers sync.WaitGroup
+	var lastStatTime time.Time
+	statistics := make(map[int]*diffSet)
 
 	sets, pass := setGenerator(start, end, prefix)
 
-	// Syncronize trace and results output
-	type Trace struct {
+	type Progress struct {
 		id int
-		string
+		diffSet
 	}
-	traces := make(chan Trace)
 	results := make(chan string)
+	progressChannel := make(chan Progress)
 	go func() {
 		wgManager.Add(1)
-		for trace := range traces {
-			fmt.Fprintf(os.Stderr, "%d: %s\n", trace.id, trace.string)
+		for result := range results {
+			fmt.Fprintln(os.Stdout, result)
 		}
 		wgManager.Done()
 	}()
 	go func() {
 		wgManager.Add(1)
-		for result := range results {
-			fmt.Fprintln(os.Stdout, result)
+		for p := range progressChannel {
+			statistics[p.id] = &p.diffSet
+			if time.Since(lastStatTime) > 1*time.Second {
+				lastStatTime = time.Now()
+				var buf bytes.Buffer
+				for id := 0; id < len(statistics); id++ {
+					buf.Reset()
+					ds := statistics[id]
+					if ds == nil {
+						continue
+					}
+					ds.WriteTrace(&buf)
+					fmt.Fprintf(os.Stderr, "%d: %s\n", id, buf.String())
+				}
+			}
 		}
 		wgManager.Done()
 	}()
@@ -182,13 +196,11 @@ func workManager(
 	*/
 	var closer sync.Once
 	for worker := range requests {
-		traces <- Trace{worker.id, "connecting..."}
-
-		// Process status messages
+		// Process progress
 		go func(worker workerConnection) {
 			wgWorkers.Add(1)
-			for status := range worker.status {
-				traces <- Trace{worker.id, status}
+			for ds := range worker.progress {
+				progressChannel <- Progress{worker.id, ds}
 			}
 			wgWorkers.Done()
 		}(worker)
@@ -215,8 +227,8 @@ func workManager(
 		}(worker)
 	}
 	wgWorkers.Wait()
-	close(traces)
 	close(results)
+	close(progressChannel)
 	wgManager.Wait()
 }
 
@@ -252,6 +264,7 @@ func setGenerator(start, end int, prefix []int) (<-chan diffSet, func(int)) {
 					dsParent.s[1] != 1 {
 					break
 				}
+				dsCopy.start = time.Now()
 				sets <- dsCopy
 				if dsCopy.IsSolved() {
 					break
@@ -277,14 +290,14 @@ func worker(
 ) {
 	conn := newWorkerConnection(id)
 	requests <- *conn
-	conn.status <- "starting..."
 
 	for ds := range conn.workQueue {
+		conn.progress <- ds
 		ds.Find()
 		conn.results <- ds
 	}
-	close(conn.status)
 	close(conn.results)
+	close(conn.progress)
 }
 
 func newDiffSet(k int, prefix []int) *diffSet {
