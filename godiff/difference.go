@@ -25,6 +25,7 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
+	"sync"
 )
 
 const (
@@ -45,19 +46,19 @@ type diffSet struct {
 
 type workerConnection struct {
 	id        int
+	keepAlive chan bool
 	workQueue chan diffSet
 	results   chan diffSet
-	workLevel chan int
 	status    chan string
 }
 
 func newWorkerConnection(id int) *workerConnection {
 	return &workerConnection{
 		id:        id,
+		keepAlive: make(chan bool),
 		workQueue: make(chan diffSet, 1),
-		results:   make(chan diffSet, 1),
-		workLevel: make(chan int),
-		status:    make(chan string, 10),
+		results:   make(chan diffSet),
+		status:    make(chan string),
 	}
 }
 
@@ -138,8 +139,10 @@ func usage() {
 func workManager(
 	start, end int,
 	prefix []int,
-	requests <-chan workerConnection,
+	requests chan workerConnection,
 ) {
+	var wg sync.WaitGroup
+
 	sets, pass := setGenerator(start, end, prefix)
 
 	// Syncronize trace and results output
@@ -150,50 +153,57 @@ func workManager(
 	traces := make(chan Trace)
 	results := make(chan string)
 	go func() {
+		wg.Add(1)
 		for trace := range traces {
 			fmt.Fprintf(os.Stderr, "%d: %s\n", trace.id, trace.string)
 		}
+		wg.Done()
 	}()
 	go func() {
+		wg.Add(1)
 		for result := range results {
 			fmt.Fprintln(os.Stdout, result)
 		}
+		wg.Done()
 	}()
 
+	var closer sync.Once
 	for worker := range requests {
 		traces <- Trace{worker.id, "connecting..."}
 
-		// Process status
+		// Process status messages
 		go func(worker workerConnection) {
+			wg.Add(1)
 			for status := range worker.status {
 				traces <- Trace{worker.id, status}
 			}
+			wg.Done()
 		}(worker)
 
 		// Process work
 		go func(worker workerConnection) {
+			wg.Add(1)
 			for ds := range sets {
 				// workQueue has 1 buffer so no need to call async.
-				traces <- Trace{worker.id, "Sending work."}
 				worker.workQueue <- ds
-				traces <- Trace{worker.id, "Work sent."}
 
 				result := <-worker.results
-				var buf bytes.Buffer
-
-				buf.WriteString("Finished ")
-				result.WriteTrace(&buf)
-				traces <- Trace{worker.id, buf.String()}
 
 				if result.IsSolved() {
+					var buf bytes.Buffer
 					pass(result.k)
-					buf.Reset()
 					result.WriteTrace(&buf)
 					results <- buf.String()
 				}
 			}
+			close(worker.workQueue)
+			closer.Do(func() { close(requests) })
+			wg.Done()
 		}(worker)
 	}
+	close(traces)
+	close(results)
+	wg.Wait()
 }
 
 func setGenerator(start, end int, prefix []int) (<-chan diffSet, func(int)) {
@@ -252,19 +262,14 @@ func worker(
 	requests chan<- workerConnection,
 ) {
 	conn := newWorkerConnection(id)
-	for {
-		requests <- *conn
-		conn.status <- fmt.Sprintf("Startup")
+	requests <- *conn
+	conn.status <- "starting..."
 
-		for ds := range conn.workQueue {
-			var buf bytes.Buffer
-			ds.WriteTrace(&buf)
-			fmt.Fprintf(os.Stderr, "Begin %d: %s\n", id, buf.String())
-			ds.Find()
-			conn.results <- ds
-			fmt.Fprintf(os.Stderr, "End %d: %s\n", id, buf.String())
-		}
+	for ds := range conn.workQueue {
+		ds.Find()
+		conn.results <- ds
 	}
+	close(conn.status)
 }
 
 func newDiffSet(k int, prefix []int) *diffSet {
