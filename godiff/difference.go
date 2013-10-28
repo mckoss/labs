@@ -22,6 +22,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"os/signal"
 	"runtime"
 	"sort"
 	"strconv"
@@ -165,6 +166,15 @@ func workManager(
 			fmt.Fprintln(os.Stdout, result)
 		}
 		wg.Done()
+	}()
+	// BUG: This is NOT working?  Why?
+	go func() {
+		signals := make(chan os.Signal, 1)
+		signal.Notify(signals, os.Interrupt)
+		<-signals
+		fmt.Fprintf(os.Stderr, "Shutting down at user request.\n")
+		pass(maxK + 1)
+		return
 	}()
 
 	var closer sync.Once
