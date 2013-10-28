@@ -22,7 +22,7 @@ import (
 	"io"
 	"math"
 	"os"
-	"os/signal"
+	//"os/signal"
 	"runtime"
 	"sort"
 	"strconv"
@@ -142,7 +142,8 @@ func workManager(
 	prefix []int,
 	requests chan workerConnection,
 ) {
-	var wg sync.WaitGroup
+	var wgManager sync.WaitGroup
+	var wgWorkers sync.WaitGroup
 
 	sets, pass := setGenerator(start, end, prefix)
 
@@ -154,45 +155,47 @@ func workManager(
 	traces := make(chan Trace)
 	results := make(chan string)
 	go func() {
-		wg.Add(1)
+		wgManager.Add(1)
 		for trace := range traces {
 			fmt.Fprintf(os.Stderr, "%d: %s\n", trace.id, trace.string)
 		}
-		wg.Done()
+		wgManager.Done()
 	}()
 	go func() {
-		wg.Add(1)
+		wgManager.Add(1)
 		for result := range results {
 			fmt.Fprintln(os.Stdout, result)
 		}
-		wg.Done()
+		wgManager.Done()
 	}()
-	// BUG: This is NOT working?  Why?
-	go func() {
-		signals := make(chan os.Signal, 1)
-		signal.Notify(signals, os.Interrupt)
-		<-signals
-		fmt.Fprintf(os.Stderr, "Shutting down at user request.\n")
-		pass(maxK + 1)
-		return
-	}()
-
+	/*
+		// BUG: This is NOT working?
+		// Traps the ^C but does not execute past <-signals?
+		go func() {
+			signals := make(chan os.Signal, 1)
+			signal.Notify(signals, os.Interrupt)
+			<-signals
+			fmt.Fprintf(os.Stderr, "Shutting down at user request.\n")
+			pass(maxK + 1)
+			return
+		}()
+	*/
 	var closer sync.Once
 	for worker := range requests {
 		traces <- Trace{worker.id, "connecting..."}
 
 		// Process status messages
 		go func(worker workerConnection) {
-			wg.Add(1)
+			wgWorkers.Add(1)
 			for status := range worker.status {
 				traces <- Trace{worker.id, status}
 			}
-			wg.Done()
+			wgWorkers.Done()
 		}(worker)
 
 		// Process work
 		go func(worker workerConnection) {
-			wg.Add(1)
+			wgWorkers.Add(1)
 			for ds := range sets {
 				// workQueue has 1 buffer so no need to call async.
 				worker.workQueue <- ds
@@ -208,12 +211,13 @@ func workManager(
 			}
 			close(worker.workQueue)
 			closer.Do(func() { close(requests) })
-			wg.Done()
+			wgWorkers.Done()
 		}(worker)
 	}
+	wgWorkers.Wait()
 	close(traces)
 	close(results)
-	wg.Wait()
+	wgManager.Wait()
 }
 
 func setGenerator(start, end int, prefix []int) (<-chan diffSet, func(int)) {
@@ -280,6 +284,7 @@ func worker(
 		conn.results <- ds
 	}
 	close(conn.status)
+	close(conn.results)
 }
 
 func newDiffSet(k int, prefix []int) *diffSet {
