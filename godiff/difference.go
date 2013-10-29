@@ -35,18 +35,6 @@ const (
 	maxK = 103
 )
 
-type diffSet struct {
-	k           int    // Number of elements in set
-	v           int    // Modulus of differences (k * (k-1) + 1)
-	trials      int    // Number of trial so far
-	targetDepth int    // Stop executing when current == targetDepth
-	current     int    // s[0:current] is current search prefix
-	low         int    // the largest i s.t. all diffs[i] == true
-	s           []int  // Provisional difference set values
-	diffs       []bool // Current differences covered by provisional set
-	start       time.Time
-}
-
 type workerConnection struct {
 	id        int
 	workQueue chan diffSet
@@ -258,12 +246,11 @@ func setGenerator(start, end int, prefix []int) (<-chan diffSet, func(int)) {
 					break
 				}
 
-				dsCopy := *newDiffSet(k, dsParent.s[0:dsParent.current])
-				dsCopy.targetDepth = dsParent.targetDepth
 				if dsParent.current != dsParent.targetDepth ||
 					dsParent.s[1] != 1 {
 					break
 				}
+				dsCopy := dsParent.copy()
 				dsCopy.start = time.Now()
 				sets <- dsCopy
 				if dsCopy.IsSolved() {
@@ -300,6 +287,18 @@ func worker(
 	close(conn.progress)
 }
 
+type diffSet struct {
+	k           int    // Number of elements in set
+	v           int    // Modulus of differences (k * (k-1) + 1)
+	trials      int    // Number of trial so far
+	targetDepth int    // Stop executing when current == targetDepth
+	current     int    // s[0:current] is current search prefix
+	low         int    // the largest i s.t. all diffs[i] == true
+	s           []int  // Provisional difference set values
+	diffs       []bool // Current differences covered by provisional set
+	start       time.Time
+}
+
 func newDiffSet(k int, prefix []int) *diffSet {
 	v := k*(k-1) + 1
 
@@ -307,6 +306,7 @@ func newDiffSet(k int, prefix []int) *diffSet {
 		k:     k,
 		v:     v,
 		diffs: make([]bool, v/2+1),
+		start: time.Now(),
 	}
 
 	ds.s = make([]int, k)
@@ -322,6 +322,16 @@ func newDiffSet(k int, prefix []int) *diffSet {
 	return &ds
 }
 
+func (ds *diffSet) copy() diffSet {
+	dsCopy := *ds
+	dsCopy.trials = 0
+	dsCopy.s = make([]int, ds.k)
+	copy(dsCopy.s, ds.s)
+	dsCopy.diffs = make([]bool, ds.v/2+1)
+	copy(dsCopy.diffs, ds.diffs)
+	return dsCopy
+}
+
 func (ds *diffSet) WriteInfo(w io.Writer) {
 	fmt.Fprintf(w, "\nDifference set (k = %d, v = %d, lambda = 1):\n", ds.k, ds.v)
 }
@@ -334,7 +344,7 @@ func (ds *diffSet) WriteTrace(w io.Writer) {
 
 	fmt.Fprintf(w, "(%d, %d) @%s: ", ds.k, ds.v, commas(ds.trials))
 	WriteInts(w, ds.s[0:ds.current])
-	fmt.Fprintf(w, " (low = %d)%s", ds.low, solvedString)
+	fmt.Fprintf(w, " (low = %d, target = %d)%s", ds.low, ds.targetDepth, solvedString)
 }
 
 // Find the targetDepth or solution with prefix of current set.
@@ -422,7 +432,9 @@ func (ds *diffSet) push(a int) (ok bool) {
 func (ds *diffSet) pop() int {
 	ds.current--
 	if ds.current < 0 {
-		panic("pop error")
+		var buf bytes.Buffer
+		ds.WriteTrace(&buf)
+		panic("pop error: " + buf.String())
 	}
 	a := ds.s[ds.current]
 	for i := 0; i < ds.current; i++ {
