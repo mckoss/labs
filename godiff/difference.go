@@ -139,10 +139,11 @@ func workManager(
 	results := make(chan string)
 	go func() {
 		wgManager.Add(1)
+		defer wgManager.Done()
+
 		for result := range results {
 			fmt.Fprintln(os.Stdout, result)
 		}
-		wgManager.Done()
 	}()
 
 	type Progress struct {
@@ -151,25 +152,36 @@ func workManager(
 	}
 	progressChannel := make(chan Progress)
 	statistics := make([]*diffSet, runtime.NumCPU())
+	var lastTrials int
 	var statMutex sync.Mutex
 	go func() {
 		for _ = range time.Tick(progressInterval) {
 			statMutex.Lock()
+			sumTrials := 0
 			for id := 0; id < len(statistics); id++ {
 				ds := statistics[id]
-				fmt.Fprintf(os.Stderr, "%d: %s\n", id, ds)
+				if ds != nil {
+					fmt.Fprintf(os.Stderr, "%d: %s\n", id, ds)
+					sumTrials += ds.trials
+				}
 			}
+			if sumTrials > lastTrials {
+				fmt.Fprintf(os.Stderr, "Search rate: %s/sec\n",
+					commas((sumTrials-lastTrials)/int(progressInterval/time.Second)))
+			}
+			lastTrials = sumTrials
 			statMutex.Unlock()
 		}
 	}()
 	go func() {
 		wgManager.Add(1)
+		defer wgManager.Done()
+
 		for p := range progressChannel {
 			statMutex.Lock()
 			statistics[p.id] = p.diffSet
 			statMutex.Unlock()
 		}
-		wgManager.Done()
 	}()
 	/*
 		// BUG: This is NOT working?
@@ -188,15 +200,17 @@ func workManager(
 		// Process progress
 		go func(worker workerConnection) {
 			wgWorkers.Add(1)
+			defer wgWorkers.Done()
 			for ds := range worker.progress {
 				progressChannel <- Progress{worker.id, ds}
 			}
-			wgWorkers.Done()
 		}(worker)
 
 		// Process work
 		go func(worker workerConnection) {
 			wgWorkers.Add(1)
+			defer wgWorkers.Done()
+
 			for ds := range sets {
 				// workQueue has 1 buffer so no need to call async.
 				worker.workQueue <- ds
@@ -210,7 +224,6 @@ func workManager(
 			}
 			close(worker.workQueue)
 			closer.Do(func() { close(requests) })
-			wgWorkers.Done()
 		}(worker)
 	}
 	wgWorkers.Wait()
@@ -252,12 +265,11 @@ func setGenerator(start, end int, prefix []int) (<-chan *diffSet, func(int)) {
 				dsCopy := dsParent.copy()
 				dsCopy.trials = 0
 				dsCopy.start = time.Now()
-				fmt.Fprintf(os.Stderr, "generated: %s\n", dsCopy)
 				sets <- dsCopy
 				if dsCopy.IsSolved() {
 					break
 				}
-				dsParent.SearchNext(dsParent.pop() + 1)
+				dsParent.SearchNext(dsParent.pop()+1, nil)
 			}
 		}
 		close(sets)
@@ -280,6 +292,7 @@ func worker(
 	requests <- *conn
 
 	for ds := range conn.workQueue {
+		fmt.Fprintf(os.Stderr, "Working(%d): %s\n", id, ds)
 		ds.Find(conn.progress)
 		// Signals completion of work, even if not solved.
 		conn.results <- ds.copy()
@@ -358,27 +371,21 @@ func (ds *diffSet) Find(progress chan<- *diffSet) {
 	if ds.current <= 1 {
 		panic(fmt.Sprintf("Illegal call to Find: %s", ds))
 	}
-	// Unsafe code - we peek at the current diffSet stat to report progress.
-	// diffSet could be in an inconsistent state...
-	if progress != nil {
-		go func() {
-			for _ = range time.Tick(progressInterval) {
-				progress <- ds.copy()
-			}
-		}()
-	}
-	ds.SearchNext(ds.s[ds.current-1] + ds.low + 1)
+	ds.SearchNext(ds.s[ds.current-1]+ds.low+1, progress)
 }
 
-func (ds *diffSet) SearchNext(candidate int) {
+func (ds *diffSet) SearchNext(candidate int, progress chan<- *diffSet) {
 	for {
 		if ds.IsSolved() {
 			return
 		}
 
 		ds.trials++
-		if ds.trials%10000 == 0 {
-			runtime.Gosched()
+		if ds.trials%10000000 == 0 {
+			if progress != nil {
+				progress <- ds.copy()
+				runtime.Gosched()
+			}
 		}
 
 		if ds.push(candidate) {
