@@ -80,7 +80,6 @@ func TestCommas(t *testing.T) {
 }
 
 func TestSetGenerator(t *testing.T) {
-	var buf bytes.Buffer
 	expect := []string{
 		"(2, 3) @0: 0, 1 (low = 1, target = 2) SOLVED",
 		"(3, 7) @0: 0, 1, 3 (low = 3, target = 3) SOLVED",
@@ -139,10 +138,8 @@ func TestSetGenerator(t *testing.T) {
 	sets, _ := setGenerator(2, 5, []int{0, 1})
 	for _, s := range expect {
 		set := <-sets
-		buf.Reset()
-		set.WriteTrace(&buf)
-		if buf.String() != s {
-			t.Errorf("Generated %q, but expected %q.\n", buf.String(), s)
+		if set.String() != s {
+			t.Errorf("Generated %q, but expected %q.\n", set.String(), s)
 		}
 		if set.targetDepth > set.k && set.targetDepth != 4 {
 			t.Errorf("Invalid target depth %d.", set.targetDepth)
@@ -151,10 +148,8 @@ func TestSetGenerator(t *testing.T) {
 	count := 0
 	for set := range sets {
 		count++
-		buf.Reset()
-		set.WriteTrace(&buf)
 		if count > 1 || set.current != 1 || set.s[0] != 0 {
-			t.Errorf("Generating unexpected set: %q", buf.String())
+			t.Errorf("Generating unexpected set: %q", set.String())
 		}
 	}
 }
