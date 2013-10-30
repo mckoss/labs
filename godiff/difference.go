@@ -135,12 +135,14 @@ func workManager(
 
 	sets, pass := setGenerator(start, end, prefix)
 
-	results := make(chan string)
+	completedTrials := make([]int64, maxK)
+	results := make(chan *diffSet)
 	go func() {
 		wgManager.Add(1)
 		defer wgManager.Done()
 
 		for result := range results {
+			result.trials = completedTrials[result.k]
 			fmt.Fprintln(os.Stdout, result)
 		}
 	}()
@@ -151,7 +153,6 @@ func workManager(
 	}
 	progressChannel := make(chan Progress)
 	statistics := make([]*diffSet, runtime.NumCPU())
-	completedTrials := make([]int64, runtime.NumCPU())
 	var lastTrials int64
 	var statMutex sync.Mutex
 	go func() {
@@ -223,14 +224,14 @@ func workManager(
 
 				result := <-worker.results
 
-				atomic.AddInt64(&completedTrials[worker.id], int64(result.trials))
+				atomic.AddInt64(&completedTrials[result.k], int64(result.trials))
 				statMutex.Lock()
 				statistics[worker.id] = nil
 				statMutex.Unlock()
 
 				if result.IsSolved() {
 					pass(result.k)
-					results <- result.String()
+					results <- result
 				}
 			}
 			close(worker.workQueue)
@@ -246,6 +247,12 @@ func workManager(
 func setGenerator(start, end int, prefix []int) (<-chan *diffSet, func(int)) {
 	var pass int
 	sets := make(chan *diffSet)
+
+	if len(prefix) < 2 || prefix[0] != 0 || prefix[1] != 1 {
+		var buf bytes.Buffer
+		WriteInts(&buf, prefix)
+		panic(fmt.Sprintf("Invalid set prefix: %s\n", buf.String()))
+	}
 	go func() {
 		powers := primePowers(maxK)
 		for i := 0; i < len(powers); i++ {
@@ -295,6 +302,7 @@ func setGenerator(start, end int, prefix []int) (<-chan *diffSet, func(int)) {
 			pass = k
 		}
 	}
+
 	return sets, doPass
 }
 
@@ -318,7 +326,7 @@ func worker(
 type diffSet struct {
 	k           int    // Number of elements in set
 	v           int    // Modulus of differences (k * (k-1) + 1)
-	trials      int    // Number of trial so far
+	trials      int64  // Number of trial so far
 	targetDepth int    // Stop executing when current == targetDepth
 	current     int    // s[0:current] is current search prefix
 	low         int    // the largest i s.t. all diffs[i] == true
@@ -530,7 +538,7 @@ func WriteInts(w io.Writer, a []int) {
 }
 
 // commas converts integer to thousand-separated string
-func commas(v int) string {
+func commas(v interface{}) string {
 	s := fmt.Sprintf("%d", v)
 	chars := len(s)
 	result := ""
