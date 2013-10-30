@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 
-from pprint import pprint
-
-DEBUG = False
-
 def cycle(a):
     """
     Return if the relative indexes of a form a cycle over the whole array.
@@ -57,15 +53,13 @@ def find_cycle(a):
     >>> find_cycle([1, 1, 1, 1, -2, 1])
     (2, 3)
     """
-    if DEBUG:
-        pprint(a)
     n = len(a)
     if n == 0:
         return (None, 0)
     slow_fast = [0, 0]
 
     def spin():
-        # Python closure problem
+        # Hack for python assignment to closure problem
         slow = slow_fast[0]
         fast = slow_fast[1]
         c = 0
@@ -79,16 +73,30 @@ def find_cycle(a):
                 slow_fast[1] = fast
                 return c
 
-    def trace(n):
-        print "slow = %d, fast = %d, spin = %d" % (slow_fast[0], slow_fast[1], n)
+    """
+    Number of steps (fast and slow only differ my multiple of cycle)
 
+      fast_steps = slow_steps + k * d
+      2 * c = c + k * d
+      .: c = k * d
+
+    where d is length of cycle.
+
+    When looking for first element, start, of cycle:
+
+    slow_steps = start_steps + extra_steps
+
+      c = x + y
+
+    because d | c
+
+      .: x = -y (mod d)
+
+    So the distance from 0 to start is congruent to distance from rendevous
+    to start!
     """
-    fast and slow meet x steps into cycle
-    restarting fast as 0 - will meet slow at start of cycle
-    """
-    c = spin()
-    if DEBUG:
-        trace(c)
+    spin()
+    # find length of cycle (leaves fast and slow same spot)
     d = spin()
 
     slow = slow_fast[0]
@@ -100,5 +108,4 @@ def find_cycle(a):
 
 
 if __name__ == "__main__":
-    DEBUG = True
-    find_cycle([1, 1, 1, 1, -2, 1])
+    print find_cycle([1, 1, 1, 1, -2, 1])
