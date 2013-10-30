@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -115,6 +116,7 @@ type workerConnection struct {
 	workQueue chan *diffSet
 	results   chan *diffSet
 	progress  chan *diffSet
+	shutdown  chan bool
 }
 
 func newWorkerConnection(id int) *workerConnection {
@@ -123,6 +125,7 @@ func newWorkerConnection(id int) *workerConnection {
 		workQueue: make(chan *diffSet, 1),
 		results:   make(chan *diffSet),
 		progress:  make(chan *diffSet, 1),
+		shutdown:  make(chan bool, 1),
 	}
 }
 
@@ -152,23 +155,25 @@ func workManager(
 	}
 	progressChannel := make(chan Progress)
 	statistics := make([]*diffSet, runtime.NumCPU())
-	var lastTrials int
+	completedTrials := make([]int64, runtime.NumCPU())
+	var lastTrials int64
 	var statMutex sync.Mutex
 	go func() {
 		for _ = range time.Tick(progressInterval) {
 			statMutex.Lock()
-			sumTrials := 0
+			var sumTrials int64
+			for i := 0; i < len(completedTrials); i++ {
+				sumTrials += completedTrials[i]
+			}
 			for id := 0; id < len(statistics); id++ {
 				ds := statistics[id]
 				if ds != nil {
 					fmt.Fprintf(os.Stderr, "%d: %s\n", id, ds)
-					sumTrials += ds.trials
+					sumTrials += int64(ds.trials)
 				}
 			}
-			if sumTrials > lastTrials {
-				fmt.Fprintf(os.Stderr, "Search rate: %s/sec\n",
-					commas((sumTrials-lastTrials)/int(progressInterval/time.Second)))
-			}
+			fmt.Fprintf(os.Stderr, "Search rate: %s/sec\n",
+				commas(int(sumTrials-lastTrials)/int(progressInterval/time.Second)))
 			lastTrials = sumTrials
 			statMutex.Unlock()
 		}
@@ -184,12 +189,14 @@ func workManager(
 		}
 	}()
 
+	var shuttingDown bool
 	go func() {
 		signals := make(chan os.Signal, 1)
 		signal.Notify(signals, os.Interrupt)
 		<-signals
-		fmt.Fprintf(os.Stderr, "Shutting down at next checkpoint...\n")
+		fmt.Fprintf(os.Stderr, "Shutting down ...\n")
 		pass(maxK + 1)
+		shuttingDown = true
 		return
 	}()
 
@@ -201,6 +208,9 @@ func workManager(
 			defer wgWorkers.Done()
 			for ds := range worker.progress {
 				progressChannel <- Progress{worker.id, ds}
+				if shuttingDown {
+					worker.shutdown <- true
+				}
 			}
 		}(worker)
 
@@ -214,6 +224,11 @@ func workManager(
 				worker.workQueue <- ds
 
 				result := <-worker.results
+
+				atomic.AddInt64(&completedTrials[worker.id], int64(result.trials))
+				statMutex.Lock()
+				statistics[worker.id] = nil
+				statMutex.Unlock()
 
 				if result.IsSolved() {
 					pass(result.k)
@@ -291,7 +306,7 @@ func worker(
 
 	for ds := range conn.workQueue {
 		fmt.Fprintf(os.Stderr, "Working(%d): %s\n", id, ds)
-		ds.Find(conn.progress)
+		ds.Find(conn)
 		// Signals completion of work, even if not solved.
 		conn.results <- ds.copy()
 	}
@@ -365,25 +380,28 @@ func (ds *diffSet) WriteTrace(w io.Writer) {
 }
 
 // Find the targetDepth or solution with prefix of current set.
-func (ds *diffSet) Find(progress chan<- *diffSet) {
+func (ds *diffSet) Find(conn *workerConnection) {
 	if ds.current <= 1 {
 		panic(fmt.Sprintf("Illegal call to Find: %s", ds))
 	}
-	ds.SearchNext(ds.s[ds.current-1]+ds.low+1, progress)
+	ds.SearchNext(ds.s[ds.current-1]+ds.low+1, conn)
 }
 
-func (ds *diffSet) SearchNext(candidate int, progress chan<- *diffSet) {
+func (ds *diffSet) SearchNext(candidate int, conn *workerConnection) {
 	for {
 		if ds.IsSolved() {
 			return
 		}
 
 		ds.trials++
-		if ds.trials%10000000 == 0 {
-			if progress != nil {
-				progress <- ds.copy()
-				runtime.Gosched()
+		if conn != nil && ds.trials%10000000 == 0 {
+			conn.progress <- ds.copy()
+			select {
+			case <-conn.shutdown:
+				return
+			default:
 			}
+			runtime.Gosched()
 		}
 
 		if ds.push(candidate) {
