@@ -31,25 +31,10 @@ import (
 )
 
 const (
-	minK = 2
-	maxK = 103
+	minK             = 2
+	maxK             = 103
+	progressInterval = 1 * time.Second
 )
-
-type workerConnection struct {
-	id        int
-	workQueue chan diffSet
-	results   chan diffSet
-	progress  chan diffSet
-}
-
-func newWorkerConnection(id int) *workerConnection {
-	return &workerConnection{
-		id:        id,
-		workQueue: make(chan diffSet, 1),
-		results:   make(chan diffSet),
-		progress:  make(chan diffSet, 1),
-	}
-}
 
 func main() {
 	var err error
@@ -125,6 +110,22 @@ func usage() {
 	os.Exit(1)
 }
 
+type workerConnection struct {
+	id        int
+	workQueue chan *diffSet
+	results   chan *diffSet
+	progress  chan *diffSet
+}
+
+func newWorkerConnection(id int) *workerConnection {
+	return &workerConnection{
+		id:        id,
+		workQueue: make(chan *diffSet, 1),
+		results:   make(chan *diffSet),
+		progress:  make(chan *diffSet, 1),
+	}
+}
+
 func workManager(
 	start, end int,
 	prefix []int,
@@ -132,17 +133,10 @@ func workManager(
 ) {
 	var wgManager sync.WaitGroup
 	var wgWorkers sync.WaitGroup
-	var lastStatTime time.Time
-	statistics := make(map[int]*diffSet)
 
 	sets, pass := setGenerator(start, end, prefix)
 
-	type Progress struct {
-		id int
-		diffSet
-	}
 	results := make(chan string)
-	progressChannel := make(chan Progress)
 	go func() {
 		wgManager.Add(1)
 		for result := range results {
@@ -150,23 +144,30 @@ func workManager(
 		}
 		wgManager.Done()
 	}()
+
+	type Progress struct {
+		id int
+		*diffSet
+	}
+	progressChannel := make(chan Progress)
+	statistics := make([]*diffSet, runtime.NumCPU())
+	var statMutex sync.Mutex
+	go func() {
+		for _ = range time.Tick(progressInterval) {
+			statMutex.Lock()
+			for id := 0; id < len(statistics); id++ {
+				ds := statistics[id]
+				fmt.Fprintf(os.Stderr, "%d: %s\n", id, ds)
+			}
+			statMutex.Unlock()
+		}
+	}()
 	go func() {
 		wgManager.Add(1)
 		for p := range progressChannel {
-			statistics[p.id] = &p.diffSet
-			if time.Since(lastStatTime) > 1*time.Second {
-				lastStatTime = time.Now()
-				var buf bytes.Buffer
-				for id := 0; id < len(statistics); id++ {
-					buf.Reset()
-					ds := statistics[id]
-					if ds == nil {
-						continue
-					}
-					ds.WriteTrace(&buf)
-					fmt.Fprintf(os.Stderr, "%d: %s\n", id, buf.String())
-				}
-			}
+			statMutex.Lock()
+			statistics[p.id] = p.diffSet
+			statMutex.Unlock()
 		}
 		wgManager.Done()
 	}()
@@ -203,10 +204,8 @@ func workManager(
 				result := <-worker.results
 
 				if result.IsSolved() {
-					var buf bytes.Buffer
 					pass(result.k)
-					result.WriteTrace(&buf)
-					results <- buf.String()
+					results <- result.String()
 				}
 			}
 			close(worker.workQueue)
@@ -220,9 +219,9 @@ func workManager(
 	wgManager.Wait()
 }
 
-func setGenerator(start, end int, prefix []int) (<-chan diffSet, func(int)) {
+func setGenerator(start, end int, prefix []int) (<-chan *diffSet, func(int)) {
 	var pass int
-	sets := make(chan diffSet)
+	sets := make(chan *diffSet)
 	go func() {
 		powers := primePowers(maxK)
 		for i := 0; i < len(powers); i++ {
@@ -240,7 +239,7 @@ func setGenerator(start, end int, prefix []int) (<-chan diffSet, func(int)) {
 			if dsParent.targetDepth > dsParent.k {
 				dsParent.targetDepth = dsParent.k
 			}
-			dsParent.Find()
+			dsParent.Find(nil)
 			for {
 				if dsParent.k <= pass {
 					break
@@ -251,7 +250,9 @@ func setGenerator(start, end int, prefix []int) (<-chan diffSet, func(int)) {
 					break
 				}
 				dsCopy := dsParent.copy()
+				dsCopy.trials = 0
 				dsCopy.start = time.Now()
+				fmt.Fprintf(os.Stderr, "generated: %s\n", dsCopy)
 				sets <- dsCopy
 				if dsCopy.IsSolved() {
 					break
@@ -279,9 +280,9 @@ func worker(
 	requests <- *conn
 
 	for ds := range conn.workQueue {
-		conn.progress <- ds
-		ds.Find()
-		conn.results <- ds
+		ds.Find(conn.progress)
+		// Signals completion of work, even if not solved.
+		conn.results <- ds.copy()
 	}
 	close(conn.results)
 	close(conn.progress)
@@ -322,14 +323,19 @@ func newDiffSet(k int, prefix []int) *diffSet {
 	return &ds
 }
 
-func (ds *diffSet) copy() diffSet {
+func (ds *diffSet) copy() *diffSet {
 	dsCopy := *ds
-	dsCopy.trials = 0
 	dsCopy.s = make([]int, ds.k)
 	copy(dsCopy.s, ds.s)
 	dsCopy.diffs = make([]bool, ds.v/2+1)
 	copy(dsCopy.diffs, ds.diffs)
-	return dsCopy
+	return &dsCopy
+}
+
+func (ds *diffSet) String() string {
+	var buf bytes.Buffer
+	ds.WriteTrace(&buf)
+	return buf.String()
 }
 
 func (ds *diffSet) WriteInfo(w io.Writer) {
@@ -348,23 +354,32 @@ func (ds *diffSet) WriteTrace(w io.Writer) {
 }
 
 // Find the targetDepth or solution with prefix of current set.
-func (ds *diffSet) Find() {
+func (ds *diffSet) Find(progress chan<- *diffSet) {
 	if ds.current <= 1 {
-		var buf bytes.Buffer
-		ds.WriteTrace(&buf)
-		panic(fmt.Sprintf("Illegal call to Find: %s", buf.String()))
+		panic(fmt.Sprintf("Illegal call to Find: %s", ds))
+	}
+	// Unsafe code - we peek at the current diffSet stat to report progress.
+	// diffSet could be in an inconsistent state...
+	if progress != nil {
+		go func() {
+			for _ = range time.Tick(progressInterval) {
+				progress <- ds.copy()
+			}
+		}()
 	}
 	ds.SearchNext(ds.s[ds.current-1] + ds.low + 1)
 }
 
 func (ds *diffSet) SearchNext(candidate int) {
 	for {
-		// ds.WriteTrace(os.Stderr)
 		if ds.IsSolved() {
 			return
 		}
 
 		ds.trials++
+		if ds.trials%10000 == 0 {
+			runtime.Gosched()
+		}
 
 		if ds.push(candidate) {
 			if ds.current == ds.targetDepth {
@@ -387,10 +402,12 @@ func (ds *diffSet) IsSolved() bool {
 }
 
 func (ds *diffSet) push(a int) (ok bool) {
-	//debugStatus := func() {
-	//	fmt.Fprintf(os.Stderr, "push(%d) -> %v\n", a, ok)
-	//}
-	//defer debugStatus()
+	/*
+		debugStatus := func() {
+			fmt.Fprintf(os.Stderr, "push(%d) -> %v\n", a, ok)
+		}
+		defer debugStatus()
+	*/
 	if a >= ds.v {
 		return
 	}
@@ -432,9 +449,7 @@ func (ds *diffSet) push(a int) (ok bool) {
 func (ds *diffSet) pop() int {
 	ds.current--
 	if ds.current < 0 {
-		var buf bytes.Buffer
-		ds.WriteTrace(&buf)
-		panic("pop error: " + buf.String())
+		panic("pop error: " + ds.String())
 	}
 	a := ds.s[ds.current]
 	for i := 0; i < ds.current; i++ {
