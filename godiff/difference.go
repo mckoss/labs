@@ -1,17 +1,13 @@
 /* ================================================================
    difference.go - Difference Set generator.
 
-   Calculate difference sets of various sizes - using threading library
+   Calculate difference sets of various sizes - using go routines
    to maximize CPU cores in the search.
 
    This program implements exhaustive search and ensures finding the
    difference set with smallest topological value.
 
    Copyright 2013, Mike Koss
-
-   Todo:
-
-   - Option to return all solutions (not just first found).
 `================================================================== */
 package main
 
@@ -172,8 +168,10 @@ func workManager(
 					sumTrials += int64(ds.trials)
 				}
 			}
-			fmt.Fprintf(os.Stderr, "Search rate: %s/sec\n",
-				commas(int(sumTrials-lastTrials)/int(progressInterval/time.Second)))
+			fmt.Fprintf(os.Stderr, "Search rate: %s/sec (Total: %s)\n\n",
+				commas(int(sumTrials-lastTrials)/int(progressInterval/time.Second)),
+				commas(int(sumTrials)),
+			)
 			lastTrials = sumTrials
 			statMutex.Unlock()
 		}
@@ -262,12 +260,15 @@ func setGenerator(start, end int, prefix []int) (<-chan *diffSet, func(int)) {
 
 			dsParent := newDiffSet(k, prefix)
 			dsParent.targetDepth = len(prefix) + 2
-			if dsParent.targetDepth > dsParent.k {
-				dsParent.targetDepth = dsParent.k
+			if dsParent.targetDepth > k {
+				dsParent.targetDepth = k
+			}
+			if dsParent.targetDepth < (k-4)/2 {
+				dsParent.targetDepth = (k - 4) / 2
 			}
 			dsParent.Find(nil)
 			for {
-				if dsParent.k <= pass {
+				if k <= pass {
 					break
 				}
 
@@ -305,7 +306,7 @@ func worker(
 	requests <- *conn
 
 	for ds := range conn.workQueue {
-		fmt.Fprintf(os.Stderr, "Working(%d): %s\n", id, ds)
+		// fmt.Fprintf(os.Stderr, "Working(%d): %s\n", id, ds)
 		ds.Find(conn)
 		// Signals completion of work, even if not solved.
 		conn.results <- ds.copy()
@@ -523,12 +524,12 @@ func primePowers(max int) []int {
 func WriteInts(w io.Writer, a []int) {
 	sep := ""
 	for _, n := range a {
-		fmt.Fprintf(w, "%s%d", sep, n)
+		fmt.Fprintf(w, "%s%3d", sep, n)
 		sep = ", "
 	}
 }
 
-// commas converts integer to thousand-seperated string
+// commas converts integer to thousand-separated string
 func commas(v int) string {
 	s := fmt.Sprintf("%d", v)
 	chars := len(s)
