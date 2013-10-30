@@ -218,7 +218,12 @@ func workManager(
 			wgWorkers.Add(1)
 			defer wgWorkers.Done()
 
+			kSolved := 0
 			for ds := range sets {
+				// Generator can have one excess set of the passed size
+				if ds.k <= kSolved {
+					continue
+				}
 				// workQueue has 1 buffer so no need to call async.
 				worker.workQueue <- ds
 
@@ -230,7 +235,8 @@ func workManager(
 				statMutex.Unlock()
 
 				if result.IsSolved() {
-					pass(result.k)
+					kSolved = result.k
+					pass(kSolved)
 					results <- result
 				}
 			}
