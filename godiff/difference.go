@@ -22,7 +22,7 @@ import (
 	"io"
 	"math"
 	"os"
-	//"os/signal"
+	"os/signal"
 	"runtime"
 	"sort"
 	"strconv"
@@ -183,18 +183,16 @@ func workManager(
 			statMutex.Unlock()
 		}
 	}()
-	/*
-		// BUG: This is NOT working?
-		// Traps the ^C but does not execute past <-signals?
-		go func() {
-			signals := make(chan os.Signal, 1)
-			signal.Notify(signals, os.Interrupt)
-			<-signals
-			fmt.Fprintf(os.Stderr, "Shutting down at user request.\n")
-			pass(maxK + 1)
-			return
-		}()
-	*/
+
+	go func() {
+		signals := make(chan os.Signal, 1)
+		signal.Notify(signals, os.Interrupt)
+		<-signals
+		fmt.Fprintf(os.Stderr, "Shutting down at next checkpoint...\n")
+		pass(maxK + 1)
+		return
+	}()
+
 	var closer sync.Once
 	for worker := range requests {
 		// Process progress
