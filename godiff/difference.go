@@ -1,6 +1,10 @@
 /*
 difference.go performs a brute force search for difference sets.
 
+    Usage: difference [k-start] [k-end]]
+           difference [k] [prefix1 prefix2 ...]
+    Find difference sets of order k.
+
 A (cyclic) difference set is a collection of, k, integers whose pair-wise
 differences (mod v) are all unique.  For example, for these values of k
 these are the smallest (topological sorted order) difference sets as discovered
@@ -65,10 +69,8 @@ func main() {
 	var err error
 	start := minK
 	end := maxK
-	var doContinue bool
 	var prefix []int
 
-	flag.BoolVar(&doContinue, "continue", false, "Continue beyond prefix point.")
 	flag.Usage = usage
 	flag.Parse()
 
@@ -129,7 +131,7 @@ func main() {
 
 func usage() {
 	fmt.Fprintf(os.Stderr, "Usage: difference [k-start] [k-end]]\n")
-	fmt.Fprintf(os.Stderr, "       difference [-c] [k] [prefix1 prefix 2 ...]\n")
+	fmt.Fprintf(os.Stderr, "       difference [k] [prefix1 prefix2 ...]\n")
 	fmt.Fprintf(os.Stderr, "Find difference sets of order k.\n\n")
 	flag.PrintDefaults()
 	os.Exit(1)
