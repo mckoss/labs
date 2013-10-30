@@ -1,14 +1,42 @@
-/* ================================================================
-   difference.go - Difference Set generator.
+/*
+difference.go performs a brute force search for difference sets.
 
-   Calculate difference sets of various sizes - using go routines
-   to maximize CPU cores in the search.
+A (cyclic) difference set is a collection of, k, integers whose pair-wise
+differences (mod v) are all unique.  For example, for these values of k
+these are the smallest (topological sorted order) difference sets as discovered
+by this program:
 
-   This program implements exhaustive search and ensures finding the
-   difference set with smallest topological value.
+    (k, v)      search trials   set...
+    -----------------------------------------------------------------------------------------------
+    (2, 3)                @0:   0,   1
+    (3, 7)                @0:   0,   1,   3
+    (4, 13)               @0:   0,   1,   3,   9
+    (5, 21)              @81:   0,   1,   4,  14,  16
+    (6, 31)              @75:   0,   1,   3,   8,  12,  18
+    (8, 57)          @10,081:   0,   1,   3,  13,  32,  36,  43,  52
+    (9, 73)           @1,145:   0,   1,   3,   7,  15,  31,  36,  54,  63
+    (10, 91)         @71,618:   0,   1,   3,   9,  27,  49,  56,  61,  77,  81
+    (12, 133)    @24,252,618:   0,   1,   3,  12,  20,  34,  38,  81,  88,  94, 104, 109
+    (14, 183) @3,726,545,288:   0,   1,   3,  16,  23,  28,  42,  76,  82,  86, 119, 137, 154, 175
+    (17, 273) @7,772,026,631:   0,   1,   3,   7,  15,  31,  63,  90, 116, 127, 136, 181, 194, 204,
+                              233, 238, 255
+    (18, 307)               :   0,   1,   3,  21,  25,  31,  68,  77,  91, 170, 177, 185, 196, 212,
+                              225, 257, 269, 274
 
-   Copyright 2013, Mike Koss
-`================================================================== */
+This program will search in parrallel using as many CPU cores as are available
+on the current machine.
+
+References:
+http://en.wikipedia.org/wiki/Difference_set
+
+La Jolla Difference Set Repository:
+http://www.ccrwest.org/diffsets/diff_sets/baumert.html
+
+The difference sets found by this program are represented by lambda == 1.
+
+Copyright 2013, Mike Koss
+
+*/
 package main
 
 import (
@@ -35,8 +63,8 @@ const (
 
 func main() {
 	var err error
-	var start int = 2
-	var end int = 103
+	start := minK
+	end := maxK
 	var doContinue bool
 	var prefix []int
 
@@ -441,10 +469,10 @@ func (ds *diffSet) IsSolved() bool {
 
 func (ds *diffSet) push(a int) (ok bool) {
 	/*
-		debugStatus := func() {
-			fmt.Fprintf(os.Stderr, "push(%d) -> %v\n", a, ok)
-		}
-		defer debugStatus()
+	   debugStatus := func() {
+	       fmt.Fprintf(os.Stderr, "push(%d) -> %v\n", a, ok)
+	   }
+	   defer debugStatus()
 	*/
 	if a >= ds.v {
 		return
