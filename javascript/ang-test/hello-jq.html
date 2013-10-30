@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+<body>
+<input id="name">
+<p id="reply">Hello, <span id="disp"></span>!</p>
+<script src="jquery.js"></script>
+<script>
+$(document).ready(function () {
+	$('#reply').hide();
+	$('#name').keyup(function(e) {
+		var name = $('#name').val();
+		if (name) {
+			$('#disp').text(name);
+			$('#reply').show();
+		} else {
+			$('#reply').hide();
+		}
+	});
+});
+</script>
+</body>
+</html>
