@@ -11,13 +11,13 @@ func TestWriteInts(t *testing.T) {
 	var buf bytes.Buffer
 
 	var writeIntsTests = []struct {
-		input    []int
+		input    []int32
 		expected string
 	}{
-		{[]int{}, ""},
-		{[]int{1}, "  1"},
-		{[]int{1, 2, 3}, "  1,   2,   3"},
-		{[]int{1, 12, 3}, "  1,  12,   3"},
+		{[]int32{}, ""},
+		{[]int32{1}, "  1"},
+		{[]int32{1, 2, 3}, "  1,   2,   3"},
+		{[]int32{1, 12, 3}, "  1,  12,   3"},
 	}
 
 	for _, wt := range writeIntsTests {
@@ -30,35 +30,35 @@ func TestWriteInts(t *testing.T) {
 }
 
 func TestDiffSets_new(t *testing.T) {
-	ds := newDiffSet(3, []int{0, 1})
-	expect(t, "k", ds.k, 3)
-	expect(t, "v", ds.v, 7)
+	ds := newDiffSet(3, []int32{0, 1})
+	expect(t, "k", ds.k, int32(3))
+	expect(t, "v", ds.v, int32(7))
 	expect(t, "trials", ds.trials, int64(0))
-	expect(t, "targetDepth", ds.targetDepth, 0)
-	expect(t, "current", ds.current, 2)
-	expect(t, "s", ds.s, []int{0, 1, 0})
+	expect(t, "targetDepth", ds.targetDepth, int32(0))
+	expect(t, "current", ds.current, int32(2))
+	expect(t, "s", ds.s, []int32{0, 1, 0})
 }
 
 func TestDiffSets_Find3(t *testing.T) {
-	ds := newDiffSet(3, []int{0, 1})
+	ds := newDiffSet(3, []int32{0, 1})
 	ds.Find(nil)
-	expect(t, "k", ds.k, 3)
-	expect(t, "v", ds.v, 7)
+	expect(t, "k", ds.k, int32(3))
+	expect(t, "v", ds.v, int32(7))
 	expect(t, "trials", ds.trials, int64(1))
-	expect(t, "targetDepth", ds.targetDepth, 0)
-	expect(t, "current", ds.current, 3)
-	expect(t, "s", ds.s, []int{0, 1, 3})
+	expect(t, "targetDepth", ds.targetDepth, int32(0))
+	expect(t, "current", ds.current, int32(3))
+	expect(t, "s", ds.s, []int32{0, 1, 3})
 }
 
 func TestDiffSets_Find4(t *testing.T) {
-	ds := newDiffSet(4, []int{0, 1})
+	ds := newDiffSet(4, []int32{0, 1})
 	ds.Find(nil)
-	expect(t, "k", ds.k, 4)
-	expect(t, "v", ds.v, 13)
+	expect(t, "k", ds.k, int32(4))
+	expect(t, "v", ds.v, int32(13))
 	expect(t, "trials", ds.trials, int64(4))
-	expect(t, "targetDepth", ds.targetDepth, 0)
-	expect(t, "current", ds.current, 4)
-	expect(t, "s", ds.s, []int{0, 1, 3, 9})
+	expect(t, "targetDepth", ds.targetDepth, int32(0))
+	expect(t, "current", ds.current, int32(4))
+	expect(t, "s", ds.s, []int32{0, 1, 3, 9})
 }
 
 func TestCommas(t *testing.T) {
@@ -136,7 +136,7 @@ func TestSetGenerator(t *testing.T) {
 		"(5, 21) @0:   0,   1,  15,  17 (low = 2, target = 4)",
 		"(5, 21) @0:   0,   1,  16,  18 (low = 6, target = 4)",
 	}
-	sets, _ := setGenerator(2, 5, []int{0, 1})
+	sets, _ := setGenerator(2, 5, []int32{0, 1})
 	for _, s := range expect {
 		set := <-sets
 		if set.String() != s {
@@ -174,7 +174,7 @@ func TestSetGeneratorAdvance(t *testing.T) {
 		//"(5, 21) @0:   0,   1,   4,  14 (low = 1, target = 4)",
 		"(6, 31) @0:   0,   1,   3,   7 (low = 4, target = 4)",
 	}
-	sets, pass := setGenerator(5, 6, []int{0, 1})
+	sets, pass := setGenerator(5, 6, []int32{0, 1})
 	for _, s := range expect {
 		set := <-sets
 		// Depending on timing, we can get one extra old set

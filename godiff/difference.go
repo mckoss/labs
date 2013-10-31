@@ -69,7 +69,7 @@ func main() {
 	var err error
 	start := minK
 	end := maxK
-	var prefix []int
+	var prefix []int32
 
 	flag.Usage = usage
 	flag.Parse()
@@ -103,10 +103,10 @@ func main() {
 				fmt.Fprintf(os.Stderr, "'%s' is not a valid number.", flag.Arg(i))
 				usage()
 			}
-			prefix = append(prefix, p)
+			prefix = append(prefix, int32(p))
 		}
 	} else {
-		prefix = make([]int, 2)
+		prefix = make([]int32, 2)
 		prefix[0] = 0
 		prefix[1] = 1
 	}
@@ -126,7 +126,7 @@ func main() {
 		go worker(i, requests)
 	}
 
-	workManager(start, end, prefix, requests)
+	workManager(int32(start), int32(end), prefix, requests)
 }
 
 func usage() {
@@ -156,8 +156,8 @@ func newWorkerConnection(id int) *workerConnection {
 }
 
 func workManager(
-	start, end int,
-	prefix []int,
+	start, end int32,
+	prefix []int32,
 	requests chan workerConnection,
 ) {
 	var wgManager sync.WaitGroup
@@ -218,14 +218,14 @@ func workManager(
 		}
 	}()
 
-	var shuttingDown bool
+	var shuttingDown int32
 	go func() {
 		signals := make(chan os.Signal, 1)
 		signal.Notify(signals, os.Interrupt)
 		<-signals
 		fmt.Fprintf(os.Stderr, "Shutting down ...\n")
 		pass(maxK + 1)
-		shuttingDown = true
+		atomic.AddInt32(&shuttingDown, 1)
 		return
 	}()
 
@@ -237,7 +237,7 @@ func workManager(
 			defer wgWorkers.Done()
 			for ds := range worker.progress {
 				progressChannel <- Progress{worker.id, ds}
-				if shuttingDown {
+				if shuttingDown > 0 {
 					worker.shutdown <- true
 				}
 			}
@@ -248,7 +248,7 @@ func workManager(
 			wgWorkers.Add(1)
 			defer wgWorkers.Done()
 
-			kSolved := 0
+			var kSolved int32
 			for ds := range sets {
 				// Generator can have one excess set of the passed size
 				if ds.k <= kSolved {
@@ -266,7 +266,7 @@ func workManager(
 
 				if result.IsSolved() {
 					kSolved = result.k
-					pass(kSolved)
+					pass(int32(kSolved))
 					results <- result
 				}
 			}
@@ -280,8 +280,9 @@ func workManager(
 	wgManager.Wait()
 }
 
-func setGenerator(start, end int, prefix []int) (<-chan *diffSet, func(int)) {
-	var pass int
+func setGenerator(start, end int32, prefix []int32) (<-chan *diffSet, func(int32)) {
+	var pass int32
+	var passMutex sync.Mutex
 	sets := make(chan *diffSet)
 
 	if len(prefix) < 2 || prefix[0] != 0 || prefix[1] != 1 {
@@ -292,7 +293,7 @@ func setGenerator(start, end int, prefix []int) (<-chan *diffSet, func(int)) {
 	go func() {
 		powers := primePowers(maxK)
 		for i := 0; i < len(powers); i++ {
-			k := powers[i] + 1
+			k := int32(powers[i] + 1)
 			if k < start || k <= pass {
 				continue
 			}
@@ -302,7 +303,7 @@ func setGenerator(start, end int, prefix []int) (<-chan *diffSet, func(int)) {
 			}
 
 			dsParent := newDiffSet(k, prefix)
-			dsParent.targetDepth = len(prefix) + 2
+			dsParent.targetDepth = int32(len(prefix) + 2)
 			if dsParent.targetDepth > k {
 				dsParent.targetDepth = k
 			}
@@ -311,7 +312,10 @@ func setGenerator(start, end int, prefix []int) (<-chan *diffSet, func(int)) {
 			}
 			dsParent.Find(nil)
 			for {
-				if k <= pass {
+				passMutex.Lock()
+				skip := k <= pass
+				passMutex.Unlock()
+				if skip {
 					break
 				}
 
@@ -333,10 +337,12 @@ func setGenerator(start, end int, prefix []int) (<-chan *diffSet, func(int)) {
 	}()
 
 	// Generator controller function - kick to next k.
-	doPass := func(k int) {
+	doPass := func(k int32) {
+		passMutex.Lock()
 		if k > pass {
 			pass = k
 		}
+		passMutex.Unlock()
 	}
 
 	return sets, doPass
@@ -360,18 +366,18 @@ func worker(
 }
 
 type diffSet struct {
-	k           int    // Number of elements in set
-	v           int    // Modulus of differences (k * (k-1) + 1)
-	trials      int64  // Number of trial so far
-	targetDepth int    // Stop executing when current == targetDepth
-	current     int    // s[0:current] is current search prefix
-	low         int    // the largest i s.t. all diffs[i] == true
-	s           []int  // Provisional difference set values
-	diffs       []bool // Current differences covered by provisional set
+	k           int32   // Number of elements in set
+	v           int32   // Modulus of differences (k * (k-1) + 1)
+	trials      int64   // Number of trial so far
+	targetDepth int32   // Stop executing when current == targetDepth
+	current     int32   // s[0:current] is current search prefix
+	low         int32   // the largest i s.t. all diffs[i] == true
+	s           []int32 // Provisional difference set values
+	diffs       []bool  // Current differences covered by provisional set
 	start       time.Time
 }
 
-func newDiffSet(k int, prefix []int) *diffSet {
+func newDiffSet(k int32, prefix []int32) *diffSet {
 	v := k*(k-1) + 1
 
 	ds := diffSet{
@@ -381,7 +387,7 @@ func newDiffSet(k int, prefix []int) *diffSet {
 		start: time.Now(),
 	}
 
-	ds.s = make([]int, k)
+	ds.s = make([]int32, k)
 
 	ds.diffs[0] = true
 
@@ -396,7 +402,7 @@ func newDiffSet(k int, prefix []int) *diffSet {
 
 func (ds *diffSet) copy() *diffSet {
 	dsCopy := *ds
-	dsCopy.s = make([]int, ds.k)
+	dsCopy.s = make([]int32, ds.k)
 	copy(dsCopy.s, ds.s)
 	dsCopy.diffs = make([]bool, ds.v/2+1)
 	copy(dsCopy.diffs, ds.diffs)
@@ -432,7 +438,7 @@ func (ds *diffSet) Find(conn *workerConnection) {
 	ds.SearchNext(ds.s[ds.current-1]+ds.low+1, conn)
 }
 
-func (ds *diffSet) SearchNext(candidate int, conn *workerConnection) {
+func (ds *diffSet) SearchNext(candidate int32, conn *workerConnection) {
 	for {
 		if ds.IsSolved() {
 			return
@@ -469,7 +475,7 @@ func (ds *diffSet) IsSolved() bool {
 	return ds.current == ds.k
 }
 
-func (ds *diffSet) push(a int) (ok bool) {
+func (ds *diffSet) push(a int32) (ok bool) {
 	/*
 	   debugStatus := func() {
 	       fmt.Fprintf(os.Stderr, "push(%d) -> %v\n", a, ok)
@@ -480,7 +486,7 @@ func (ds *diffSet) push(a int) (ok bool) {
 		return
 	}
 
-	for i := 0; i < ds.current; i++ {
+	for i := int32(0); i < ds.current; i++ {
 		d := a - ds.s[i]
 		if d < 0 {
 			d += ds.v
@@ -489,7 +495,7 @@ func (ds *diffSet) push(a int) (ok bool) {
 			d = ds.v - d
 		}
 		if ds.diffs[d] {
-			for j := 0; j < i; j++ {
+			for j := int32(0); j < i; j++ {
 				d = a - ds.s[j]
 				if d < 0 {
 					d += ds.v
@@ -514,13 +520,13 @@ func (ds *diffSet) push(a int) (ok bool) {
 	return
 }
 
-func (ds *diffSet) pop() int {
+func (ds *diffSet) pop() int32 {
 	ds.current--
 	if ds.current < 0 {
 		panic("pop error: " + ds.String())
 	}
 	a := ds.s[ds.current]
-	for i := 0; i < ds.current; i++ {
+	for i := int32(0); i < ds.current; i++ {
 		d := a - ds.s[i]
 		if d < 0 {
 			d += ds.v
@@ -565,7 +571,7 @@ func primePowers(max int) []int {
 }
 
 // WriteInts writes a comma separated slice of ints.
-func WriteInts(w io.Writer, a []int) {
+func WriteInts(w io.Writer, a []int32) {
 	sep := ""
 	for _, n := range a {
 		fmt.Fprintf(w, "%s%3d", sep, n)
