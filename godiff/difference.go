@@ -126,7 +126,7 @@ func main() {
 		go worker(i, requests)
 	}
 
-	workManager(int32(start), int32(end), prefix, requests)
+	workManager(start, end, prefix, requests)
 }
 
 func usage() {
@@ -156,9 +156,9 @@ func newWorkerConnection(id int) *workerConnection {
 }
 
 func workManager(
-	start, end int32,
+	start, end int,
 	prefix []int32,
-	requests chan workerConnection,
+	requests <-chan workerConnection,
 ) {
 	var wgManager sync.WaitGroup
 	var wgWorkers sync.WaitGroup
@@ -167,8 +167,8 @@ func workManager(
 
 	completedTrials := make([]int64, maxK)
 	results := make(chan *diffSet)
+	wgManager.Add(1)
 	go func() {
-		wgManager.Add(1)
 		defer wgManager.Done()
 
 		for result := range results {
@@ -207,8 +207,8 @@ func workManager(
 			statMutex.Unlock()
 		}
 	}()
+	wgManager.Add(1)
 	go func() {
-		wgManager.Add(1)
 		defer wgManager.Done()
 
 		for p := range progressChannel {
@@ -229,11 +229,10 @@ func workManager(
 		return
 	}()
 
-	var closer sync.Once
 	for worker := range requests {
 		// Process progress
+		wgWorkers.Add(1)
 		go func(worker workerConnection) {
-			wgWorkers.Add(1)
 			defer wgWorkers.Done()
 			for ds := range worker.progress {
 				progressChannel <- Progress{worker.id, ds}
@@ -244,11 +243,11 @@ func workManager(
 		}(worker)
 
 		// Process work
+		wgWorkers.Add(1)
 		go func(worker workerConnection) {
-			wgWorkers.Add(1)
 			defer wgWorkers.Done()
 
-			var kSolved int32
+			var kSolved int
 			for ds := range sets {
 				// Generator can have one excess set of the passed size
 				if ds.k <= kSolved {
@@ -257,7 +256,11 @@ func workManager(
 				// workQueue has 1 buffer so no need to call async.
 				worker.workQueue <- ds
 
-				result := <-worker.results
+				result, ok := <-worker.results
+				if !ok {
+					fmt.Fprintf(os.Stderr, "closed worker results %d?\n", worker.id)
+					break
+				}
 
 				atomic.AddInt64(&completedTrials[result.k], int64(result.trials))
 				statMutex.Lock()
@@ -266,12 +269,12 @@ func workManager(
 
 				if result.IsSolved() {
 					kSolved = result.k
-					pass(int32(kSolved))
+					pass(kSolved)
 					results <- result
 				}
 			}
+			fmt.Fprintf(os.Stderr, "closing worker %d\n", worker.id)
 			close(worker.workQueue)
-			closer.Do(func() { close(requests) })
 		}(worker)
 	}
 	wgWorkers.Wait()
@@ -280,8 +283,8 @@ func workManager(
 	wgManager.Wait()
 }
 
-func setGenerator(start, end int32, prefix []int32) (<-chan *diffSet, func(int32)) {
-	var pass int32
+func setGenerator(start, end int, prefix []int32) (<-chan *diffSet, func(int)) {
+	var pass int
 	var passMutex sync.Mutex
 	sets := make(chan *diffSet)
 
@@ -293,7 +296,7 @@ func setGenerator(start, end int32, prefix []int32) (<-chan *diffSet, func(int32
 	go func() {
 		powers := primePowers(maxK)
 		for i := 0; i < len(powers); i++ {
-			k := int32(powers[i] + 1)
+			k := powers[i] + 1
 			if k < start || k <= pass {
 				continue
 			}
@@ -303,7 +306,7 @@ func setGenerator(start, end int32, prefix []int32) (<-chan *diffSet, func(int32
 			}
 
 			dsParent := newDiffSet(k, prefix)
-			dsParent.targetDepth = int32(len(prefix) + 2)
+			dsParent.targetDepth = len(prefix) + 2
 			if dsParent.targetDepth > k {
 				dsParent.targetDepth = k
 			}
@@ -337,7 +340,7 @@ func setGenerator(start, end int32, prefix []int32) (<-chan *diffSet, func(int32
 	}()
 
 	// Generator controller function - kick to next k.
-	doPass := func(k int32) {
+	doPass := func(k int) {
 		passMutex.Lock()
 		if k > pass {
 			pass = k
@@ -353,6 +356,12 @@ func worker(
 	requests chan<- workerConnection,
 ) {
 	conn := newWorkerConnection(id)
+	defer func() {
+		fmt.Fprintf(os.Stderr, "Shutting down worker %d.\n", id)
+		close(conn.results)
+		close(conn.progress)
+	}()
+
 	requests <- *conn
 
 	for ds := range conn.workQueue {
@@ -361,24 +370,22 @@ func worker(
 		// Signals completion of work, even if not solved.
 		conn.results <- ds.copy()
 	}
-	close(conn.results)
-	close(conn.progress)
 }
 
 type diffSet struct {
-	k           int32   // Number of elements in set
+	k           int     // Number of elements in set
 	v           int32   // Modulus of differences (k * (k-1) + 1)
 	trials      int64   // Number of trial so far
-	targetDepth int32   // Stop executing when current == targetDepth
-	current     int32   // s[0:current] is current search prefix
+	targetDepth int     // Stop executing when current == targetDepth
+	current     int     // s[0:current] is current search prefix
 	low         int32   // the largest i s.t. all diffs[i] == true
 	s           []int32 // Provisional difference set values
 	diffs       []bool  // Current differences covered by provisional set
 	start       time.Time
 }
 
-func newDiffSet(k int32, prefix []int32) *diffSet {
-	v := k*(k-1) + 1
+func newDiffSet(k int, prefix []int32) *diffSet {
+	v := int32(k*(k-1) + 1)
 
 	ds := diffSet{
 		k:     k,
@@ -465,7 +472,7 @@ func (ds *diffSet) SearchNext(candidate int32, conn *workerConnection) {
 
 		candidate++
 
-		if candidate+(ds.low+1)*(ds.k-ds.current-1) >= ds.v-ds.low {
+		if candidate+(ds.low+1)*int32(ds.k-ds.current-1) >= int32(ds.v)-ds.low {
 			candidate = ds.pop() + 1
 		}
 	}
@@ -486,22 +493,22 @@ func (ds *diffSet) push(a int32) (ok bool) {
 		return
 	}
 
-	for i := int32(0); i < ds.current; i++ {
+	for i := 0; i < ds.current; i++ {
 		d := a - ds.s[i]
 		if d < 0 {
-			d += ds.v
+			d += int32(ds.v)
 		}
-		if d > ds.v/2 {
-			d = ds.v - d
+		if d > int32(ds.v/2) {
+			d = int32(ds.v) - d
 		}
 		if ds.diffs[d] {
-			for j := int32(0); j < i; j++ {
+			for j := 0; j < i; j++ {
 				d = a - ds.s[j]
 				if d < 0 {
-					d += ds.v
+					d += int32(ds.v)
 				}
-				if d > ds.v/2 {
-					d = ds.v - d
+				if d > int32(ds.v/2) {
+					d = int32(ds.v) - d
 				}
 				ds.diffs[d] = false
 			}
@@ -512,7 +519,7 @@ func (ds *diffSet) push(a int32) (ok bool) {
 	ds.s[ds.current] = a
 	ds.current++
 
-	for ds.low < ds.v/2 && ds.diffs[ds.low+1] {
+	for ds.low < int32(ds.v/2) && ds.diffs[ds.low+1] {
 		ds.low++
 	}
 
@@ -526,7 +533,7 @@ func (ds *diffSet) pop() int32 {
 		panic("pop error: " + ds.String())
 	}
 	a := ds.s[ds.current]
-	for i := int32(0); i < ds.current; i++ {
+	for i := 0; i < ds.current; i++ {
 		d := a - ds.s[i]
 		if d < 0 {
 			d += ds.v
