@@ -128,7 +128,7 @@ func main() {
 	progress := make(chan *diffSet)
 
 	for i := 0; i < maxWorkers; i++ {
-		go startWorker(string(i), requests, progress)
+		go startWorker(strconv.Itoa(i), requests, progress)
 	}
 
 	go progressMonitor(progress)
@@ -137,12 +137,14 @@ func main() {
 		signals := make(chan os.Signal, 1)
 		signal.Notify(signals, os.Interrupt)
 		<-signals
-		fmt.Fprintf(os.Stderr, "Shutting down ...\n")
-		close(requests)
-		return
+		os.Exit(1)
 	}()
 
-	workManager(start, end, prefix, requests)
+	sets, pass := setGenerator(start, end, prefix)
+
+	for req := range requests {
+		go workerProxy(req, sets, pass)
+	}
 }
 
 func usage() {
@@ -153,40 +155,12 @@ func usage() {
 	os.Exit(1)
 }
 
-type request struct {
-	workQueue chan *diffSet
-	results   chan *diffSet
-	abort     chan bool
-}
-
-func startWorker(
-	id string,
-	requests chan<- *request,
-	progress chan<- *diffSet,
-) {
-	workQueue := make(chan *diffSet, 1)
-	results := make(chan *diffSet)
-	abort := make(chan bool, 1)
-
-	defer func() {
-		fmt.Fprintf(os.Stderr, "Shutting down worker %s.\n", id)
-		close(results)
-	}()
-
-	requests <- &request{workQueue, results, abort}
-
-	for ds := range workQueue {
-		ds.Find(progress, abort)
-		results <- ds
-	}
-}
-
 func progressMonitor(progress <-chan *diffSet) {
-	var lastTrials int64
-	timer := time.Tick(progressInterval)
 	statistics := make(map[string]*diffSet)
 	var totalTrials int64
+	var lastTrials int64
 	completedTrials := make(map[string]int64)
+	timer := time.Tick(progressInterval)
 
 	for {
 		select {
@@ -213,49 +187,42 @@ func progressMonitor(progress <-chan *diffSet) {
 				commas(int(sumTrials-lastTrials)/int(progressInterval/time.Second)),
 				commas(int(sumTrials)))
 
+			// Hack: timing dependent
+			if len(statistics) == 0 && lastTrials == sumTrials {
+				os.Exit(1)
+			}
 			lastTrials = sumTrials
 
 		case ds := <-progress:
-			statistics[ds.id] = ds
-			if ds.status == Completed || ds.status == Solution {
-				totalTrials += ds.trials
-				completedTrials[ds.id] += ds.trials
-				if ds.status == Solution {
-					ds.trials = completedTrials[ds.id]
-					fmt.Fprintln(os.Stdout, ds)
-				}
+			if ds.status == Running {
+				statistics[ds.id] = ds
+				break
+			}
+			delete(statistics, ds.id)
+			totalTrials += ds.trials
+			completedTrials[ds.id] += ds.trials
+			if ds.status == Solution {
+				ds.trials = completedTrials[ds.id]
+				fmt.Fprintln(os.Stdout, ds)
 			}
 		}
 	}
 }
 
-func workManager(
-	start, end int,
-	prefix []int32,
-	requests <-chan *request,
-) {
-	var wg sync.WaitGroup
-	sets, pass := setGenerator(start, end, prefix)
-
-	for req := range requests {
-		wg.Add(1)
-		go workerProxy(req, sets, pass, &wg)
-	}
-	wg.Wait()
-}
-
-func workerProxy(req *request, sets <-chan *diffSet, pass func(int), wg *sync.WaitGroup) {
-	defer wg.Done()
+func workerProxy(req *request, sets <-chan *diffSet, pass func(int)) {
+	defer func() {
+		close(req.workQueue)
+		close(req.abort)
+	}()
 
 	var solvedK int
 	for ds := range sets {
-		// Generator can have one excess set of the passed size
+		// Generator can have one excess set of the passed size queued
 		if ds.k <= solvedK {
 			continue
 		}
 		// workQueue has 1 buffer so no need to call async.
 		req.workQueue <- ds
-
 		result := <-req.results
 
 		if result.IsSolved() {
@@ -263,7 +230,6 @@ func workerProxy(req *request, sets <-chan *diffSet, pass func(int), wg *sync.Wa
 			pass(solvedK)
 		}
 	}
-	close(req.workQueue)
 }
 
 func setGenerator(start, end int, prefix []int32) (<-chan *diffSet, func(int)) {
@@ -340,6 +306,7 @@ const (
 	Running Status = iota
 	Completed
 	Solution
+	Aborted
 )
 
 type diffSet struct {
@@ -354,6 +321,35 @@ type diffSet struct {
 	s           []int32 // Provisional difference set values
 	diffs       []bool  // Current differences covered by provisional set
 	start       time.Time
+}
+
+type request struct {
+	id        string
+	workQueue chan *diffSet
+	results   chan *diffSet
+	abort     chan bool
+}
+
+func startWorker(
+	id string,
+	requests chan<- *request,
+	progress chan<- *diffSet,
+) {
+	workQueue := make(chan *diffSet, 1)
+	results := make(chan *diffSet)
+	abort := make(chan bool, 1)
+
+	defer func() {
+		close(results)
+	}()
+
+	requests <- &request{id, workQueue, results, abort}
+
+	for ds := range workQueue {
+		ds.id = id
+		ds.Find(progress, abort)
+		results <- ds
+	}
 }
 
 func newDiffSet(k int, prefix []int32) *diffSet {
@@ -399,14 +395,14 @@ func (ds *diffSet) WriteInfo(w io.Writer) {
 }
 
 func (ds *diffSet) WriteTrace(w io.Writer) {
-	var solvedString string
-	if ds.IsSolved() {
-		solvedString = " SOLVED"
+	fmt.Fprintf(w, "(%2d, %3d) ", ds.k, ds.v)
+	if ds.trials != 0 {
+		fmt.Fprintf(w, "@%17s: ", commas(ds.trials))
 	}
-
-	fmt.Fprintf(w, "(%d, %d) @%s: ", ds.k, ds.v, commas(ds.trials))
 	WriteInts(w, ds.s[0:ds.current])
-	fmt.Fprintf(w, " (low = %d, target = %d)%s", ds.low, ds.targetDepth, solvedString)
+	if !ds.IsSolved() {
+		fmt.Fprintf(w, " (low = %d, target = %d)", ds.low, ds.targetDepth)
+	}
 }
 
 // Find the targetDepth or solution with prefix of current set.
@@ -414,14 +410,11 @@ func (ds *diffSet) Find(progress chan<- *diffSet, abort <-chan bool) {
 	if ds.current <= 1 {
 		panic(fmt.Sprintf("Illegal call to Find: %s", ds))
 	}
-	ds.status = Running
-	if progress != nil {
-		progress <- ds
-	}
 	ds.SearchNext(ds.s[ds.current-1]+ds.low+1, progress, abort)
 }
 
 func (ds *diffSet) SearchNext(candidate int32, progress chan<- *diffSet, abort <-chan bool) {
+	ds.status = Running
 	for {
 		if ds.IsSolved() {
 			ds.status = Solution
@@ -436,6 +429,7 @@ func (ds *diffSet) SearchNext(candidate int32, progress chan<- *diffSet, abort <
 			progress <- ds.copy()
 			select {
 			case <-abort:
+				ds.status = Aborted
 				return
 			default:
 			}
