@@ -41,7 +41,7 @@ func TestDiffSets_new(t *testing.T) {
 
 func TestDiffSets_Find3(t *testing.T) {
 	ds := newDiffSet(3, []int32{0, 1})
-	ds.Find(nil)
+	ds.Find(nil, nil)
 	expect(t, "k", ds.k, 3)
 	expect(t, "v", ds.v, int32(7))
 	expect(t, "trials", ds.trials, int64(1))
@@ -52,7 +52,7 @@ func TestDiffSets_Find3(t *testing.T) {
 
 func TestDiffSets_Find4(t *testing.T) {
 	ds := newDiffSet(4, []int32{0, 1})
-	ds.Find(nil)
+	ds.Find(nil, nil)
 	expect(t, "k", ds.k, 4)
 	expect(t, "v", ds.v, int32(13))
 	expect(t, "trials", ds.trials, int64(4))
