@@ -128,10 +128,9 @@ def is_sorted(a):
 
 if __name__ == '__main__':
     import random
-    from math import pow
 
     for p in xrange(7):
-        size = int(pow(10, p))
+        size = pow(10, p)
         t = [random.randint(1, 1000000) for x in xrange(size)]
         quicksort(t)
         print size, is_sorted(t), exchanges, exchanges / size
