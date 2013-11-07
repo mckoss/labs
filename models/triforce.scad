@@ -1,5 +1,5 @@
-SIDE = 50;
-OVERLAP = 1;
+SIDE = 80;
+OVERLAP = 3;
 
 module tetra_fractal(side, depth=1) {
   h2 = side * sin(60);
@@ -23,4 +23,9 @@ module tetra_fractal(side, depth=1) {
   }
 }
 
-tetra_fractal(SIDE, 2);
+rotate(180, v=[0, 1, 0])
+  difference() {
+    tetra_fractal(SIDE, 3);
+    # translate([0, 0, SIDE * (sin(60)*sin(60) + 0.5)])
+      cube([SIDE, SIDE, SIDE], center=true);
+}
