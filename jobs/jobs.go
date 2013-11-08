@@ -23,7 +23,7 @@ type Tree struct {
 }
 
 func NewTree() *Tree {
-	return &Nodes{lookup: make(map[string]*Node)}
+	return &Tree{lookup: make(map[string]*Node)}
 }
 
 func BuildTree(rules []*Rule) *Tree {
@@ -33,7 +33,7 @@ func BuildTree(rules []*Rule) *Tree {
 	}
 
 	var roots []*Node
-	for _, node := range nodes.lookup {
+	for _, node := range tree.lookup {
 		if len(node.parents) == 0 {
 			roots = append(roots, node)
 		}
@@ -50,9 +50,9 @@ func BuildTree(rules []*Rule) *Tree {
 			prereqs = append(prereqs, node.name)
 		}
 		virtualRoot := &Rule{"virtual_root", prereqs, "# build all roots."}
-		tree.root = nodes.AddRule(virtualRoot)
+		tree.root = tree.AddRule(virtualRoot)
 	}
-	return nodes
+	return tree
 }
 
 func (tree *Tree) AddRule(rule *Rule) *Node {

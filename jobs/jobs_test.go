@@ -16,7 +16,7 @@ func TestBuildTree(t *testing.T) {
 	expect(t, "tree", tree.root.name, "target")
 	expect(t, "children", len(tree.root.children), 3)
 	expect(t, "parent", len(tree.Ensure("one").parents), 1)
-	expect(t, "root", tree.Ensure("one)").parents[0], tree.root)
+	expect(t, "root", tree.Ensure("one").parents[0], tree.root)
 }
 
 func expect(t *testing.T, what string, got, expected interface{}) {
