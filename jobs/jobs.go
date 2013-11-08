@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"fmt"
 	"log"
 )
 
@@ -15,6 +16,16 @@ type Node struct {
 	children []*Node
 	parents  []*Node
 	rule     *Rule
+}
+
+func (node *Node) Exec() {
+	if node.rule == nil {
+		fmt.Printf("Confirm leaf: %s\n", node.name)
+		return
+	}
+	rule := node.rule
+	fmt.Printf("%s <- %v\n", rule.target, rule.prereqs)
+	fmt.Printf("Running: %s\n", rule.recipe)
 }
 
 type Tree struct {
@@ -53,6 +64,14 @@ func BuildTree(rules []*Rule) *Tree {
 		tree.root = tree.AddRule(virtualRoot)
 	}
 	return tree
+}
+
+// BuildSync runs all the execution commands synchronously using DFS
+func (node *Node) BuildSync() {
+	for _, child := range node.children {
+		child.BuildSync()
+	}
+	node.Exec()
 }
 
 func (tree *Tree) AddRule(rule *Rule) *Node {
