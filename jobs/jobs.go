@@ -3,6 +3,7 @@ package jobs
 import (
 	"fmt"
 	"log"
+	"os"
 )
 
 type Rule struct {
@@ -16,6 +17,8 @@ type Node struct {
 	children []*Node
 	parents  []*Node
 	rule     *Rule
+	require  chan bool
+	visited  bool
 }
 
 func (node *Node) Exec() {
@@ -31,6 +34,7 @@ func (node *Node) Exec() {
 type Tree struct {
 	lookup map[string]*Node
 	root   *Node
+	ready  chan bool
 }
 
 func NewTree() *Tree {
@@ -66,20 +70,34 @@ func BuildTree(rules []*Rule) *Tree {
 	return tree
 }
 
-// BuildSync runs all the execution commands synchronously using DFS
-func (node *Node) BuildSync() {
-	for _, child := range node.children {
-		child.BuildSync()
+func (tree *Tree) BuildSync() {
+	for _, node := range tree.lookup {
+		node.visited = false
 	}
-	node.Exec()
+	tree.root.BuildSync()
+}
+
+func (tree *Tree) BuildAsync() {
+	ready := make(chan bool)
+	for _, node := range tree.lookup {
+		node.require = make(chan bool)
+	}
+	for _, node := range tree.lookup {
+		if node == tree.root {
+			go node.BuildAsync(ready)
+		} else {
+			go node.BuildAsync(nil)
+		}
+	}
+	<-ready
 }
 
 func (tree *Tree) AddRule(rule *Rule) *Node {
-	if tree.lookup[rule.target] != nil {
+	node := tree.Ensure(rule.target)
+	if node.rule != nil {
 		log.Printf("Duplicate rule for %s", rule.target)
 		return nil
 	}
-	node := tree.Ensure(rule.target)
 	node.rule = rule
 	for _, pre := range rule.prereqs {
 		child := tree.Ensure(pre)
@@ -94,4 +112,46 @@ func (tree *Tree) Ensure(name string) *Node {
 		tree.lookup[name] = &Node{name: name}
 	}
 	return tree.lookup[name]
+}
+
+func (node *Node) BuildAsync(ready chan<- bool) {
+	node.WaitForChildren()
+	node.Exec()
+	for _, parent := range node.parents {
+		fmt.Fprintf(os.Stderr, "Signal %s -> %s\n", node.name, parent.name)
+		parent.require <- true
+	}
+	if ready != nil {
+		ready <- true
+	}
+}
+
+func (node *Node) WaitForChildren() {
+	require := len(node.children)
+	if require == 0 {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "%s is waiting ...\n", node.name)
+	for _ = range node.require {
+		require--
+		fmt.Fprintf(os.Stderr, "%s: %d deps left.\n", node.name, require)
+		if require < 0 {
+			panic("Too many dependencies.")
+		}
+		if require == 0 {
+			return
+		}
+	}
+}
+
+// BuildSync runs all the execution commands synchronously using DFS
+func (node *Node) BuildSync() {
+	if node.visited {
+		return
+	}
+	for _, child := range node.children {
+		child.BuildSync()
+	}
+	node.Exec()
+	node.visited = true
 }
