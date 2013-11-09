@@ -2,20 +2,32 @@
 
 module flake(radius, base) {
   for (i = [0 : 5]) {
-    arm([0, 0], 60 * i, radius, base);
+    spike3([0, 0], 60 * i, radius, base);
   }
 }
 
 function unit(dir) = [cos(dir), sin(dir)];
 
-module arm(pos, dir, len, side) {
-  echo("Arm:", pos, len);
+module spike3(pos, dir, len, side) {
+  echo("Arm:", pos, len, side);
   spike(pos, dir, len, side);
-  if (len > 10) {
-    assign(child = pos + len * 0.5 * unit(dir)) {
-      arm(child, dir + 60, len * 0.3, side * 0.5);
-      arm(child, dir - 60, len * 0.3, side * 0.5);
-    }
+  assign(child = pos + len * 0.3 * unit(dir)) {
+    spike(child, dir + 60, len * 0.2, side * 0.7);
+    spike(child, dir - 60, len * 0.2, side * 0.7);
+  }
+  assign(child = pos + len * 0.6 * unit(dir)) {
+    spike2(child, dir + 60, len * 0.3, side * 0.4);
+    spike2(child, dir - 60, len * 0.3, side * 0.4);
+  }
+}
+
+// Recursion not working????
+module spike2(pos, dir, len, side) {
+  echo("Arm2:", pos, len, side);
+  spike(pos, dir, len, side);
+  assign(child = pos + len * 0.5 * unit(dir)) {
+    spike(child, dir + 60, len * 0.3, side * 0.5);
+    spike(child, dir - 60, len * 0.3, side * 0.5);
   }
 }
 
