@@ -59,6 +59,17 @@ devfest-%.stl: gdg-devfest.scad chrome.scad
 
 
 #
+# Chrome Summit 2013 Chrome Ball
+#
+SUMMIT_FILES=$(foreach color, $(COLORS), summit-$(color).stl)
+
+summit: $(SUMMIT_FILES)
+
+summit-%.stl: chrome-summit.scad chrome.scad
+	openscad -o $@ -D 'PART = "$*"' -D 'SPHERE_PORTION = 0.9' $<
+
+
+#
 # Filament Shelf Parts
 #
 SHELF_FILES=spool-shelf-1.stl spool-shelf-2.stl spool-shelf-3.stl spool-post.stl spool-post-mirror.stl \
