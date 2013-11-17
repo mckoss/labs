@@ -8,9 +8,11 @@
 NUMBERS=1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25
 
 WHEELS=$(foreach n, $(NUMBERS), m94-$(n).stl)
+REPWHEELS=$(foreach n, $(NUMBERS), m94-$(n)-repl.stl)
 M94_FILES=$(WHEELS) bar.stl m94-14-repl.stl all-wheels.zip multi-1.stl multi-2.stl
 
 m94: $(M94_FILES)
+m94r: $(REPWHEELS) bar.stl
 
 m94-%-repl.stl: m94.scad
 	openscad -o $@ -D 'REPLICA = true' -D 'WHEEL = $*' $<
@@ -53,6 +55,17 @@ DEVFEST_FILES=$(foreach color, $(COLORS), devfest-$(color).stl)
 devfest: $(DEVFEST_FILES)
 
 devfest-%.stl: gdg-devfest.scad chrome.scad
+	openscad -o $@ -D 'PART = "$*"' -D 'SPHERE_PORTION = 0.9' $<
+
+
+#
+# Chrome Summit 2013 Chrome Ball
+#
+SUMMIT_FILES=$(foreach color, $(COLORS), summit-$(color).stl)
+
+summit: $(SUMMIT_FILES)
+
+summit-%.stl: chrome-summit.scad chrome.scad
 	openscad -o $@ -D 'PART = "$*"' -D 'SPHERE_PORTION = 0.9' $<
 
 

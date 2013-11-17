@@ -55,7 +55,6 @@ import (
 	"sort"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -69,9 +68,13 @@ func main() {
 	var err error
 	start := minK
 	end := maxK
-	var prefix []int
+	maxWorkers := runtime.NumCPU()
+	var passPrefix bool
+	var prefix []int32
 
 	flag.Usage = usage
+	flag.IntVar(&maxWorkers, "workers", maxWorkers, "Number of concurrent workers")
+	flag.BoolVar(&passPrefix, "continue", false, "Continue beyond prefix.")
 	flag.Parse()
 
 	// <k-start>
@@ -103,10 +106,10 @@ func main() {
 				fmt.Fprintf(os.Stderr, "'%s' is not a valid number.", flag.Arg(i))
 				usage()
 			}
-			prefix = append(prefix, p)
+			prefix = append(prefix, int32(p))
 		}
 	} else {
-		prefix = make([]int, 2)
+		prefix = make([]int32, 2)
 		prefix[0] = 0
 		prefix[1] = 1
 	}
@@ -116,172 +119,122 @@ func main() {
 	WriteInts(os.Stderr, prefix)
 	fmt.Fprintf(os.Stderr, "\n")
 
-	maxWorkers := runtime.NumCPU()
-	fmt.Fprintf(os.Stderr, "Running on %d CPUs.\n", maxWorkers)
-	runtime.GOMAXPROCS(maxWorkers)
-
-	requests := make(chan workerConnection)
-
-	for i := 0; i < maxWorkers; i++ {
-		go worker(i, requests)
+	fmt.Fprintf(os.Stderr, "Running with %d workers on %d CPUs.\n", maxWorkers, runtime.NumCPU())
+	if maxWorkers > 1 {
+		runtime.GOMAXPROCS(min(maxWorkers, runtime.NumCPU()))
 	}
 
-	workManager(start, end, prefix, requests)
+	requests := make(chan *request)
+	progress := make(chan *diffSet)
+
+	for i := 0; i < maxWorkers; i++ {
+		go startWorker(strconv.Itoa(i), requests, progress)
+	}
+
+	go progressMonitor(progress)
+
+	go func() {
+		signals := make(chan os.Signal, 1)
+		signal.Notify(signals, os.Interrupt)
+		<-signals
+		os.Exit(1)
+	}()
+
+	sets, pass := setGenerator(start, end, prefix)
+
+	for req := range requests {
+		go workerProxy(req, sets, pass)
+	}
 }
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "Usage: difference [k-start] [k-end]]\n")
-	fmt.Fprintf(os.Stderr, "       difference [k] [prefix1 prefix2 ...]\n")
+	fmt.Fprintf(os.Stderr, "Usage: difference <flags> [k-start] [k-end]]\n")
+	fmt.Fprintf(os.Stderr, "       difference <flags> [k] [prefix1 prefix2 ...]\n")
 	fmt.Fprintf(os.Stderr, "Find difference sets of order k.\n\n")
 	flag.PrintDefaults()
 	os.Exit(1)
 }
 
-type workerConnection struct {
-	id        int
-	workQueue chan *diffSet
-	results   chan *diffSet
-	progress  chan *diffSet
-	shutdown  chan bool
-}
-
-func newWorkerConnection(id int) *workerConnection {
-	return &workerConnection{
-		id:        id,
-		workQueue: make(chan *diffSet, 1),
-		results:   make(chan *diffSet),
-		progress:  make(chan *diffSet, 1),
-		shutdown:  make(chan bool, 1),
-	}
-}
-
-func workManager(
-	start, end int,
-	prefix []int,
-	requests chan workerConnection,
-) {
-	var wgManager sync.WaitGroup
-	var wgWorkers sync.WaitGroup
-
-	sets, pass := setGenerator(start, end, prefix)
-
-	completedTrials := make([]int64, maxK)
-	results := make(chan *diffSet)
-	go func() {
-		wgManager.Add(1)
-		defer wgManager.Done()
-
-		for result := range results {
-			result.trials = completedTrials[result.k]
-			fmt.Fprintln(os.Stdout, result)
-		}
-	}()
-
-	type Progress struct {
-		id int
-		*diffSet
-	}
-	progressChannel := make(chan Progress)
-	statistics := make([]*diffSet, runtime.NumCPU())
+func progressMonitor(progress <-chan *diffSet) {
+	statistics := make(map[string]*diffSet)
+	var totalTrials int64
 	var lastTrials int64
-	var statMutex sync.Mutex
-	go func() {
-		for _ = range time.Tick(progressInterval) {
-			statMutex.Lock()
-			var sumTrials int64
-			for i := 0; i < len(completedTrials); i++ {
-				sumTrials += completedTrials[i]
+	completedTrials := make(map[string]int64)
+	timer := time.Tick(progressInterval)
+
+	for {
+		select {
+		case <-timer:
+			sumTrials := totalTrials
+
+			// Annoying lack of keys() builtin
+			// The next 4 lines could just be
+			// ids := keys(statistics)
+			var ids []string
+			for key := range statistics {
+				ids = append(ids, key)
 			}
-			for id := 0; id < len(statistics); id++ {
+			sort.Strings(ids)
+			for _, id := range ids {
 				ds := statistics[id]
 				if ds != nil {
-					fmt.Fprintf(os.Stderr, "%d: %s\n", id, ds)
-					sumTrials += int64(ds.trials)
+					fmt.Fprintf(os.Stderr, "%s: %s\n", id, ds)
+					sumTrials += ds.trials
 				}
 			}
+
 			fmt.Fprintf(os.Stderr, "Search rate: %s/sec (Total: %s)\n\n",
 				commas(int(sumTrials-lastTrials)/int(progressInterval/time.Second)),
-				commas(int(sumTrials)),
-			)
+				commas(int(sumTrials)))
+
+			// Hack: timing dependent
+			if len(statistics) == 0 && lastTrials == sumTrials {
+				os.Exit(1)
+			}
 			lastTrials = sumTrials
-			statMutex.Unlock()
-		}
-	}()
-	go func() {
-		wgManager.Add(1)
-		defer wgManager.Done()
 
-		for p := range progressChannel {
-			statMutex.Lock()
-			statistics[p.id] = p.diffSet
-			statMutex.Unlock()
-		}
-	}()
-
-	var shuttingDown bool
-	go func() {
-		signals := make(chan os.Signal, 1)
-		signal.Notify(signals, os.Interrupt)
-		<-signals
-		fmt.Fprintf(os.Stderr, "Shutting down ...\n")
-		pass(maxK + 1)
-		shuttingDown = true
-		return
-	}()
-
-	var closer sync.Once
-	for worker := range requests {
-		// Process progress
-		go func(worker workerConnection) {
-			wgWorkers.Add(1)
-			defer wgWorkers.Done()
-			for ds := range worker.progress {
-				progressChannel <- Progress{worker.id, ds}
-				if shuttingDown {
-					worker.shutdown <- true
-				}
+		case ds := <-progress:
+			if ds.status == Running {
+				statistics[ds.id] = ds
+				break
 			}
-		}(worker)
-
-		// Process work
-		go func(worker workerConnection) {
-			wgWorkers.Add(1)
-			defer wgWorkers.Done()
-
-			kSolved := 0
-			for ds := range sets {
-				// Generator can have one excess set of the passed size
-				if ds.k <= kSolved {
-					continue
-				}
-				// workQueue has 1 buffer so no need to call async.
-				worker.workQueue <- ds
-
-				result := <-worker.results
-
-				atomic.AddInt64(&completedTrials[result.k], int64(result.trials))
-				statMutex.Lock()
-				statistics[worker.id] = nil
-				statMutex.Unlock()
-
-				if result.IsSolved() {
-					kSolved = result.k
-					pass(kSolved)
-					results <- result
-				}
+			delete(statistics, ds.id)
+			totalTrials += ds.trials
+			completedTrials[ds.id] += ds.trials
+			if ds.status == Solution {
+				ds.trials = completedTrials[ds.id]
+				fmt.Fprintln(os.Stdout, ds)
 			}
-			close(worker.workQueue)
-			closer.Do(func() { close(requests) })
-		}(worker)
+		}
 	}
-	wgWorkers.Wait()
-	close(results)
-	close(progressChannel)
-	wgManager.Wait()
 }
 
-func setGenerator(start, end int, prefix []int) (<-chan *diffSet, func(int)) {
+func workerProxy(req *request, sets <-chan *diffSet, pass func(int)) {
+	defer func() {
+		close(req.workQueue)
+		close(req.abort)
+	}()
+
+	var solvedK int
+	for ds := range sets {
+		// Generator can have one excess set of the passed size queued
+		if ds.k <= solvedK {
+			continue
+		}
+		// workQueue has 1 buffer so no need to call async.
+		req.workQueue <- ds
+		result := <-req.results
+
+		if result.IsSolved() {
+			solvedK = result.k
+			pass(solvedK)
+		}
+	}
+}
+
+func setGenerator(start, end int, prefix []int32) (<-chan *diffSet, func(int)) {
 	var pass int
+	var passMutex sync.Mutex
 	sets := make(chan *diffSet)
 
 	if len(prefix) < 2 || prefix[0] != 0 || prefix[1] != 1 {
@@ -309,9 +262,12 @@ func setGenerator(start, end int, prefix []int) (<-chan *diffSet, func(int)) {
 			if dsParent.targetDepth < (k-4)/2 {
 				dsParent.targetDepth = (k - 4) / 2
 			}
-			dsParent.Find(nil)
+			dsParent.Find(nil, nil)
 			for {
-				if k <= pass {
+				passMutex.Lock()
+				skip := k <= pass
+				passMutex.Unlock()
+				if skip {
 					break
 				}
 
@@ -326,7 +282,7 @@ func setGenerator(start, end int, prefix []int) (<-chan *diffSet, func(int)) {
 				if dsCopy.IsSolved() {
 					break
 				}
-				dsParent.SearchNext(dsParent.pop()+1, nil)
+				dsParent.SearchNext(dsParent.pop()+1, nil, nil)
 			}
 		}
 		close(sets)
@@ -334,45 +290,70 @@ func setGenerator(start, end int, prefix []int) (<-chan *diffSet, func(int)) {
 
 	// Generator controller function - kick to next k.
 	doPass := func(k int) {
+		passMutex.Lock()
 		if k > pass {
 			pass = k
 		}
+		passMutex.Unlock()
 	}
 
 	return sets, doPass
 }
 
-func worker(
-	id int,
-	requests chan<- workerConnection,
-) {
-	conn := newWorkerConnection(id)
-	requests <- *conn
+type Status int
 
-	for ds := range conn.workQueue {
-		// fmt.Fprintf(os.Stderr, "Working(%d): %s\n", id, ds)
-		ds.Find(conn)
-		// Signals completion of work, even if not solved.
-		conn.results <- ds.copy()
-	}
-	close(conn.results)
-	close(conn.progress)
-}
+const (
+	Running Status = iota
+	Completed
+	Solution
+	Aborted
+)
 
 type diffSet struct {
-	k           int    // Number of elements in set
-	v           int    // Modulus of differences (k * (k-1) + 1)
-	trials      int64  // Number of trial so far
-	targetDepth int    // Stop executing when current == targetDepth
-	current     int    // s[0:current] is current search prefix
-	low         int    // the largest i s.t. all diffs[i] == true
-	s           []int  // Provisional difference set values
-	diffs       []bool // Current differences covered by provisional set
+	id          string
+	status      Status
+	k           int     // Number of elements in set
+	v           int32   // Modulus of differences (k * (k-1) + 1)
+	trials      int64   // Number of trial so far
+	targetDepth int     // Stop executing when current == targetDepth
+	current     int     // s[0:current] is current search prefix
+	low         int32   // the largest i s.t. all diffs[i] == true
+	s           []int32 // Provisional difference set values
+	diffs       []bool  // Current differences covered by provisional set
 	start       time.Time
 }
 
-func newDiffSet(k int, prefix []int) *diffSet {
-	v := k*(k-1) + 1
+type request struct {
+	id        string
+	workQueue chan *diffSet
+	results   chan *diffSet
+	abort     chan bool
+}
+
+func startWorker(
+	id string,
+	requests chan<- *request,
+	progress chan<- *diffSet,
+) {
+	workQueue := make(chan *diffSet, 1)
+	results := make(chan *diffSet)
+	abort := make(chan bool, 1)
+
+	defer func() {
+		close(results)
+	}()
+
+	requests <- &request{id, workQueue, results, abort}
+
+	for ds := range workQueue {
+		ds.id = id
+		ds.Find(progress, abort)
+		results <- ds
+	}
+}
+
+func newDiffSet(k int, prefix []int32) *diffSet {
+	v := int32(k*(k-1) + 1)
 
 	ds := diffSet{
 		k:     k,
@@ -381,7 +362,7 @@ func newDiffSet(k int, prefix []int) *diffSet {
 		start: time.Now(),
 	}
 
-	ds.s = make([]int, k)
+	ds.s = make([]int32, k)
 
 	ds.diffs[0] = true
 
@@ -396,7 +377,7 @@ func newDiffSet(k int, prefix []int) *diffSet {
 
 func (ds *diffSet) copy() *diffSet {
 	dsCopy := *ds
-	dsCopy.s = make([]int, ds.k)
+	dsCopy.s = make([]int32, ds.k)
 	copy(dsCopy.s, ds.s)
 	dsCopy.diffs = make([]bool, ds.v/2+1)
 	copy(dsCopy.diffs, ds.diffs)
@@ -414,43 +395,54 @@ func (ds *diffSet) WriteInfo(w io.Writer) {
 }
 
 func (ds *diffSet) WriteTrace(w io.Writer) {
-	var solvedString string
-	if ds.IsSolved() {
-		solvedString = " SOLVED"
+	fmt.Fprintf(w, "(%2d, %3d) ", ds.k, ds.v)
+	if ds.trials != 0 {
+		fmt.Fprintf(w, "@%17s: ", commas(ds.trials))
 	}
-
-	fmt.Fprintf(w, "(%d, %d) @%s: ", ds.k, ds.v, commas(ds.trials))
 	WriteInts(w, ds.s[0:ds.current])
-	fmt.Fprintf(w, " (low = %d, target = %d)%s", ds.low, ds.targetDepth, solvedString)
+	if !ds.IsSolved() {
+		fmt.Fprintf(w, " (low = %d, target = %d)", ds.low, ds.targetDepth)
+	}
 }
 
 // Find the targetDepth or solution with prefix of current set.
-func (ds *diffSet) Find(conn *workerConnection) {
+func (ds *diffSet) Find(progress chan<- *diffSet, abort <-chan bool) {
 	if ds.current <= 1 {
 		panic(fmt.Sprintf("Illegal call to Find: %s", ds))
 	}
-	ds.SearchNext(ds.s[ds.current-1]+ds.low+1, conn)
+	ds.SearchNext(ds.s[ds.current-1]+ds.low+1, progress, abort)
 }
 
-func (ds *diffSet) SearchNext(candidate int, conn *workerConnection) {
+func (ds *diffSet) SearchNext(candidate int32, progress chan<- *diffSet, abort <-chan bool) {
+	ds.status = Running
 	for {
 		if ds.IsSolved() {
+			ds.status = Solution
+			if progress != nil {
+				progress <- ds
+			}
 			return
 		}
 
 		ds.trials++
-		if conn != nil && ds.trials%10000000 == 0 {
-			conn.progress <- ds.copy()
+		if progress != nil && ds.trials%1000000 == 0 {
+			progress <- ds.copy()
 			select {
-			case <-conn.shutdown:
+			case <-abort:
+				ds.status = Aborted
 				return
 			default:
 			}
-			runtime.Gosched()
+			// Todo: Is this needed?
+			// runtime.Gosched()
 		}
 
 		if ds.push(candidate) {
 			if ds.current == ds.targetDepth {
+				ds.status = Completed
+				if progress != nil {
+					progress <- ds
+				}
 				return
 			}
 			candidate += ds.low + 1
@@ -459,7 +451,7 @@ func (ds *diffSet) SearchNext(candidate int, conn *workerConnection) {
 
 		candidate++
 
-		if candidate+(ds.low+1)*(ds.k-ds.current-1) >= ds.v-ds.low {
+		if candidate+(ds.low+1)*int32(ds.k-ds.current-1) >= int32(ds.v)-ds.low {
 			candidate = ds.pop() + 1
 		}
 	}
@@ -469,7 +461,7 @@ func (ds *diffSet) IsSolved() bool {
 	return ds.current == ds.k
 }
 
-func (ds *diffSet) push(a int) (ok bool) {
+func (ds *diffSet) push(a int32) (ok bool) {
 	/*
 	   debugStatus := func() {
 	       fmt.Fprintf(os.Stderr, "push(%d) -> %v\n", a, ok)
@@ -483,19 +475,19 @@ func (ds *diffSet) push(a int) (ok bool) {
 	for i := 0; i < ds.current; i++ {
 		d := a - ds.s[i]
 		if d < 0 {
-			d += ds.v
+			d += int32(ds.v)
 		}
-		if d > ds.v/2 {
-			d = ds.v - d
+		if d > int32(ds.v/2) {
+			d = int32(ds.v) - d
 		}
 		if ds.diffs[d] {
 			for j := 0; j < i; j++ {
 				d = a - ds.s[j]
 				if d < 0 {
-					d += ds.v
+					d += int32(ds.v)
 				}
-				if d > ds.v/2 {
-					d = ds.v - d
+				if d > int32(ds.v/2) {
+					d = int32(ds.v) - d
 				}
 				ds.diffs[d] = false
 			}
@@ -506,7 +498,7 @@ func (ds *diffSet) push(a int) (ok bool) {
 	ds.s[ds.current] = a
 	ds.current++
 
-	for ds.low < ds.v/2 && ds.diffs[ds.low+1] {
+	for ds.low < int32(ds.v/2) && ds.diffs[ds.low+1] {
 		ds.low++
 	}
 
@@ -514,7 +506,7 @@ func (ds *diffSet) push(a int) (ok bool) {
 	return
 }
 
-func (ds *diffSet) pop() int {
+func (ds *diffSet) pop() int32 {
 	ds.current--
 	if ds.current < 0 {
 		panic("pop error: " + ds.String())
@@ -565,7 +557,7 @@ func primePowers(max int) []int {
 }
 
 // WriteInts writes a comma separated slice of ints.
-func WriteInts(w io.Writer, a []int) {
+func WriteInts(w io.Writer, a []int32) {
 	sep := ""
 	for _, n := range a {
 		fmt.Fprintf(w, "%s%3d", sep, n)
@@ -585,4 +577,11 @@ func commas(v interface{}) string {
 		}
 	}
 	return result
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
