@@ -60,14 +60,14 @@ module flake2(radius, base) {
 }
 
 module hex3(pos, dir, len, side) {
-  line(pos, dir, len);
+  line(pos, dir, len * 0.7);
   assign(child = pos + len * 0.3 * unit(dir)) {
     line(child, dir + 60, len * 0.3);
     line(child, dir - 60, len * 0.3);
   }
-  assign(child = pos + len * 0.6 * unit(dir)) {
-    line(child, dir + 60, len * 0.3);
-    line(child, dir - 60, len * 0.3);
+  assign(child = pos + len * 0.7 * unit(dir)) {
+    line(child, dir + 60, len * 0.2);
+    line(child, dir - 60, len * 0.2);
   }
 }
 
