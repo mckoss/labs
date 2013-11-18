@@ -60,6 +60,21 @@ a = [[0.0, y(0.0)],
      [0.0, -y(0.0)]
      ];
 
+b = [[0.0, y(0.0)],
+     [0.005, y(0.005)],
+     [0.01, y(0.01)],
+     [0.02, y(0.02)], [0.04, y(0.04)], [0.06, y(0.06)], [0.08, y(0.08)],
+     [0.1, y(0.1)],
+     [0.2, y(0.2)],
+     [0.3, y(0.3)],
+     [0.4, y(0.4)],
+     [0.5, y(0.5)],
+     [0.6, y(0.6)],
+     [0.7, y(0.7)],
+     [0.8, y(0.8)],
+     [0.9, y(0.9)],
+     [1.0, 0.0]];
+
 module naca_2d(chord) {
   scale([chord, chord, 1])
     polygon(points=a);
@@ -92,8 +107,30 @@ module naca(chord, length, taper=1, sweep_ang=0) {
   }
 }
 
-naca(CHORD, LENGTH, taper=TAPER, sweep_ang=SWEEP_ANGLE);
-if (WINGS == 2) {
-  reflect_z()
-    naca(CHORD, LENGTH, taper=TAPER, sweep_ang=SWEEP_ANGLE);
+module body(chord) {
+  rotate(-90, v=[0, 1, 0])
+  rotate_extrude($fn=36)
+    rotate(-90, v=[0, 0, 1])
+      scale([chord, chord, 1])
+        polygon(points=b);
+}
+
+module wing(chord, length, taper=1, sweep_ang=0) {
+  rotate(90, v=[1, 0, 0])
+  union() {
+    naca(chord, length, taper, sweep_ang);
+    reflect_z()
+      naca(chord, length, taper, sweep_ang);
+  }
+}
+
+
+translate([-CHORD, 0, 0])
+  body(CHORD * 5);
+
+wing(CHORD, LENGTH, TAPER, SWEEP_ANGLE);
+
+translate([CHORD * 2.5, 0, 0]) union() {
+  naca(CHORD, LENGTH / 3, TAPER, SWEEP_ANGLE * 3);
+  wing(CHORD, LENGTH / 3, TAPER, SWEEP_ANGLE * 3);
 }
