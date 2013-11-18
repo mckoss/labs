@@ -10,18 +10,19 @@
 # - Export as OpenSCAD polyhedra.
 # - Write command for text conversion
 
-from math import sin, cos, pi
+from math import sin, cos, pi, sqrt, atan2
 
 
 class RenderContext(object):
-    def __init__(self):
+    def __init__(self, resolution=0.01):
         self.init()
+        self.resolution = 0.1
 
     def init(self):
         self.last_point = None
 
     def move_to(self, point):
-        point = P2.ensure(point)
+        point = P2.ensure(point).quantize(self.resolution)
         print "Moving to %r." % point
         self.last_point = point
 
@@ -51,24 +52,67 @@ class Arc(PathElement):
         self.center = P2.ensure(center)
         self.points = self.ensure_points(points)
 
+    def render(self, context):
+        context.move_to(self.points[0])
+        v1 = (self.points[0] - self.center).vector()
+        for point in self.points[1:]:
+            v2 = (point - self.center).vector()
+            for i in xrange(1, 11):
+                p = convex(float(i) / 10, v1, v2).point()
+                context.move_to(self.center + p)
+            v1 = v2
+
     def ensure(self, point):
         """
         >>> Arc((1, 1)).ensure((1, 2))
-        P(1.0, 2.0)
+        P(1.00, 2.00)
         >>> Arc((1, 1)).ensure(R2(1, 90))
-        P(1.0, 2.0)
+        P(1.00, 2.00)
         """
         if isinstance(point, R2):
-            return self.center + point.point
+            return self.center + point.point()
         return P2.ensure(point)
 
     def ensure_points(self, points):
         return [self.ensure(p) for p in points]
 
 
+def convex(r, v1, v2):
+    """
+    >>> convex(0, 10, -1)
+    10.0
+    >>> convex(1, 10, -1)
+    -1.0
+    """
+    r = float(r)
+    return v1 * (1 - r) + v2 * r
+
+
 class R2(object):
     def __init__(self, dist, angle):
-        self.point = P2.from_vector(dist, angle)
+        self.dist = dist
+        self.angle = angle
+
+    def __repr__(self):
+        return 'R(%0.2f, %0.2f)' % (self.dist, self.angle)
+
+    def __mul__(self, mult):
+        return R2(self.dist * mult, self.angle * mult)
+
+    def __add__(self, other):
+        return R2(self.dist + other.dist, self.angle + other.angle)
+
+    def point(self):
+        """
+        >>> R2(1, 0).point()
+        P(1.00, 0.00)
+        >>> R2(1, 90).point()
+        P(0.00, 1.00)
+        >>> R2(1, 270).point()
+        P(-0.00, -1.00)
+        """
+        angle = pi * self.angle / 180
+        return P2(self.dist * cos(angle), self.dist * sin(angle))
 
 
 class P2(object):
@@ -79,28 +123,33 @@ class P2(object):
     def __add__(self, other):
         return P2(self.x + other.x, self.y + other.y)
 
-    def __repr__(self):
-        return 'P(%0.1f, %0.1f)' % (self.x, self.y)
+    def __sub__(self, other):
+        return P2(self.x - other.x, self.y - other.y)
 
-    @staticmethod
-    def from_vector(dist, angle):
+    def __repr__(self):
+        return 'P(%0.2f, %0.2f)' % (self.x, self.y)
+
+    def quantize(self, resolution):
+        result = P2(int(self.x / resolution) * resolution, int(self.y / resolution) * resolution)
+        return result
+
+    def vector(self):
         """
-        >>> P2.from_vector(1, 0)
-        P(1.0, 0.0)
-        >>> P2.from_vector(1, 90)
-        P(0.0, 1.0)
-        >>> P2.from_vector(1, 270)
-        P(-0.0, -1.0)
+        >>> P2(1, 0).vector()
+        R(1.00, 0.00)
+        >>> P2(0, 1).vector()
+        R(1.00, 90.00)
         """
-        angle = pi * angle / 180
-        return P2(dist * cos(angle), dist * sin(angle))
+        d = sqrt(self.x * self.x + self.y * self.y)
+        a = atan2(self.y, self.x) * 180 / pi
+        return R2(d, a)
 
     @staticmethod
     def ensure(point):
         """ Return point from data.
 
         >>> P2.ensure((1.1, 2))
-        P(1.1, 2.0)
+        P(1.10, 2.00)
         """
         if isinstance(point, P2):
             return point
@@ -113,7 +162,7 @@ class P2(object):
         """ Return list of points from data.
 
         >>> P2.ensure_points([(1, 2), (3, 4), P2(5, 6)])
-        [P(1.0, 2.0), P(3.0, 4.0), P(5.0, 6.0)]
+        [P(1.00, 2.00), P(3.00, 4.00), P(5.00, 6.00)]
         """
         return [P2.ensure(p) for p in points]
 
@@ -142,9 +191,11 @@ letter_paths = {
 def main():
     """
     >>> RenderContext().render_paths(letter_paths['A'])
-    Moving to P(0.0, 0.0).
-    Moving to P(0.5, 1.0).
-    Moving to P(1.0, 0.0).
+    Moving to P(0.00, 0.00).
+    Moving to P(0.50, 1.00).
+    Moving to P(1.00, 0.00).
+    >>> RenderContext().render_paths(letter_paths['C'])
+    what
     """
     render = RenderContext()
     for letter, paths in letter_paths.items():
