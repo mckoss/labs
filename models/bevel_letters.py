@@ -16,7 +16,7 @@ from math import sin, cos, pi, sqrt, atan2
 class RenderContext(object):
     def __init__(self, resolution=0.01):
         self.init()
-        self.resolution = 0.1
+        self.resolution = resolution
 
     def init(self):
         self.last_point = None
@@ -51,12 +51,19 @@ class Arc(PathElement):
     def __init__(self, center=None, *points):
         self.center = P2.ensure(center)
         self.points = self.ensure_points(points)
+        self._ccw = False
+
+    def ccw(self):
+        self._ccw = True
+        return self
 
     def render(self, context):
         context.move_to(self.points[0])
         v1 = (self.points[0] - self.center).vector()
         for point in self.points[1:]:
             v2 = (point - self.center).vector()
+            if self.ccw and v2.angle < v1.angle:
+                v2.angle += 360
             for i in xrange(1, 11):
                 p = convex(float(i) / 10, v1, v2).point()
                 context.move_to(self.center + p)
@@ -183,7 +190,7 @@ letter_paths = {
     'B': [[Line(DL, TL, T), Arc((0.5, 0.75), T, (1, 0.75), C),
           Line(C, L)],
           [Arc((0.5, 0.25), C, (1, 0.25), D), Line(D, DL)]],
-    'C': [[Arc(C, R2(0.5, 45), R2(0.4, 315))]],
+    'C': [[Arc(C, R2(0.5, 45), R2(0.5, 315)).ccw()]],
     'D': [[Line(DL, TL, T), Arc(L, TL, R, DL)]],
 }
 
@@ -195,7 +202,17 @@ def main():
     Moving to P(0.50, 1.00).
     Moving to P(1.00, 0.00).
     >>> RenderContext().render_paths(letter_paths['C'])
-    what
+    Moving to P(0.85, 0.85).
+    Moving to P(0.65, 0.97).
+    Moving to P(0.42, 0.99).
+    Moving to P(0.20, 0.90).
+    Moving to P(0.05, 0.72).
+    Moving to P(0.00, 0.50).
+    Moving to P(0.05, 0.27).
+    Moving to P(0.20, 0.09).
+    Moving to P(0.42, 0.00).
+    Moving to P(0.65, 0.02).
+    Moving to P(0.85, 0.14).
     """
     render = RenderContext()
     for letter, paths in letter_paths.items():
