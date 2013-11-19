@@ -12,25 +12,73 @@
 
 from math import sin, cos, pi, sqrt, atan2
 
+SVG_HEADER = """<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: bevel_letters.py -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     x="0px" y="0px"
+     width="800px" height="1024px"
+     viewBox="0 0 100 100">
+"""
+
+SVG_FOOTER = """
+</svg>
+"""
+
 
 class RenderContext(object):
     def __init__(self, resolution=0.01):
-        self.init()
         self.resolution = resolution
 
-    def init(self):
+    def open_path(self):
         self.last_point = None
 
+    def close_path(self):
+        pass
+
+    def open_render(self):
+        pass
+
+    def close_render(self):
+        pass
+
     def move_to(self, point):
-        point = P2.ensure(point).quantize(self.resolution)
+        point = point.quantize(self.resolution)
         print "Moving to %r." % point
         self.last_point = point
 
     def render_paths(self, paths):
         for path in paths:
-            self.init()
+            self.open_path()
             for elt in path:
                 elt.render(self)
+            self.close_path()
+
+
+class RenderSVGContext(RenderContext):
+    def open_render(self):
+        self.f = open("bevel_letters.svg", 'w')
+        self.f.write(SVG_HEADER)
+        self.offset = P2(0, 0)
+
+    def open_path(self):
+        self.offset.x += 3
+        super(RenderSVGContext, self).open_path()
+        self.f.write('<path stroke="black" stroke-width="1" fill="none" d="')
+
+    def close_path(self):
+        super(RenderSVGContext, self).close_path()
+        self.f.write('"/>')
+
+    def close_render(self):
+        self.f.write(SVG_FOOTER)
+        self.f.close()
+
+    def move_to(self, point):
+        point = (point + self.offset).quantize(self.resolution)
+        self.f.write("    %c %f %f \n" % ('L' if self.last_point else 'M',
+                                          point.x, point.y))
+        self.last_point = point
 
 
 class PathElement(object):
@@ -214,10 +262,12 @@ def main():
     Moving to P(0.65, 0.02).
     Moving to P(0.85, 0.14).
     """
-    render = RenderContext()
+    render = RenderSVGContext()
+    render.open_render()
     for letter, paths in letter_paths.items():
         print "Rendering %s." % letter
         render.render_paths(paths)
+    render.close_render()
 
 
 if __name__ == '__main__':
