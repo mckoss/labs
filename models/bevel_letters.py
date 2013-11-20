@@ -18,7 +18,7 @@ SVG_HEADER = """<?xml version="1.0" encoding="utf-8"?>
 <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
      x="0px" y="0px"
      width="800px" height="1024px"
-     viewBox="0 0 100 100">
+     viewBox="0 0 800 1024">
 """
 
 SVG_FOOTER = """
@@ -29,6 +29,9 @@ SVG_FOOTER = """
 class RenderContext(object):
     def __init__(self, resolution=0.01):
         self.resolution = resolution
+
+    def next_letter(self):
+        pass
 
     def open_path(self):
         self.last_point = None
@@ -59,10 +62,17 @@ class RenderSVGContext(RenderContext):
     def open_render(self):
         self.f = open("bevel_letters.svg", 'w')
         self.f.write(SVG_HEADER)
-        self.offset = P2(0, 0)
+        self.scale = P2(50, -70)
+        self.letter_index = -1
+        self.next_letter()
+
+    def next_letter(self):
+        super(RenderSVGContext, self).open_path()
+        self.letter_index += 1
+        self.offset = P2(10 + (self.letter_index % 10) * 60,
+                         480 + (self.letter_index / 10) * 80)
 
     def open_path(self):
-        self.offset.x += 3
         super(RenderSVGContext, self).open_path()
         self.f.write('<path stroke="black" stroke-width="1" fill="none" d="')
 
@@ -75,9 +85,12 @@ class RenderSVGContext(RenderContext):
         self.f.close()
 
     def move_to(self, point):
-        point = (point + self.offset).quantize(self.resolution)
+        scaled = P2(point.x, point.y)
+        scaled.x *= self.scale.x
+        scaled.y *= self.scale.y
+        scaled = (scaled + self.offset).quantize(self.resolution)
         self.f.write("    %c %f %f \n" % ('L' if self.last_point else 'M',
-                                          point.x, point.y))
+                                          scaled.x, scaled.y))
         self.last_point = point
 
 
@@ -234,12 +247,13 @@ D = P2(0.5, 0)
 C = P2(0.5, 0.5)
 
 letter_paths = {
-    'A': [[Line(DL, T, DR), ]],
-    'B': [[Line(DL, TL, T), Arc((0.5, 0.75), T, (1, 0.75), C),
-          Line(C, L)],
-          [Arc((0.5, 0.25), C, (1, 0.25), D), Line(D, DL)]],
+    'A': [[Line(DL, T, DR), ],
+          [Line((0.25, 0.5), (0.75, 0.5))]],
+    #'B': [[Line(DL, TL, T), Arc((0.5, 0.75), T, (1, 0.75), C),
+    #       Line(C, L)],
+    #      [Arc((0.5, 0.25), C, (1, 0.25), D), Line(D, DL)]],
     'C': [[Arc(C, R2(0.5, 45), R2(0.5, 315)).ccw()]],
-    'D': [[Line(DL, TL, T), Arc(L, TL, R, DL)]],
+    #'D': [[Line(DL, TL, T), Arc(L, TL, R, DL)]],
 }
 
 
@@ -249,6 +263,8 @@ def main():
     Moving to P(0.00, 0.00).
     Moving to P(0.50, 1.00).
     Moving to P(1.00, 0.00).
+    Moving to P(0.25, 0.50).
+    Moving to P(0.75, 0.50).
     >>> RenderContext().render_paths(letter_paths['C'])
     Moving to P(0.85, 0.85).
     Moving to P(0.65, 0.97).
@@ -267,6 +283,7 @@ def main():
     for letter, paths in letter_paths.items():
         print "Rendering %s." % letter
         render.render_paths(paths)
+        render.next_letter()
     render.close_render()
 
 
