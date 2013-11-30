@@ -1,9 +1,9 @@
 // Snowflake generator
 
-MAX_HEIGHT = 7;
+MAX_HEIGHT = 5;
 MIN_HEIGHT = 1;
 RADIUS = 50;
-LEVEL = 3;
+LEVEL = 4;
 
 module flake(radius, base) {
   for (i = [0 : 5]) {
@@ -14,9 +14,13 @@ module flake(radius, base) {
 module arm(level, pos, dir, len) {
   if (level >= 1) {
     line(pos, dir, len);
-    assign(child = pos + len * 0.3 * unit(dir)) {
-      arm(level - 1, child, dir + 60, len * 0.4);
-      arm(level - 1, child, dir - 60, len * 0.4);
+    assign(child = pos + len * 0.2 * unit(dir)) {
+      arm(level - 2, child, dir + 60, len * 0.4);
+      arm(level - 2, child, dir - 60, len * 0.4);
+    }
+    assign(child = pos + len * 0.6 * unit(dir)) {
+      arm(level - 1, child, dir + 60, len * 0.3);
+      arm(level - 1, child, dir - 60, len * 0.3);
     }
   }
 }
@@ -34,21 +38,23 @@ module line(pos, dir, len) {
   pos2 = pos + len * unit(dir);
   h2 = combine(dist(pos2) / RADIUS, MAX_HEIGHT, MIN_HEIGHT);
   s2 = h2 / sin(60);
-  translate([pos[0], pos[1], 0])
-    rotate(dir, v=[0, 0, 1])
-  polyhedron(
-    points=[
-      [0, -s1 / 2, 0], [0, s1 / 2, 0], [0, 0, h1],
-      [len, -s2 / 2, 0], [len, s2 / 2, 0], [len, 0, h2]
-    ],
-    triangles=[
-      [0, 1, 2],
-      [0, 2, 5], [0, 5, 3],
-      [0, 3, 4], [0, 4, 1],
-      [1, 4, 5], [1, 5, 2],
-      [3, 5, 4]
-    ]
-  );
+  if (h2 > 0) {
+    translate([pos[0], pos[1], 0])
+      rotate(dir, v=[0, 0, 1])
+        polyhedron(
+          points=[
+            [0, -s1 / 2, 0], [0, s1 / 2, 0], [0, 0, h1],
+            [len, -s2 / 2, 0], [len, s2 / 2, 0], [len, 0, h2]
+          ],
+          triangles=[
+            [0, 1, 2],
+            [0, 2, 5], [0, 5, 3],
+            [0, 3, 4], [0, 4, 1],
+            [1, 4, 5], [1, 5, 2],
+            [3, 5, 4]
+          ]
+        );
+  }
 }
 
 function unit(dir) = [cos(dir), sin(dir)];
