@@ -3,22 +3,21 @@
 MAX_HEIGHT = 7;
 MIN_HEIGHT = 1;
 RADIUS = 50;
+LEVEL = 3;
 
 module flake(radius, base) {
   for (i = [0 : 5]) {
-    hex3([0, 0], 60 * i, radius, base);
+    arm(LEVEL, [0, 0], 60 * i, radius, base);
   }
 }
 
-module hex3(pos, dir, len, side) {
-  line(pos, dir, len * 0.7);
-  assign(child = pos + len * 0.3 * unit(dir)) {
-    line(child, dir + 60, len * 0.3);
-    line(child, dir - 60, len * 0.3);
-  }
-  assign(child = pos + len * 0.7 * unit(dir)) {
-    line(child, dir + 60, len * 0.2);
-    line(child, dir - 60, len * 0.2);
+module arm(level, pos, dir, len) {
+  if (level >= 1) {
+    line(pos, dir, len);
+    assign(child = pos + len * 0.3 * unit(dir)) {
+      arm(level - 1, child, dir + 60, len * 0.4);
+      arm(level - 1, child, dir - 60, len * 0.4);
+    }
   }
 }
 
@@ -59,4 +58,7 @@ function combine(f, x0, x1) = x0 * (1 - f) + x1 * f;
 //line([0, 0], 0, 50);
 //line([0, 0], 60, 25);
 //hex3([0, 0], 60, 50, 10);
+//flake(50, 10);
+
+//arm(LEVEL, [0, 0], 90, 50);
 flake(50, 10);
