@@ -1,26 +1,27 @@
 // Snowflake generator
+// by Mike Koss (c) 2013
 
 MAX_HEIGHT = 5;
 MIN_HEIGHT = 1;
-RADIUS = 50;
-LEVEL = 4;
+RADIUS = 45;
+LEVEL = 3;
 
-module flake(radius, base) {
-  for (i = [0 : 5]) {
-    arm(LEVEL, [0, 0], 60 * i, radius, base);
-  }
-}
-
-module arm(level, pos, dir, len) {
-  if (level >= 1) {
-    line(pos, dir, len);
-    assign(child = pos + len * 0.2 * unit(dir)) {
-      arm(level - 2, child, dir + 60, len * 0.4);
-      arm(level - 2, child, dir - 60, len * 0.4);
+module hex(level, radius, pos, dir, children=3) {
+  if (level >=1) {
+    if (radius * 0.3 > 2) {
+      translate([pos[0], pos[1], 0])
+        linear_extrude(height=combine(dist(pos) / RADIUS, MAX_HEIGHT, MIN_HEIGHT) * 0.8, scale=0.9)
+          circle(r=radius * 0.4, $fn=6);
     }
-    assign(child = pos + len * 0.6 * unit(dir)) {
-      arm(level - 1, child, dir + 60, len * 0.3);
-      arm(level - 1, child, dir - 60, len * 0.3);
+    for (i = [-1 : children - 2]) {
+      assign(child1 = pos + radius * unit(dir + 60 * i) * 0.4,
+             child2 = pos + radius * unit(dir + 60 * i) * 0.8) {
+          if (radius > 5) {
+            line(pos, dir + 60 * i, radius);
+          }
+          hex(level - 1, radius * 0.3, child1, (dir + 60 * i) % 360);
+          hex(level - 1, radius * 0.4, child2, (dir + 60 * i) % 360);
+      }
     }
   }
 }
@@ -63,8 +64,4 @@ function combine(f, x0, x1) = x0 * (1 - f) + x1 * f;
 
 //line([0, 0], 0, 50);
 //line([0, 0], 60, 25);
-//hex3([0, 0], 60, 50, 10);
-//flake(50, 10);
-
-//arm(LEVEL, [0, 0], 90, 50);
-flake(50, 10);
+hex(LEVEL, 40, [0, 0], 0, 6);
