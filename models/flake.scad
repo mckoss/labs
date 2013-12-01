@@ -1,10 +1,13 @@
 // Snowflake generator
 // by Mike Koss (c) 2013
 
+use <write.scad>
+
 MAX_HEIGHT = 5;
 MIN_HEIGHT = 1;
 RADIUS = 45;
 LEVEL = 3;
+E = 0.1;
 
 module hex(level, radius, pos, dir, children=3) {
   if (level >=1) {
@@ -62,6 +65,24 @@ function unit(dir) = [cos(dir), sin(dir)];
 function dist(pos) = sqrt(pos[0]*pos[0] + pos[1]*pos[1]);
 function combine(f, x0, x1) = x0 * (1 - f) + x1 * f;
 
-//line([0, 0], 0, 50);
-//line([0, 0], 60, 25);
-hex(LEVEL, 40, [0, 0], 0, 6);
+// Ring around origin (at z=0)
+module ring(r, thickness, height) {
+  translate([0, 0, height / 2]) {
+    difference() {
+      cylinder(h=height, r=r, $fa=3, center=true);
+      cylinder(h=height + 2 * E, r=r - thickness, $fa=3, center=true);
+    }
+  }
+}
+
+difference() {
+  hex(LEVEL, 40, [0, 0], 0, 6);
+  rotate(a=-90, v=[0, 0, 1])
+    rotate(a=180, v=[0, 1, 0]) {
+      write("2013", h=8, t=MAX_HEIGHT / 2, center=true, font="Letters.dxf");
+        translate([0, -6, 0])
+          write("MCK", h=2, t=MAX_HEIGHT / 4, center=true, font="Letters.dxf");
+    }
+}
+translate([54, 0, 0])
+  ring(5, 1, 1);
