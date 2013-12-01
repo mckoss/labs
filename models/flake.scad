@@ -4,8 +4,8 @@
 use <write.scad>
 
 MAX_HEIGHT = 5;
-MIN_HEIGHT = 1;
-RADIUS = 45;
+MIN_HEIGHT = 2;
+RADIUS = 50;
 LEVEL = 3;
 E = 0.1;
 
@@ -80,9 +80,9 @@ difference() {
   rotate(a=-90, v=[0, 0, 1])
     rotate(a=180, v=[0, 1, 0]) {
       write("2013", h=8, t=MAX_HEIGHT / 2, center=true, font="Letters.dxf");
-        translate([0, -6, 0])
-          write("MCK", h=2, t=MAX_HEIGHT / 4, center=true, font="Letters.dxf");
+        translate([0, -7, 0])
+          write("MCK", h=4, t=MAX_HEIGHT / 4, center=true, font="Letters.dxf");
     }
 }
 translate([54, 0, 0])
-  ring(5, 1, 1);
+  ring(5, 1, MIN_HEIGHT);
