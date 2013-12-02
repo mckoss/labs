@@ -98,7 +98,7 @@ yes-and-no-%.stl: yes-and-no.scad
 # Cookie Cutters
 #
 
-COOKIES=club
+COOKIES=club diamond heart spade
 COOKIE_FILES=$(foreach cookie, $(COOKIES), cookie-$(cookie).stl)
 
 cookies: $(COOKIE_FILES)
@@ -112,9 +112,6 @@ cookie-%.stl: cookie-cutter.scad %.dxf
 
 %.eps: %.svg
 	inkscape -E $@ $<
-
-# Preserve (costly) dxf file construction
-.PRECIOUS: %.dxf
 
 %.dxf: %.eps
 	pstoedit -dt -f "dxf:-polyaslines -mm" $< $@

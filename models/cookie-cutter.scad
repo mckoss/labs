@@ -2,7 +2,7 @@
 // by Mike Koss (c) 2013
 
 E = 0.1;
-FILE = "test.dxf";
+FILE = "club.dxf";
 
 module cookie_cutter() {
   outline(15, 2, 0.75) child(0);
@@ -10,7 +10,7 @@ module cookie_cutter() {
   intersection() {
     linear_extrude(height=2)
       child(0);
-    grid(400, 400, 10, 2);
+    grid(100, 100, 10, 2);
   }
 }
 
@@ -19,7 +19,7 @@ module outline(height, base, top) {
     minkowski() {
       linear_extrude(height=E)
         child(0);
-      cylinder(r1=base, r2=top, h=height - E);
+      cylinder(r1=base, r2=top, h=height - E, $fn=6);
     }
     translate([0, 0, -E])
       linear_extrude(height=height + 2 * E)
@@ -30,15 +30,13 @@ module outline(height, base, top) {
 module grid(x, y, d, thickness) {
   cx = floor(x / d);
   cy = floor(y / d);
-  translate([-x / 2, -y / 2, 0]) {
-    for (ix = [0: cx]) {
-      translate([ix * d, 0, 0])
-        cube([thickness, y + thickness, thickness]);
-    }
-    for (iy = [0: cy]) {
-      translate([0, iy * d, 0])
-        cube([x + thickness, thickness, thickness]);
-    }
+  for (ix = [0: cx]) {
+    translate([ix * d, 0, 0])
+      cube([thickness, y + thickness, thickness]);
+  }
+  for (iy = [0: cy]) {
+    translate([0, iy * d, 0])
+      cube([x + thickness, thickness, thickness]);
   }
 }
 
