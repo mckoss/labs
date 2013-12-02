@@ -94,9 +94,30 @@ yes-and-no: $(YES_FILES)
 yes-and-no-%.stl: yes-and-no.scad
 	openscad -o $@ -D 'PART = "$*"' $<
 
-# Generic stl file builder
+#
+# Cookie Cutters
+#
+
+COOKIES=club
+COOKIE_FILES=$(foreach cookie, $(COOKIES), cookie-$(cookie).stl)
+
+cookies: $(COOKIE_FILES)
+
+cookie-%.stl: cookie-cutter.scad %.dxf
+	openscad -o $@ -D 'FILE = "$*.dxf"' $<
+
+# Generic file transformation rules
 %.stl : %.scad
 	openscad -o $@ $<
+
+%.eps: %.svg
+	inkscape -E $@ $<
+
+# Preserve (costly) dxf file construction
+.PRECIOUS: %.dxf
+
+%.dxf: %.eps
+	pstoedit -dt -f "dxf:-polyaslines -mm" $< $@
 
 clean:
 	rm -f $(M94_FILES) $(CHROME_FILES) $(SHELF_FILES) $(YES_FILES)
