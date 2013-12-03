@@ -99,7 +99,7 @@ yes-and-no-%.stl: yes-and-no.scad
 #
 
 COOKIES=club diamond heart spade
-LARGE_COOKIES=lily
+LARGE_COOKIES=lily gabe
 COOKIE_FILES=$(foreach cookie, $(COOKIES), cookie-$(cookie).stl) \
 	$(foreach cookie, $(LARGE_COOKIES), cookie-$(cookie)-2.stl)
 
