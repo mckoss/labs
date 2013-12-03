@@ -98,7 +98,7 @@ yes-and-no-%.stl: yes-and-no.scad
 # Cookie Cutters
 #
 
-COOKIES=club diamond heart spade bitcoin shuttle
+COOKIES=club diamond heart spade bitcoin shuttle bug
 LARGE_COOKIES=lily gabe
 COOKIE_FILES=$(foreach cookie, $(COOKIES), cookie-$(cookie).stl) \
 	$(foreach cookie, $(LARGE_COOKIES), cookie-$(cookie)-2.stl)
