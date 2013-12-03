@@ -1,16 +1,23 @@
 // Cookie Cutter renders a DXF file as a cookie cutter.
 // by Mike Koss (c) 2013
+// FILE should be  contained to a 100x100 mm area.
+
+SCALE = 1.0;
 
 E = 0.1;
 FILE = "club.dxf";
 
+// Cookie cutter cutting depth.
+DEPTH = 15;
+MIN_WALL = 0.5;
+MAX_WALL = 2.0;
+
 module cookie_cutter() {
-  outline(15, 2, 0.75) child(0);
-  //outline(2, 6, 2) child(0);
+  outline(DEPTH, MAX_WALL, MIN_WALL) child(0);
   intersection() {
     linear_extrude(height=2)
       child(0);
-    grid(100, 100, 10, 2);
+    grid(100 * SCALE, 100 * SCALE, 10, 2);
   }
 }
 
@@ -27,17 +34,21 @@ module outline(height, base, top) {
   }
 }
 
+// Create a rectilinear grid to add stiffness and
+// ensure any holes within the image are connected to the part.
 module grid(x, y, d, thickness) {
   cx = floor(x / d);
   cy = floor(y / d);
   for (ix = [0: cx]) {
-    translate([ix * d, 0, 0])
-      cube([thickness, y + thickness, thickness]);
+    translate([(ix - cx / 2) * d, 0, thickness / 2])
+      cube([thickness, y + thickness, thickness], center=true);
   }
   for (iy = [0: cy]) {
-    translate([0, iy * d, 0])
-      cube([x + thickness, thickness, thickness]);
+    translate([0, (iy - cy / 2) * d, thickness / 2])
+      cube([x + thickness, thickness, thickness], center=true);
   }
 }
 
-cookie_cutter() import(file=FILE);
+// Why is the file scaled by 80% from the 100mm svg original?
+cookie_cutter()
+  scale([-SCALE, SCALE, 1]) translate([-50, -50, 0]) scale(1.25) import(file=FILE);

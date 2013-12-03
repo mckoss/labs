@@ -1,8 +1,4 @@
-m94*.stl
-chrome*.stl
-multi*.stl
-fin.stl
-naca.stl
-bar.stl
+*.stl
+*.dxf
 *.gcode
 *.zip
