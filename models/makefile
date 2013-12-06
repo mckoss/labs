@@ -99,16 +99,16 @@ yes-and-no-%.stl: yes-and-no.scad
 #
 
 COOKIES=club diamond heart spade bitcoin shuttle bug hawaii hula
-LARGE_COOKIES=lily gabe
+LARGE_COOKIES=lily gabe hula
 COOKIE_FILES=$(foreach cookie, $(COOKIES), cookie-$(cookie).stl) \
-	$(foreach cookie, $(LARGE_COOKIES), cookie-$(cookie)-2.stl)
+	$(foreach cookie, $(LARGE_COOKIES), cookie-$(cookie)-2x.stl)
 
 cookies: $(COOKIE_FILES)
 
 cookie-%.stl: cookie-cutter.scad %.dxf
 	openscad -o $@ -D 'FILE = "$*.dxf"' $<
 
-cookie-%-2.stl: cookie-cutter.scad %.dxf
+cookie-%-2x.stl: cookie-cutter.scad %.dxf
 	openscad -o $@ -D 'FILE = "$*.dxf"' -D 'SCALE = 2' $<
 
 # Generic file transformation rules
