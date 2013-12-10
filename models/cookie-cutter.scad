@@ -34,6 +34,14 @@ module outline(height, base, top) {
   }
 }
 
+module chamfer(height, edge=1.5) {
+  minkowski() {
+    linear_extrude(height=height - edge)
+      child(0);
+    cylinder(r1=edge, r2=0.1, h=edge, $fn=6);
+  }
+}
+
 // Create a rectilinear grid to add stiffness and
 // ensure any holes within the image are connected to the part.
 module grid(x, y, d, thickness) {
