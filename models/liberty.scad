@@ -1,5 +1,4 @@
 $fa = 3;
-E = 0.01;
 
 HEAD_SIZE = 130;
 THICKNESS = 3;
