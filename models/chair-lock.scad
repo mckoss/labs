@@ -1,23 +1,29 @@
 // Adjustable wheelchair lock bracket.
 
 use <Thread_Library.scad>
-$fs=1;
+
+$fs=0.5;
 $fa=3;
 
-E = 0.1;
+E = 0.01;
 PI = 3.14159;
 GAP = 0.5;
-KNOB_GAP = 1.5;
+KNOB_GAP = 1.25;
 
-SCREW_LENGTH = 30;
+SCREW_LENGTH = 35;
 SCREW_PITCH = 3;
 
-ATTACH_H = 30;
+ATTACH_H = 70;
+SCREW_HOLE_D = 6.6;
+NUT_RADIUS = 12.6 / 2;
+NUT_THICKNESS = 5.5;
+SCREW_CENTERS = 33;
 
 KNOB_R = 8;
 MIN_R = KNOB_R / 2;
 SCREW_R = 4;
 KNOB_H = 5;
+SHAFT_H = 5;
 
 WALL = 1;
 
@@ -25,13 +31,14 @@ WALL = 1;
 S1 = KNOB_R - MIN_R - E;
 S2 = S1 + KNOB_H - 2 * E;
 S3 = S2 + KNOB_R - SCREW_R - 3 * E;
-S4 = S3 + SCREW_LENGTH - 4 * E;
+S4 = S3 + SHAFT_H - 4 * E;
+S5 = S4 + SCREW_LENGTH - 5 * E;
 
 RECEIVER_W = KNOB_R * 1.9;
 
 module bolt() {
   knob();
-  translate([0, 0, S3])
+  translate([0, 0, S4])
     trapezoidThread(length=SCREW_LENGTH,
                     pitchRadius=SCREW_R,
                     pitch=SCREW_PITCH);
@@ -40,12 +47,18 @@ module bolt() {
 module knob(gap=0) {
   cone(MIN_R + gap, KNOB_R + gap);
   translate([0, 0, S1])
-    knurled(KNOB_R + gap, KNOB_H);
+    if (gap == 0) {
+      knurled(KNOB_R + gap, KNOB_H);
+    } else {
+      cylinder(r=KNOB_R + gap, h=KNOB_H);
+    }
   translate([0, 0, S2])
     cone(KNOB_R + gap, SCREW_R + gap);
+  translate([0, 0, S3])
+    cylinder(r=SCREW_R + gap, h=SHAFT_H);
 }
 
-module knurled(r, h, c=1.0) {
+module knurled(r, h, c=2.0) {
   count = floor(2 * PI * r / c);
   difference() {
     cylinder(r=r, h=h);
@@ -60,10 +73,14 @@ module knurled(r, h, c=1.0) {
 
 module receiver() {
   difference() {
-    translate([0, 0, E])
-      pipe(RECEIVER_W, S4);
-    knob(KNOB_GAP);
-    translate([0, 0, S3])
+    union() {
+      pipe(RECEIVER_W, S5);
+      translate([0, 0, S3])
+        cylinder(r=0.707 * RECEIVER_W, h=S5-S3);
+    }
+    translate([0, 0, -E])
+      knob(KNOB_GAP);
+    translate([0, 0, S4])
       pipe(RECEIVER_W - WALL * 2, SCREW_LENGTH + 2 * E);
   }
 }
@@ -74,6 +91,18 @@ module piston() {
     trapezoidThreadNegativeSpace(length=SCREW_LENGTH,
                                  pitchRadius=SCREW_R,
                                  pitch=SCREW_PITCH);
+    translate([0, 0, SCREW_LENGTH + ATTACH_H - 10])
+      screw_hole();
+    translate([0, 0, SCREW_LENGTH + ATTACH_H - 10 - SCREW_CENTERS])
+      screw_hole();
+  }
+}
+
+module screw_hole() {
+  translate([-RECEIVER_W / 2 - E, 0, 0])
+  rotate(a=90, v=[0, 1, 0]) {
+    cylinder(r=SCREW_HOLE_D / 2, h=RECEIVER_W + 2 * E);
+    cylinder(r=NUT_RADIUS, h=NUT_THICKNESS, $fn=6);
   }
 }
 
