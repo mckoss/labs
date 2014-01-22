@@ -17,10 +17,10 @@ KNOB_H = 5;
 WALL = 2;
 
 // Vertical checkpoints (stations)
-S1 = KNOB_R - MIN_R;
-S2 = S1 + KNOB_H;
-S3 = S2 + KNOB_R - SCREW_R;
-S4 = S3 + SCREW_LENGTH;
+S1 = KNOB_R - MIN_R - E;
+S2 = S1 + KNOB_H - 2 * E;
+S3 = S2 + KNOB_R - SCREW_R - 3 * E;
+S4 = S3 + SCREW_LENGTH - 4 * E;
 
 RECEIVER_W = KNOB_R * 1.7;
 
@@ -35,8 +35,8 @@ module bolt() {
 
 module knob(gap=0) {
   cone(MIN_R + gap, KNOB_R + gap);
-  translate([0, 0, S1 - E])
-    cylinder(r=KNOB_R + gap, h=KNOB_H + 2 * E);
+  translate([0, 0, S1])
+    cylinder(r=KNOB_R + gap, h=KNOB_H);
   translate([0, 0, S2])
     cone(KNOB_R + gap, SCREW_R + gap);
 }
@@ -46,7 +46,7 @@ module receiver() {
     pipe(RECEIVER_W, S4);
     knob(GAP);
     translate([0, 0, S3])
-      pipe(RECEIVER_W - WALL * 2, SCREW_LENGTH + E);
+      pipe(RECEIVER_W - WALL * 2, SCREW_LENGTH + 2 * E);
   }
 }
 
@@ -69,4 +69,4 @@ module pipe(w, h) {
 */
 
 bolt();
-% receiver();
+receiver();
