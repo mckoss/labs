@@ -5,37 +5,60 @@ $fs=1;
 $fa=3;
 
 E = 0.1;
-SCREW_LENGTH = 50;
+SCREW_LENGTH = 30;
 SCREW_PITCH = 3;
-GAP = 1;
+GAP = 0.5;
 
 MIN_R = 1;
 KNOB_R = 10;
-BOLT_R = 5;
+SCREW_R = 4;
 KNOB_H = 5;
 
-WALL = 3;
+WALL = 2;
 
+// Vertical checkpoints (stations)
+S1 = KNOB_R - MIN_R;
+S2 = S1 + KNOB_H;
+S3 = S2 + KNOB_R - SCREW_R;
+S4 = S3 + SCREW_LENGTH;
+
+RECEIVER_W = KNOB_R * 1.7;
 
 
 module bolt() {
-  cone(MIN_R, KNOB_R);
-  s1 = KNOB_R - MIN_R;
-  translate([0, 0, s1])
-    cylinder(r=KNOB_R, h=KNOB_H);
-  s2 = s1 + KNOB_H;
-  translate([0, 0, s2])
-    cone(KNOB_R, BOLT_R);
-  s3 = s2 + KNOB_R - BOLT_R;
-  translate([0, 0, s3])
+  knob();
+  translate([0, 0, S3])
     trapezoidThread(length=SCREW_LENGTH,
-                    pitchRadius=BOLT_R,
+                    pitchRadius=SCREW_R,
                     pitch=SCREW_PITCH);
+}
+
+module knob(gap=0) {
+  cone(MIN_R + gap, KNOB_R + gap);
+  translate([0, 0, S1 - E])
+    cylinder(r=KNOB_R + gap, h=KNOB_H + 2 * E);
+  translate([0, 0, S2])
+    cone(KNOB_R + gap, SCREW_R + gap);
+}
+
+module receiver() {
+  difference() {
+    pipe(RECEIVER_W, S4);
+    knob(GAP);
+    translate([0, 0, S3])
+      pipe(RECEIVER_W - WALL * 2, SCREW_LENGTH + E);
+  }
 }
 
 module cone(from_r, to_r) {
   cylinder(r1=from_r, r2=to_r, h=abs(from_r - to_r));
 }
+
+module pipe(w, h) {
+  translate([0, 0, h / 2])
+    cube([w, w, h], center=true);
+}
+
 
 /*
         trapezoidThreadNegativeSpace(length=cap_height - CAP_WALL - 2 * GAP,
@@ -46,3 +69,4 @@ module cone(from_r, to_r) {
 */
 
 bolt();
+% receiver();
