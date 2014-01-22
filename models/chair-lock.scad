@@ -8,20 +8,20 @@ $fa=3;
 E = 0.01;
 PI = 3.14159;
 GAP = 0.5;
-KNOB_GAP = 1.25;
+KNOB_GAP = 1.4;
 
 SCREW_LENGTH = 35;
 SCREW_PITCH = 3;
 
-ATTACH_H = 70;
+ATTACH_H = 60;
 SCREW_HOLE_D = 6.6;
 NUT_RADIUS = 12.6 / 2;
 NUT_THICKNESS = 5.5;
 SCREW_CENTERS = 33;
 
-KNOB_R = 8;
+KNOB_R = 12;
 MIN_R = KNOB_R / 2;
-SCREW_R = 4;
+SCREW_R = 6;
 KNOB_H = 5;
 SHAFT_H = 5;
 
@@ -34,7 +34,7 @@ S3 = S2 + KNOB_R - SCREW_R - 3 * E;
 S4 = S3 + SHAFT_H - 4 * E;
 S5 = S4 + SCREW_LENGTH - 5 * E;
 
-RECEIVER_W = KNOB_R * 1.9;
+RECEIVER_W = KNOB_R * 1.8;
 
 module bolt() {
   knob();
@@ -72,11 +72,14 @@ module knurled(r, h, c=2.0) {
 }
 
 module receiver() {
+  s35 = S3 + (0.707 - 0.5) * RECEIVER_W;
   difference() {
     union() {
       pipe(RECEIVER_W, S5);
       translate([0, 0, S3])
-        cylinder(r=0.707 * RECEIVER_W, h=S5-S3);
+        cone(RECEIVER_W * 0.5, RECEIVER_W * 0.707);
+      translate([0, 0, s35])
+        cylinder(r=RECEIVER_W * 0.707, h=S5 - s35);
     }
     translate([0, 0, -E])
       knob(KNOB_GAP);
