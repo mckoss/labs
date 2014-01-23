@@ -50,7 +50,7 @@ chrome-%-$(SIZE).stl: chrome.scad
 #
 # Wheelchair lock
 #
-CHAIR_PARTS=bracket receiver piston
+CHAIR_PARTS=bracket piston receiver
 CHAIR_FILES=$(foreach part, $(CHAIR_PARTS), chair-$(part).stl)
 
 chair-lock: $(CHAIR_FILES)
