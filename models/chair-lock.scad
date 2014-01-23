@@ -2,11 +2,14 @@
 
 use <Thread_Library.scad>
 
+PART = "all"; // [all, receiver, piston, bracket]
+
 $fs=0.5;
 $fa=3;
 
-E = 0.01;
+E = 0.05;
 PI = 3.14159;
+INCH = 25.4;
 GAP = 0.5;
 KNOB_GAP = 1.4;
 
@@ -15,8 +18,8 @@ SCREW_PITCH = 3;
 
 ATTACH_H = 60;
 SCREW_HOLE_D = 6.8;
-NUT_RADIUS = 12.7 / 2;
-NUT_THICKNESS = 5.5;
+NUT_W = 10.9;
+NUT_H = 5.5;
 SCREW_CENTERS = 33;
 
 KNOB_R = 12;
@@ -24,6 +27,14 @@ MIN_R = KNOB_R / 2;
 SCREW_R = 6;
 KNOB_H = 5;
 SHAFT_H = 5;
+
+RECEIVER_W = KNOB_R * 1.8;
+RECEIVER_BODY_W = RECEIVER_W * 1.414;
+
+CHAIR_W = 1.1 * INCH;
+BRACKET_WALL = 8;
+BRACKET_SEP = 11;
+BRACKET_GAP = 4;
 
 WALL = 1;
 
@@ -33,8 +44,6 @@ S2 = S1 + KNOB_H - 2 * E;
 S3 = S2 + KNOB_R - SCREW_R - 3 * E;
 S4 = S3 + SHAFT_H - 4 * E;
 S5 = S4 + SCREW_LENGTH - 5 * E;
-
-RECEIVER_W = KNOB_R * 1.8;
 
 module bolt() {
   knob();
@@ -58,28 +67,15 @@ module knob(gap=0) {
     cylinder(r=SCREW_R + gap, h=SHAFT_H);
 }
 
-module knurled(r, h, c=2.0) {
-  count = floor(2 * PI * r / c);
-  difference() {
-    cylinder(r=r, h=h);
-    for (i = [0: count - 1]) {
-      rotate(a=i / count * 360, v=[0, 0, 1])
-        translate([r, 0, h / 2])
-          rotate(a=45, v=[0, 0, 1])
-            cube([c/2, c/2, h + 2 * E], center=true);
-    }
-  }
-}
-
 module receiver() {
-  s35 = S3 + (0.707 - 0.5) * RECEIVER_W;
+  s35 = S3 + 0.5 * (RECEIVER_BODY_W - RECEIVER_W);
   difference() {
     union() {
       pipe(RECEIVER_W, S5);
       translate([0, 0, S3])
-        cone(RECEIVER_W * 0.5, RECEIVER_W * 0.707);
+        cone(RECEIVER_W / 2, RECEIVER_BODY_W / 2);
       translate([0, 0, s35])
-        cylinder(r=RECEIVER_W * 0.707, h=S5 - s35);
+        cylinder(r=RECEIVER_BODY_W / 2, h=S5 - s35);
     }
     translate([0, 0, -E])
       knob(KNOB_GAP);
@@ -101,13 +97,53 @@ module piston() {
   }
 }
 
-module screw_hole() {
-  translate([-RECEIVER_W / 2 - E, 0, 0])
-  rotate(a=90, v=[0, 1, 0]) {
-    cylinder(r=SCREW_HOLE_D / 2, h=RECEIVER_W + 2 * E);
-    cylinder(r=NUT_RADIUS, h=NUT_THICKNESS, $fn=6);
+module bracket() {
+  avg_width = (RECEIVER_BODY_W + CHAIR_W) / 2 + 2 * BRACKET_WALL;
+  difference() {
+    union() {
+      translate([0, -RECEIVER_BODY_W / 2 - BRACKET_SEP / 2, 0])
+        cylinder(r=RECEIVER_BODY_W / 2 + BRACKET_WALL, h=SCREW_LENGTH);
+      translate([0, CHAIR_W / 2 + BRACKET_SEP / 2, 0])
+        cylinder(r=CHAIR_W / 2 + BRACKET_WALL, h=SCREW_LENGTH);
+      // BUG: hull not working with difference
+      translate([0, 0, SCREW_LENGTH / 2])
+        cube([avg_width, (RECEIVER_BODY_W + CHAIR_W) / 2 + BRACKET_SEP, SCREW_LENGTH], center=true);
+    }
+    translate([0, -RECEIVER_BODY_W / 2 - BRACKET_SEP / 2, -E])
+      cylinder(r=RECEIVER_BODY_W / 2, h=SCREW_LENGTH + 2 * E);
+    translate([0, CHAIR_W / 2 + BRACKET_SEP / 2, -E])
+      cylinder(r=CHAIR_W / 2, h=SCREW_LENGTH + 2 * E);
+    translate([0, 0, 9])
+      screw_hole(length=avg_width);
+    translate([0, 0, SCREW_LENGTH - 9])
+      screw_hole(length=avg_width);
+    translate([0, 0, SCREW_LENGTH / 2])
+      cube([BRACKET_GAP, 200, SCREW_LENGTH + 2 * E], center=true);
   }
 }
+
+module knurled(r, h, c=2.0) {
+  count = floor(2 * PI * r / c);
+  difference() {
+    cylinder(r=r, h=h);
+    for (i = [0: count - 1]) {
+      rotate(a=i / count * 360, v=[0, 0, 1])
+        translate([r, 0, h / 2])
+          rotate(a=45, v=[0, 0, 1])
+            cube([c/2, c/2, h + 2 * E], center=true);
+    }
+  }
+}
+
+module screw_hole(hole_diam=SCREW_HOLE_D, length=RECEIVER_W, nut_w=NUT_W, nut_h=NUT_H) {
+  translate([-length / 2 - E, 0, 0])
+  rotate(a=90, v=[0, 1, 0]) {
+    cylinder(r=hole_diam / 2 + GAP, h=length + 2 * E);
+    cylinder(r=hex_radius(nut_w + GAP), h=nut_h, $fn=6);
+  }
+}
+
+function hex_radius(w) = w * (1 + 2 * cos(60)) / (2 * sin(60)) / 2;
 
 module cone(from_r, to_r) {
   cylinder(r1=from_r, r2=to_r, h=abs(from_r - to_r));
@@ -119,7 +155,17 @@ module pipe(w, h) {
 }
 
 
-bolt();
-receiver();
-translate([30, 0, 0])
-  piston();
+if (PART == "receiver" || PART == "all") {
+  bolt();
+  receiver();
+}
+
+if (PART == "piston" || PART == "all") {
+  translate([50, 0, 0])
+    piston();
+}
+
+if (PART == "bracket" || PART == "all") {
+  translate([-50, 0, 0])
+  bracket();
+}
