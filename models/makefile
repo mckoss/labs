@@ -48,6 +48,18 @@ chrome-%-$(SIZE).stl: chrome.scad
 	openscad -o $@ -D 'OUTER = $(SIZE)' -D 'PART = "$*"' -D 'SPHERE_PORTION = 0.5' $<
 
 #
+# Wheelchair lock
+#
+CHAIR_PARTS=bracket receiver piston
+CHAIR_FILES=$(foreach part, $(CHAIR_PARTS), chair-$(part).stl)
+
+chair-lock: $(CHAIR_FILES)
+	echo $(CHAIR_FILES)
+
+chair-%.stl: chair-lock.scad
+	openscad -o $@ -D 'PART = "$*"' $<
+
+#
 # GDG DevFest 2013 Chrome Ball
 #
 DEVFEST_FILES=$(foreach color, $(COLORS), devfest-$(color).stl)
