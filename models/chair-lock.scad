@@ -31,10 +31,11 @@ SHAFT_H = 5;
 RECEIVER_W = KNOB_R * 1.8;
 RECEIVER_BODY_W = RECEIVER_W * 1.414;
 
-CHAIR_W = 1.1 * INCH;
+CHAIR_W = 1.26 * INCH;
 BRACKET_WALL = 8;
 BRACKET_SEP = 11;
 BRACKET_GAP = 4;
+BRACKET_SCREW_W = 6.2;
 
 WALL = 1;
 
@@ -110,16 +111,20 @@ module bracket() {
       translate([0, 0, height / 2])
         cube([avg_width, (RECEIVER_BODY_W + CHAIR_W) / 2 + BRACKET_SEP, height], center=true);
     }
-    translate([0, -RECEIVER_BODY_W / 2 - BRACKET_SEP / 2, -E])
-      cylinder(r=RECEIVER_BODY_W / 2 + GAP / 2, h=height + 2 * E);
-    translate([0, CHAIR_W / 2 + BRACKET_SEP / 2, -E])
-      cylinder(r=CHAIR_W / 2 + GAP / 2, h=height + 2 * E);
+    translate([0, -RECEIVER_BODY_W / 2 - BRACKET_SEP / 2, -E]) {
+      cylinder(r=RECEIVER_BODY_W / 2, h=height + 2 * E);
+      wedge(a=20, r=RECEIVER_BODY_W, h=height + 2 * E, rot=-90);
+    }
+    translate([0, CHAIR_W / 2 + BRACKET_SEP / 2, -E]) {
+      cylinder(r=CHAIR_W / 2, h=height + 2 * E);
+      wedge(a=75, r=CHAIR_W, h=height + 2 * E, rot=110);
+    }
     translate([0, 0, 9])
-      screw_hole(length=avg_width);
+      screw_hole(hole_diam=BRACKET_SCREW_W, length=avg_width);
     translate([0, 0, height - 9])
-      screw_hole(length=avg_width);
+      screw_hole(hole_diam=BRACKET_SCREW_W, length=avg_width);
     translate([0, 0, height / 2])
-      cube([BRACKET_GAP, 200, height + 2 * E], center=true);
+      cube([BRACKET_GAP, 2 * WALL + BRACKET_SEP, height + 2 * E], center=true);
   }
 }
 
@@ -139,7 +144,7 @@ module knurled(r, h, c=2.0) {
 module screw_hole(hole_diam=SCREW_HOLE_D, length=RECEIVER_W, nut_w=NUT_W, nut_h=NUT_H) {
   translate([-length / 2 - E, 0, 0])
   rotate(a=90, v=[0, 1, 0]) {
-    cylinder(r=hole_diam / 2 + GAP, h=length + 2 * E);
+    cylinder(r=hole_diam / 2 + GAP / 2, h=length + 2 * E);
     cylinder(r=hex_radius(nut_w + GAP), h=nut_h, $fn=6);
   }
 }
@@ -155,6 +160,11 @@ module pipe(w, h) {
     cube([w, w, h], center=true);
 }
 
+module wedge(a, r, h, rot=0) {
+  rotate(a=rot, v=[0, 0, 1])
+    linear_extrude(height=h)
+      polygon(points=[[0, 0], [r * cos(a / 2), -r * sin(a / 2)], [r * cos(a / 2), r * sin(a / 2)]]);
+}
 
 if (PART == "receiver" || PART == "all") {
   bolt();
