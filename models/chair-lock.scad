@@ -98,27 +98,28 @@ module piston() {
 }
 
 module bracket() {
+  height=SCREW_LENGTH;
   avg_width = (RECEIVER_BODY_W + CHAIR_W) / 2 + 2 * BRACKET_WALL;
   difference() {
     union() {
       translate([0, -RECEIVER_BODY_W / 2 - BRACKET_SEP / 2, 0])
-        cylinder(r=RECEIVER_BODY_W / 2 + BRACKET_WALL, h=SCREW_LENGTH);
+        cylinder(r=RECEIVER_BODY_W / 2 + BRACKET_WALL, h=height);
       translate([0, CHAIR_W / 2 + BRACKET_SEP / 2, 0])
-        cylinder(r=CHAIR_W / 2 + BRACKET_WALL, h=SCREW_LENGTH);
+        cylinder(r=CHAIR_W / 2 + BRACKET_WALL, h=height);
       // BUG: hull not working with difference
-      translate([0, 0, SCREW_LENGTH / 2])
-        cube([avg_width, (RECEIVER_BODY_W + CHAIR_W) / 2 + BRACKET_SEP, SCREW_LENGTH], center=true);
+      translate([0, 0, height / 2])
+        cube([avg_width, (RECEIVER_BODY_W + CHAIR_W) / 2 + BRACKET_SEP, height], center=true);
     }
     translate([0, -RECEIVER_BODY_W / 2 - BRACKET_SEP / 2, -E])
-      cylinder(r=RECEIVER_BODY_W / 2, h=SCREW_LENGTH + 2 * E);
+      cylinder(r=RECEIVER_BODY_W / 2 + GAP / 2, h=height + 2 * E);
     translate([0, CHAIR_W / 2 + BRACKET_SEP / 2, -E])
-      cylinder(r=CHAIR_W / 2, h=SCREW_LENGTH + 2 * E);
+      cylinder(r=CHAIR_W / 2 + GAP / 2, h=height + 2 * E);
     translate([0, 0, 9])
       screw_hole(length=avg_width);
-    translate([0, 0, SCREW_LENGTH - 9])
+    translate([0, 0, height - 9])
       screw_hole(length=avg_width);
-    translate([0, 0, SCREW_LENGTH / 2])
-      cube([BRACKET_GAP, 200, SCREW_LENGTH + 2 * E], center=true);
+    translate([0, 0, height / 2])
+      cube([BRACKET_GAP, 200, height + 2 * E], center=true);
   }
 }
 
