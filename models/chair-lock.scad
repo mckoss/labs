@@ -144,8 +144,8 @@ module knurled(r, h, c=2.0) {
 module screw_hole(hole_diam=SCREW_HOLE_D, length=RECEIVER_W, nut_w=NUT_W, nut_h=NUT_H) {
   translate([-length / 2 - E, 0, 0])
   rotate(a=90, v=[0, 1, 0]) {
-    cylinder(r=hole_diam / 2 + GAP / 2, h=length + 2 * E);
-    cylinder(r=hex_radius(nut_w + GAP), h=nut_h, $fn=6);
+    cylinder(r=hole_diam / 2 + 0.5, h=length + 2 * E);
+    cylinder(r=hex_radius(nut_w + 0.6), h=nut_h, $fn=6);
   }
 }
 
