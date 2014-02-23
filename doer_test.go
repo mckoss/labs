@@ -3,16 +3,16 @@ package doer
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"testing"
 )
 
 type Doer interface {
+	New() Doer
 	Do(Context) (interface{}, error)
 }
 
 type APIHandler struct {
-	GetDoer func() Doer
+	Doer
 }
 
 type Context struct {
@@ -23,8 +23,8 @@ func (h APIHandler) Serve(req []byte) (err error) {
 
 	fmt.Printf("Request: %s\n", req)
 
-	doer := h.GetDoer()
-	err = json.Unmarshal(req, &doer)
+	doer := h.Doer.New()
+	err = json.Unmarshal(req, doer)
 	if err != nil {
 		fmt.Printf("Unmarhsal error: %s\n", err)
 		return
@@ -52,7 +52,11 @@ type Result struct {
 	Answer string `json:"answer"`
 }
 
-func (cmd Command) Do(c Context) (resp interface{}, err error) {
+func (cmd *Command) New() Doer {
+	return new(Command)
+}
+
+func (cmd *Command) Do(c Context) (resp interface{}, err error) {
 	resp = Result{Status: "ok", Answer: fmt.Sprintf("%s: %d", cmd.X, cmd.Y)}
 	return
 }
@@ -62,13 +66,7 @@ func (Command) GetRequest() interface{} {
 }
 
 func TestDoer(t *testing.T) {
-	commandHandler := APIHandler{func() Doer { return new(Command) }}
+	commandHandler := APIHandler{new(Command)}
 
 	commandHandler.Serve([]byte(`{"x": "hi", "y": 123, "z": ["a", "b"]}`))
-}
-
-func expect(t *testing.T, what string, got, expected interface{}) {
-	if !reflect.DeepEqual(got, expected) {
-		t.Errorf("Expected %s == %v(%T) but got %v(%T).\n", what, expected, expected, got, got)
-	}
 }
