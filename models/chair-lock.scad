@@ -2,7 +2,7 @@
 
 use <Thread_Library.scad>
 
-PART = "piston"; // [all, receiver, piston, bracket]
+PART = "all"; // [all, receiver, piston, bracket]
 
 $fs=0.5;
 $fa=3;
@@ -102,7 +102,7 @@ module piston() {
 }
 
 module bracket() {
-  height=SCREW_LENGTH;
+  height=SCREW_LENGTH - 5;
   avg_width = (RECEIVER_BODY_W + CHAIR_W) / 2 + 2 * BRACKET_WALL;
   difference() {
     union() {
@@ -123,10 +123,10 @@ module bracket() {
       cylinder(r=CHAIR_W / 2, h=height + 2 * E);
       wedge(a=75, r=CHAIR_W, h=height + 2 * E, rot=110);
     }
-    translate([0, 0, 9])
+    translate([0, 0, 8])
       rotate(180, v=[0, 1, 0])
         screw_hole(hole_diam=BRACKET_SCREW_W, length=avg_width);
-    translate([0, 0, height - 9])
+    translate([0, 0, height - 8])
       rotate(180, v=[0, 1, 0])
         screw_hole(hole_diam=BRACKET_SCREW_W, length=avg_width);
     translate([0, 0, height / 2])
@@ -151,7 +151,8 @@ module screw_hole(hole_diam=SCREW_HOLE_D, length=RECEIVER_W, nut_w=NUT_W, nut_h=
   translate([-length / 2 - E, 0, 0])
   rotate(a=90, v=[0, 1, 0]) {
     cylinder(r=hole_diam / 2 + 0.5, h=length + 2 * E);
-    cylinder(r=hex_radius(nut_w + 0.6), h=nut_h, $fn=6);
+    rotate(30, v=[0, 0, 1])
+      cylinder(r=hex_radius(nut_w + 0.6), h=nut_h, $fn=6);
   }
 }
 
