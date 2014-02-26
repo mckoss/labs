@@ -2,7 +2,7 @@
 
 use <Thread_Library.scad>
 
-PART = "bracket"; // [all, receiver, piston, bracket]
+PART = "piston"; // [all, receiver, piston, bracket]
 
 $fs=0.5;
 $fa=3;
@@ -16,7 +16,7 @@ KNOB_GAP = 1.4;
 SCREW_LENGTH = 35;
 SCREW_PITCH = 3;
 
-ATTACH_H = 60;
+ATTACH_H = 55;
 SCREW_HOLE_D = 6.8;
 NUT_W = 10.9;
 NUT_H = 5.5;
