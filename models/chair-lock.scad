@@ -87,7 +87,10 @@ module receiver() {
 
 module piston() {
   difference() {
-    pipe(RECEIVER_W - WALL * 2 - 2 * GAP, SCREW_LENGTH + ATTACH_H);
+    minkowski() {
+      pipe(RECEIVER_W - WALL * 2 - 2 * GAP - 2, SCREW_LENGTH + ATTACH_H);
+      sphere(r=2);
+    }
     trapezoidThreadNegativeSpace(length=SCREW_LENGTH,
                                  pitchRadius=SCREW_R,
                                  pitch=SCREW_PITCH);
