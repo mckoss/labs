@@ -2,7 +2,7 @@
 
 use <Thread_Library.scad>
 
-PART = "all"; // [all, receiver, piston, bracket]
+PART = "bracket"; // [all, receiver, piston, bracket]
 
 $fs=0.5;
 $fa=3;
@@ -109,7 +109,8 @@ module bracket() {
         cylinder(r=CHAIR_W / 2 + BRACKET_WALL, h=height);
       // BUG: hull not working with difference
       translate([0, 0, height / 2])
-        cube([avg_width, (RECEIVER_BODY_W + CHAIR_W) / 2 + BRACKET_SEP, height], center=true);
+        cube([avg_width, (RECEIVER_BODY_W + CHAIR_W) / 2 + BRACKET_SEP, height],
+          center=true);
     }
     translate([0, -RECEIVER_BODY_W / 2 - BRACKET_SEP / 2, -E]) {
       cylinder(r=RECEIVER_BODY_W / 2, h=height + 2 * E);
@@ -120,9 +121,11 @@ module bracket() {
       wedge(a=75, r=CHAIR_W, h=height + 2 * E, rot=110);
     }
     translate([0, 0, 9])
-      screw_hole(hole_diam=BRACKET_SCREW_W, length=avg_width);
+      rotate(180, v=[0, 1, 0])
+        screw_hole(hole_diam=BRACKET_SCREW_W, length=avg_width);
     translate([0, 0, height - 9])
-      screw_hole(hole_diam=BRACKET_SCREW_W, length=avg_width);
+      rotate(180, v=[0, 1, 0])
+        screw_hole(hole_diam=BRACKET_SCREW_W, length=avg_width);
     translate([0, 0, height / 2])
       cube([BRACKET_GAP, 2 * WALL + BRACKET_SEP, height + 2 * E], center=true);
   }
