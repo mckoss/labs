@@ -1,4 +1,5 @@
 // Adjustable wheelchair lock bracket.
+// Version 3
 
 use <Thread_Library.scad>
 
@@ -10,7 +11,8 @@ $fa=3;
 E = 0.05;
 PI = 3.14159;
 INCH = 25.4;
-GAP = 0.5;
+// In version 1 and 2 - this was 0.5.
+GAP = 0.3;
 KNOB_GAP = 1.4;
 
 SCREW_LENGTH = 35;
@@ -28,7 +30,7 @@ SCREW_R = 6;
 KNOB_H = 5;
 SHAFT_H = 5;
 
-RECEIVER_W = KNOB_R * 1.8;
+RECEIVER_W = KNOB_R * 1.9;
 RECEIVER_BODY_W = RECEIVER_W * 1.414;
 
 CHAIR_W = 1.26 * INCH;
