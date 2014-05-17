@@ -1,2 +1,5 @@
 *.class
 *.jar
+.gradle
+build
+
