@@ -1,0 +1,2 @@
+javac com/mckoss/example/sample.java
+jar cfe sample.jar com.mckoss.example.Sample com
