@@ -1,1 +1,15 @@
 apply plugin: 'java'
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'com.mckoss.example.Sample'
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile 'junit:junit:4.10'
+}
