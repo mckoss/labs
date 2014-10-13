@@ -17,18 +17,35 @@ def main():
 
 def find_coin(coins):
     b1 = balance(coins[0:4], coins[4:8])
+
     # Coin in 8:12 (4?)
     if b1 == 0:
         b2 = balance(coins[8:10], coins[0:2])
-        # Coin in coins[10:12] (2?)
+
+        # Coin in 10:12 (2?)
         if b2 == 0:
             b3 = balance(coins[10:11], coins[0:1])
             if b3 == 0:
                 return 11
             return 10
-    if b1 > 0:
-        swap(coins, 0, 4, 4)
-    # coins[0:4] < coins[4:8] (4L + 4H)
+
+        # Light coin in 8:10
+        if b2 < 0:
+            b3 = balance(coins[8:9], coins[0:1])
+            if b3 < 0:
+                return 8
+            return 9
+
+        # Heavy coin in 8:10
+        b3 = balance(coins[8:9], coins[0:1])
+        if b3 > 0:
+            return 8
+        return 9
+
+    # 0:4 < 4:8 (4L + 4H)
+    if b1 < 0:
+
+    # 0:4 > 4:8 (4L + 4H)
     return 0
 
 
@@ -36,11 +53,6 @@ def balance(left, right):
     result = sum(left) - sum(right)
     print "%r vs %r is %d" % (left, right, result)
     return result
-
-
-def swap(coins, s1, s2, l):
-    for i in range(l):
-        coins[s1 + i], coins[s2 + i] = coins[s2 + i], coins[s1 + i]
 
 
 if __name__ == '__main__':
