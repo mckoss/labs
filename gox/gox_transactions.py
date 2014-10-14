@@ -26,10 +26,9 @@ def main():
     for file_name in args.files:
         transactions.add_file(file_name)
 
-    print len(transactions.transactions)
-
     # Remove dups
     transactions.sort()
+    transactions.coallesce()
     transactions.do_print()
 
 class Transactions(object):
@@ -65,6 +64,21 @@ class Transactions(object):
                 else:
                     print "Dup of {key} in file {file2} with {file1}".\
                         format(key=key, file1=self.dups[key], file2=file_name)
+
+    def coallesce(self):
+        results = []
+        self.transactions.sort(cmp_by_tid)
+        prev = None
+        for t in self.transactions:
+            if prev is None or t['tid'] == '' or t['tid'] != prev['tid']:
+                prev = t;
+                results.append(t)
+                continue
+            prev['usd'] += t['usd']
+            prev['btc'] += t['btc']
+            prev['source'] += ' ' + t['source']
+        self.transactions = results
+        self.sort()
 
 
 def cmp_by_date(a, b):
