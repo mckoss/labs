@@ -32,6 +32,9 @@ def main():
             add_transactions(transactions, f, file_type)
 
     print len(transactions)
+
+    # Remove dups
+    transactions.sort(cmp_by_date)
     for t in transactions:
         pprint(t)
 
@@ -43,6 +46,15 @@ def add_transactions(transactions, f, file_type):
             continue
         transactions.append(parse_transaction(row, file_type))
 
+
+def cmp_by_date(a, b):
+    return int((a['date'] - b['date']).total_seconds())
+
+
+def cmp_by_tid(a, b):
+    if a['tid'] == b['tid']:
+        return 0
+    return -1 if a['tid'] < b['tid'] else 1
 
 date_format = '%Y-%m-%d %H:%M:%S'
 re_id = re.compile(r'.*\[tid:([0-9]+)\]')
