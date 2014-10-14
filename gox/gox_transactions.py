@@ -20,6 +20,7 @@ BALANCE = 5
 def main():
     parser = argparse.ArgumentParser(description="Read MtGox transaction files")
     parser.add_argument('files', nargs='+', help="csv file names")
+    parser.add_argument('--csv', action='store_true')
     args = parser.parse_args()
     transactions = Transactions()
 
@@ -29,7 +30,7 @@ def main():
     transactions.coallesce()
     # transactions.print_raw()
     transactions.vs_purchase()
-    transactions.print_with_balances()
+    transactions.print_with_balances(csv=args.csv)
 
 class Transactions(object):
     def __init__(self):
@@ -108,11 +109,13 @@ class Transactions(object):
         for t in self.transactions:
             pprint(t)
 
-    def print_with_balances(self):
-        row_format = "{date:19s} {type:8s} {btc:>9s} {usd:>9s} {basis:>9s} {gain:>9s} {cum_gain:>9s}" \
+    def print_with_balances(self, csv=False):
+        row_format = "{date:19s} {type:8s} {btc:>9s} {usd:>9s} {basis:>9s} {gain:>9s} {cum_gain:>9s} " \
             "{btc_usd:>7s} {btc_bal:>9s} {usd_bal:>8s} " \
             "{cum_btc:>10s} {cum_usd:>10s} " \
             "{vs}"
+        if csv:
+            row_format = row_format.replace(' ', ',  ')
         dollar_format = "{0:0.2f}"
         btc_format = "{0:0.1f}"
         print row_format.format(date="Date", type="Type", usd="USD", btc="BTC",
