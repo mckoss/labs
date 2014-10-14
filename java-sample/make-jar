@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+javac -d classes com/mckoss/example/sample.java
+cd classes
+jar cfe ../sample.jar com.mckoss.example.Sample com
+cd ..
+
+unzip -l sample.jar
+
+java -jar sample.jar one two three
+
