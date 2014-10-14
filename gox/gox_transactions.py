@@ -82,9 +82,12 @@ class Transactions(object):
             pprint(t)
 
     def print_with_balances(self):
-        FORMAT = "{date:16s} {type:9s} {usd:>10s} {btc:>10s} {usd_bal:>10s} {btc_bal:>10s} " \
-            "{cum_usd:>10s} {cum_btc:>10s}"
-        print FORMAT.format(date="Date", type="Type", usd="USD", btc="BTC",
+        row_format = "{date:19s} {type:8s} {btc:>9s} {usd:>9s} {btc_usd:>7s} {btc_bal:>9s} {usd_bal:>8s} " \
+            "{cum_btc:>10s} {cum_usd:>10s}"
+        dollar_format = "{0:0.2f}"
+        btc_format = "{0:0.1f}"
+        print row_format.format(date="Date", type="Type", usd="USD", btc="BTC",
+                            btc_usd="BTCUSD",
                             usd_bal="USD Bal", btc_bal="BTC Bal",
                             cum_usd="Cum USD", cum_btc="Cum BTC")
         usd_bal = 0.0
@@ -97,15 +100,20 @@ class Transactions(object):
             if t['type'] == 'deposit' or t['type'] == 'withdraw':
                 cum_usd -= t['usd']
                 cum_btc -= t['btc']
-            print FORMAT.format(
+            if t['type'] == 'buy' or t['type'] == 'sell' and t['btc'] != 0.0:
+                btc_usd = dollar_format.format(-t['usd'] / t['btc'])
+            else:
+                btc_usd = ''
+            print row_format.format(
                 date=t['date'].strftime(date_format),
                 type=t['type'],
-                usd="{0:0.2f}".format(t['usd']),
-                btc="{0:0.4f}".format(t['btc']),
-                usd_bal="{0:0.2f}".format(usd_bal),
-                btc_bal="{0:0.4f}".format(btc_bal),
-                cum_usd="{0:0.2f}".format(cum_usd),
-                cum_btc="{0:0.4f}".format(cum_btc)
+                usd=dollar_format.format(t['usd']),
+                btc=btc_format.format(t['btc']),
+                btc_usd=btc_usd,
+                usd_bal=dollar_format.format(usd_bal),
+                btc_bal=btc_format.format(btc_bal),
+                cum_usd=dollar_format.format(cum_usd),
+                cum_btc=btc_format.format(cum_btc)
                 )
 
 
