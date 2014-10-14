@@ -5,6 +5,7 @@ import argparse
 import csv
 import glob
 from datetime import datetime
+import time
 import re
 from pprint import pprint
 
@@ -34,6 +35,7 @@ def main():
 class Transactions(object):
     def __init__(self):
         self.transactions = []
+        self.dups = {}
 
     def add(self, trans):
         self.transactions.append(trans)
@@ -56,7 +58,13 @@ class Transactions(object):
             for row in reader:
                 if row[0] == 'Index':
                     continue
-                self.transactions.append(parse_transaction(row, file_type))
+                key = row_key(file_type, row)
+                if key not in self.dups:
+                    self.dups[key] = file_name
+                    self.transactions.append(parse_transaction(row, file_type))
+                else:
+                    print "Dup of {key} in file {file2} with {file1}".\
+                        format(key=key, file1=self.dups[key], file2=file_name)
 
 
 def cmp_by_date(a, b):
@@ -67,6 +75,7 @@ def cmp_by_tid(a, b):
     if a['tid'] == b['tid']:
         return 0
     return -1 if a['tid'] < b['tid'] else 1
+
 
 date_format = '%Y-%m-%d %H:%M:%S'
 re_id = re.compile(r'.*\[tid:([0-9]+)\]')
@@ -108,6 +117,7 @@ def parse_transaction(row, file_type):
     tid = match.group(1) if match else ''
     result = {
         'type': TRANS_TYPES[file_type + '.' + row[TYPE]],
+        'source': file_type + '.' + row[INDEX] + '.' + row[TYPE],
         'date': datetime.strptime(row[DATE], date_format),
         'tid': tid,
         'usd': 0.0,
@@ -117,6 +127,11 @@ def parse_transaction(row, file_type):
 
     result[file_type.lower()] = SIGNS[row[TYPE]] * float(row[VALUE])
     return result
+
+
+def row_key(file_type, row):
+    return "{type}.{index}".format(type=file_type, index=row[INDEX])
+
 
 if __name__ == '__main__':
     main()
