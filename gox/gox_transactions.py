@@ -110,7 +110,8 @@ class Transactions(object):
             pprint(t)
 
     def print_with_balances(self, csv=False):
-        row_format = "{date:19s} {type:8s} {btc:>9s} {usd:>9s} {basis:>9s} {gain:>9s} {cum_gain:>9s} " \
+        row_format = "{date:19s} {type:8s} {btc:>9s} {usd:>9s} " \
+            "{basis:>9s} {gain:>9s} {cum_gain:>9s} {cum_sold:>9s} " \
             "{btc_usd:>7s} {btc_bal:>9s} {usd_bal:>8s} " \
             "{cum_btc:>10s} {cum_usd:>10s} " \
             "{vs}"
@@ -121,7 +122,7 @@ class Transactions(object):
         print row_format.format(date="Date", type="Type", usd="USD", btc="BTC",
                                 btc_usd="BTCUSD",
                                 usd_bal="USD Bal", btc_bal="BTC Bal",
-                                basis="Basis", gain="Gain", cum_gain="Cum Gain",
+                                basis="Basis", gain="Gain", cum_gain="Cum Gain", cum_sold="BTC Sold",
                                 cum_usd="Cum USD", cum_btc="Cum BTC",
                                 vs="vs purchase")
         usd_bal = 0.0
@@ -129,6 +130,7 @@ class Transactions(object):
         cum_usd = 0.0
         cum_btc = 0.0
         cum_gain = 0.0
+        cum_sold = 0.0
         for t in self.transactions:
             usd_bal += t['usd']
             btc_bal += t['btc']
@@ -140,7 +142,9 @@ class Transactions(object):
             else:
                 btc_usd = ''
             gain = t['usd'] - t['basis'] if 'basis' in t else 0.0
-            cum_gain += gain
+            if gain != 0.0:
+                cum_gain += gain
+                cum_sold += -t['btc']
             print row_format.format(
                 date=t['date'].strftime(date_format),
                 type=t['type'],
@@ -154,6 +158,7 @@ class Transactions(object):
                 basis=dollar_format.format(t['basis']) if 'basis' in t else '',
                 gain=dollar_format.format(gain) if gain != 0.0 else '',
                 cum_gain=dollar_format.format(cum_gain),
+                cum_sold=btc_format.format(cum_sold),
                 vs=t['vs'] if 'vs' in t else ''
                 )
 
