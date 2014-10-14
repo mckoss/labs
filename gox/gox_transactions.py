@@ -26,10 +26,9 @@ def main():
     for file_name in args.files:
         transactions.add_file(file_name)
 
-    # Remove dups
-    transactions.sort()
     transactions.coallesce()
-    transactions.do_print()
+    # transactions.print_raw()
+    transactions.print_with_balances()
 
 class Transactions(object):
     def __init__(self):
@@ -39,19 +38,13 @@ class Transactions(object):
     def add(self, trans):
         self.transactions.append(trans)
 
-    def sort(self):
-        self.transactions.sort(cmp_by_date)
-
-    def do_print(self):
-        for t in self.transactions:
-            pprint(t)
-
     def add_file(self, file_name):
         if 'USD' in file_name:
             file_type = 'USD'
         else:
             file_type = 'BTC'
-        print "Reading {name} as type: {type}".format(name=file_name, type=file_type)
+        new_rows = 0
+        dup_rows = 0
         with open(file_name, 'r') as f:
             reader = csv.reader(f)
             for row in reader:
@@ -59,11 +52,15 @@ class Transactions(object):
                     continue
                 key = row_key(file_type, row)
                 if key not in self.dups:
+                    new_rows += 1
                     self.dups[key] = file_name
                     self.transactions.append(parse_transaction(row, file_type))
                 else:
-                    print "Dup of {key} in file {file2} with {file1}".\
-                        format(key=key, file1=self.dups[key], file2=file_name)
+                    dup_rows += 1
+                    # print "Dup of {key} in file {file2} with {file1}".\
+                    #     format(key=key, file1=self.dups[key], file2=file_name)
+        print "%s: Read %d unique rows and discarded %d duplicate rows." % \
+            (file_name, new_rows, dup_rows)
 
     def coallesce(self):
         results = []
@@ -78,7 +75,39 @@ class Transactions(object):
             prev['btc'] += t['btc']
             prev['source'] += ' ' + t['source']
         self.transactions = results
-        self.sort()
+        self.transactions.sort(cmp_by_date)
+
+    def print_raw(self):
+        for t in self.transactions:
+            pprint(t)
+
+    def print_with_balances(self):
+        FORMAT = "{date:16s} {type:9s} {usd:>10s} {btc:>10s} {usd_bal:>10s} {btc_bal:>10s} " \
+            "{cum_usd:>10s} {cum_btc:>10s}"
+        print FORMAT.format(date="Date", type="Type", usd="USD", btc="BTC",
+                            usd_bal="USD Bal", btc_bal="BTC Bal",
+                            cum_usd="Cum USD", cum_btc="Cum BTC")
+        usd_bal = 0.0
+        btc_bal = 0.0
+        cum_usd = 0.0
+        cum_btc = 0.0
+        for t in self.transactions:
+            usd_bal += t['usd']
+            btc_bal += t['btc']
+            if t['type'] == 'deposit' or t['type'] == 'withdraw':
+                cum_usd -= t['usd']
+                cum_btc -= t['btc']
+            print FORMAT.format(
+                date=t['date'].strftime(date_format),
+                type=t['type'],
+                usd="{0:0.2f}".format(t['usd']),
+                btc="{0:0.4f}".format(t['btc']),
+                usd_bal="{0:0.2f}".format(usd_bal),
+                btc_bal="{0:0.4f}".format(btc_bal),
+                cum_usd="{0:0.2f}".format(cum_usd),
+                cum_btc="{0:0.4f}".format(cum_btc)
+                )
+
 
 
 def cmp_by_date(a, b):
