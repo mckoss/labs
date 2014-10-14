@@ -28,6 +28,7 @@ def main():
 
     transactions.coallesce()
     # transactions.print_raw()
+    transactions.vs_purchase()
     transactions.print_with_balances()
 
 class Transactions(object):
@@ -77,23 +78,54 @@ class Transactions(object):
         self.transactions = results
         self.transactions.sort(cmp_by_date)
 
+    def vs_purchase(self):
+        vs_bucket = 0
+        vs_used = 0.0
+        for t in self.transactions:
+            if t['type'] != 'sell':
+                continue
+            vs_bucket, vs_used, t['basis'], t['vs'] = self.find_basis(vs_bucket, vs_used, -t['btc'])
+
+    def find_basis(self, bucket, used, btc):
+        t = self.transactions[bucket]
+        basis = 0.0
+        dates = []
+        while btc > 0.0001:
+            while t['type'] != 'buy' or t['usd'] > -0.001 or abs(t['btc'] - used) < 0.001:
+                bucket += 1
+                used = 0.0
+                t = self.transactions[bucket]
+            use = min(btc, t['btc'] - used)
+            btc_usd = -t['usd'] / t['btc']
+            basis += use * btc_usd
+            dates.append(t['date'].strftime('%Y-%m-%d'))
+            btc -= use
+            used += use
+
+        return bucket, used, basis, ', '.join(dates)
+
     def print_raw(self):
         for t in self.transactions:
             pprint(t)
 
     def print_with_balances(self):
-        row_format = "{date:19s} {type:8s} {btc:>9s} {usd:>9s} {btc_usd:>7s} {btc_bal:>9s} {usd_bal:>8s} " \
-            "{cum_btc:>10s} {cum_usd:>10s}"
+        row_format = "{date:19s} {type:8s} {btc:>9s} {usd:>9s} {basis:>9s} {gain:>9s} {cum_gain:>9s}" \
+            "{btc_usd:>7s} {btc_bal:>9s} {usd_bal:>8s} " \
+            "{cum_btc:>10s} {cum_usd:>10s} " \
+            "{vs}"
         dollar_format = "{0:0.2f}"
         btc_format = "{0:0.1f}"
         print row_format.format(date="Date", type="Type", usd="USD", btc="BTC",
-                            btc_usd="BTCUSD",
-                            usd_bal="USD Bal", btc_bal="BTC Bal",
-                            cum_usd="Cum USD", cum_btc="Cum BTC")
+                                btc_usd="BTCUSD",
+                                usd_bal="USD Bal", btc_bal="BTC Bal",
+                                basis="Basis", gain="Gain", cum_gain="Cum Gain",
+                                cum_usd="Cum USD", cum_btc="Cum BTC",
+                                vs="vs purchase")
         usd_bal = 0.0
         btc_bal = 0.0
         cum_usd = 0.0
         cum_btc = 0.0
+        cum_gain = 0.0
         for t in self.transactions:
             usd_bal += t['usd']
             btc_bal += t['btc']
@@ -104,6 +136,8 @@ class Transactions(object):
                 btc_usd = dollar_format.format(-t['usd'] / t['btc'])
             else:
                 btc_usd = ''
+            gain = t['usd'] - t['basis'] if 'basis' in t else 0.0
+            cum_gain += gain
             print row_format.format(
                 date=t['date'].strftime(date_format),
                 type=t['type'],
@@ -113,7 +147,11 @@ class Transactions(object):
                 usd_bal=dollar_format.format(usd_bal),
                 btc_bal=btc_format.format(btc_bal),
                 cum_usd=dollar_format.format(cum_usd),
-                cum_btc=btc_format.format(cum_btc)
+                cum_btc=btc_format.format(cum_btc),
+                basis=dollar_format.format(t['basis']) if 'basis' in t else '',
+                gain=dollar_format.format(gain) if gain != 0.0 else '',
+                cum_gain=dollar_format.format(cum_gain),
+                vs=t['vs'] if 'vs' in t else ''
                 )
 
 
