@@ -1,4 +1,5 @@
 // Adjustable wheelchair lock bracket.
+// Version 3
 
 use <Thread_Library.scad>
 
@@ -10,7 +11,8 @@ $fa=3;
 E = 0.05;
 PI = 3.14159;
 INCH = 25.4;
-GAP = 0.5;
+// In version 1 and 2 - this was 0.5.
+GAP = 0.3;
 KNOB_GAP = 1.4;
 
 SCREW_LENGTH = 35;
@@ -28,7 +30,7 @@ SCREW_R = 6;
 KNOB_H = 5;
 SHAFT_H = 5;
 
-RECEIVER_W = KNOB_R * 1.8;
+RECEIVER_W = KNOB_R * 1.9;
 RECEIVER_BODY_W = RECEIVER_W * 1.414;
 
 CHAIR_W = 1.26 * INCH;
@@ -87,10 +89,7 @@ module receiver() {
 
 module piston() {
   difference() {
-    minkowski() {
-      pipe(RECEIVER_W - WALL * 2 - 2 * GAP - 4, SCREW_LENGTH + ATTACH_H);
-      sphere(r=2);
-    }
+    pipe(RECEIVER_W - WALL * 2 - 2 * GAP, SCREW_LENGTH + ATTACH_H, smooth=1);
     trapezoidThreadNegativeSpace(length=SCREW_LENGTH,
                                  pitchRadius=SCREW_R,
                                  pitch=SCREW_PITCH);
@@ -125,10 +124,10 @@ module bracket() {
     }
     translate([0, 0, 8])
       rotate(180, v=[0, 1, 0])
-        screw_hole(hole_diam=BRACKET_SCREW_W, length=avg_width);
+        screw_hole(hole_diam=BRACKET_SCREW_W, length=avg_width, rot=30);
     translate([0, 0, height - 8])
       rotate(180, v=[0, 1, 0])
-        screw_hole(hole_diam=BRACKET_SCREW_W, length=avg_width);
+        screw_hole(hole_diam=BRACKET_SCREW_W, length=avg_width, rot=30);
     translate([0, 0, height / 2])
       cube([BRACKET_GAP, 2 * WALL + BRACKET_SEP, height + 2 * E], center=true);
   }
@@ -147,11 +146,11 @@ module knurled(r, h, c=2.0) {
   }
 }
 
-module screw_hole(hole_diam=SCREW_HOLE_D, length=RECEIVER_W, nut_w=NUT_W, nut_h=NUT_H) {
+module screw_hole(hole_diam=SCREW_HOLE_D, length=RECEIVER_W, nut_w=NUT_W, nut_h=NUT_H, rot=0) {
   translate([-length / 2 - E, 0, 0])
   rotate(a=90, v=[0, 1, 0]) {
     cylinder(r=hole_diam / 2 + 0.5, h=length + 2 * E);
-    rotate(30, v=[0, 0, 1])
+    rotate(rot, v=[0, 0, 1])
       cylinder(r=hex_radius(nut_w + 0.6), h=nut_h, $fn=6);
   }
 }
@@ -162,9 +161,17 @@ module cone(from_r, to_r) {
   cylinder(r1=from_r, r2=to_r, h=abs(from_r - to_r));
 }
 
-module pipe(w, h) {
+// Smoothing is the radius of the minkowski sphere
+module pipe(w, h, smooth=0) {
   translate([0, 0, h / 2])
-    cube([w, w, h], center=true);
+  if (smooth == 0) {
+      cube([w, w, h], center=true);
+  } else {
+    minkowski() {
+      cube([w - 2 * smooth, w - 2 * smooth, h - 2 * smooth], center=true);
+      sphere(r=smooth);
+    }
+  }
 }
 
 module wedge(a, r, h, rot=0) {
