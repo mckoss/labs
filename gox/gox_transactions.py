@@ -20,31 +20,43 @@ def main():
     parser = argparse.ArgumentParser(description="Read MtGox transaction files")
     parser.add_argument('files', nargs='+', help="csv file names")
     args = parser.parse_args()
-    transactions = []
+    transactions = Transactions()
 
     for file_name in args.files:
+        transactions.add_file(file_name)
+
+    print len(transactions.transactions)
+
+    # Remove dups
+    transactions.sort()
+    transactions.do_print()
+
+class Transactions(object):
+    def __init__(self):
+        self.transactions = []
+
+    def add(self, trans):
+        self.transactions.append(trans)
+
+    def sort(self):
+        self.transactions.sort(cmp_by_date)
+
+    def do_print(self):
+        for t in self.transactions:
+            pprint(t)
+
+    def add_file(self, file_name):
         if 'USD' in file_name:
             file_type = 'USD'
         else:
             file_type = 'BTC'
         print "Reading {name} as type: {type}".format(name=file_name, type=file_type)
         with open(file_name, 'r') as f:
-            add_transactions(transactions, f, file_type)
-
-    print len(transactions)
-
-    # Remove dups
-    transactions.sort(cmp_by_date)
-    for t in transactions:
-        pprint(t)
-
-
-def add_transactions(transactions, f, file_type):
-    reader = csv.reader(f)
-    for row in reader:
-        if row[0] == 'Index':
-            continue
-        transactions.append(parse_transaction(row, file_type))
+            reader = csv.reader(f)
+            for row in reader:
+                if row[0] == 'Index':
+                    continue
+                self.transactions.append(parse_transaction(row, file_type))
 
 
 def cmp_by_date(a, b):
