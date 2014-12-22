@@ -1,11 +1,13 @@
 // Xmas tree ornament
 // by Mike Koss (c) 2014
 
-use <write.scad>
-
 HEIGHT=100;
 RADIUS=30;
+THICKNESS=2;
 E = 0.1;
+
+$fa=3;
+$fs=1;
 
 
 module piped(from, to, width=1) {
@@ -20,7 +22,7 @@ module piped(from, to, width=1) {
       cube([width, width, 1], center=true);
 }
 
-module spiral(height, radius, turns=1, sides=32, width=1) {
+module spiral(height, radius, turns=1, sides=32, width=THICKNESS) {
   for (i = [0 : turns * sides - 1]) {
     assign(
       x1 = radius * cos(i * 360 / sides) * (turns * sides - i) / (turns * sides),
@@ -34,7 +36,7 @@ module spiral(height, radius, turns=1, sides=32, width=1) {
    }
 }
 
-module multiRotate(steps=12) {
+module multiRotate(steps=8) {
   for (i = [0: steps - 1]) {
     rotate(a=360 * i / steps, v=[0, 0, 1])
       child();
@@ -42,12 +44,10 @@ module multiRotate(steps=12) {
 }
 
 // Ring around origin (at z=0)
-module ring(r, thickness, height) {
-  translate([0, 0, height / 2]) {
-    difference() {
-      cylinder(h=height, r=r, $fa=3, center=true);
-      cylinder(h=height + 2 * E, r=r - thickness, $fa=3, center=true);
-    }
+module ring(r, thickness=THICKNESS, height=THICKNESS) {
+  difference() {
+    cylinder(h=height, r=r, center=true);
+    cylinder(h=height + 2 * E, r=r - thickness, center=true);
   }
 }
 
@@ -56,7 +56,9 @@ multiRotate()
 multiRotate()
   mirror([0, 1, 0])
     spiral(HEIGHT, RADIUS, width=2);
+translate([0, 0, THICKNESS/2])
+  ring(RADIUS+THICKNESS/2);
 
 translate([0, 0, HEIGHT + 4])
   rotate(a=90, v=[1, 0, 0])
-    ring(5, 1, 1);
+    ring(5);
