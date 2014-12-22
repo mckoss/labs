@@ -10,6 +10,8 @@ $fa=3;
 $fs=1;
 
 
+// A simple parallelepiped connected a width-square
+// at point from[x, y, z] to point to[x, y, z].
 module piped(from, to, width=1) {
   translate(from)
   multmatrix(m=[
@@ -22,6 +24,9 @@ module piped(from, to, width=1) {
       cube([width, width, 1], center=true);
 }
 
+// Draw a spiral starting with max radius at z=0 and
+// spirals around the z axis turns times, reaching the
+// inersection with z-axis at height units.
 module spiral(height, radius, turns=1, sides=32, width=THICKNESS) {
   for (i = [0 : turns * sides - 1]) {
     assign(
@@ -36,6 +41,8 @@ module spiral(height, radius, turns=1, sides=32, width=THICKNESS) {
    }
 }
 
+// Repeats a child element steps times, rotating
+// 360/steps degrees about the z axis each time.
 module multiRotate(steps=8) {
   for (i = [0: steps - 1]) {
     rotate(a=360 * i / steps, v=[0, 0, 1])
@@ -51,14 +58,18 @@ module ring(r, thickness=THICKNESS, height=THICKNESS) {
   }
 }
 
-multiRotate()
-  spiral(HEIGHT, RADIUS, width=2);
-multiRotate()
-  mirror([0, 1, 0])
+module treeOrnament() {
+  multiRotate()
     spiral(HEIGHT, RADIUS, width=2);
-translate([0, 0, THICKNESS/2])
-  ring(RADIUS+THICKNESS/2);
+  multiRotate()
+    mirror([0, 1, 0])
+      spiral(HEIGHT, RADIUS, width=2);
+  translate([0, 0, THICKNESS/2])
+    ring(RADIUS+THICKNESS/2);
 
-translate([0, 0, HEIGHT + 4])
-  rotate(a=90, v=[1, 0, 0])
-    ring(5);
+  translate([0, 0, HEIGHT + 4])
+    rotate(a=90, v=[1, 0, 0])
+      ring(5);
+}
+
+treeOrnament();
