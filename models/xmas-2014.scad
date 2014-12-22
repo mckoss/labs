@@ -1,6 +1,8 @@
 // Xmas tree ornament
 // by Mike Koss (c) 2014
 
+PART = "ball"; // [tree, ball]
+
 HEIGHT=100;
 RADIUS=30;
 THICKNESS=2;
@@ -41,6 +43,23 @@ module spiral(height, radius, turns=1, sides=32, width=THICKNESS) {
    }
 }
 
+// Draw a spiral starting with max radius at z=0 and
+// spirals around the z axis turns times, reaching the
+// inersection with z-axis at height units.
+module spiralSphere(radius, turns=1, sides=32, width=THICKNESS) {
+  for (i = [0 : turns * sides - 1]) {
+    assign(
+      x1 = radius * cos(i * 360 / sides) * cos(90 * i / (turns * sides)),
+      y1 = radius * sin(i * 360 / sides) * cos(90 * i / (turns * sides)),
+      z1 = radius * i / (turns * sides),
+      x2 = radius * cos((i + 1) * 360 / sides) * cos(90 * (i + 1) / (turns * sides)),
+      y2 = radius * sin((i + 1) * 360 / sides) * cos(90 * (i + 1) / (turns * sides)),
+      z2 = radius * (i + 1) / (turns * sides)) {
+        piped([x1, y1, z1], [x2, y2, z2], width=width);
+     }
+   }
+}
+
 // Repeats a child element steps times, rotating
 // 360/steps degrees about the z axis each time.
 module multiRotate(steps=8) {
@@ -72,4 +91,17 @@ module treeOrnament() {
       ring(5);
 }
 
-treeOrnament();
+module sphereOrnament() {
+  multiRotate()
+    spiralSphere(RADIUS, width=2);
+  multiRotate()
+    mirror([0, 0, 1])
+      spiralSphere(RADIUS, width=2);
+
+  translate([0, 0, RADIUS + 4])
+    rotate(a=90, v=[1, 0, 0])
+      ring(5);
+}
+
+if (PART == "tree") treeOrnament();
+if (PART == "ball") sphereOrnament(RADIUS, width=2);
