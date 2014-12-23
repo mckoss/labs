@@ -3,7 +3,7 @@
 
 PART = "ball"; // [tree, ball]
 
-HEIGHT=100;
+HEIGHT=75;
 RADIUS=30;
 THICKNESS=2;
 E = 0.1;
@@ -28,7 +28,7 @@ module piped(from, to, width=1) {
 
 // Draw a spiral starting with max radius at z=0 and
 // spirals around the z axis turns times, reaching the
-// inersection with z-axis at height units.
+// intersection with z-axis at height units.
 module spiral(height, radius, turns=1, sides=32, width=THICKNESS) {
   for (i = [0 : turns * sides - 1]) {
     assign(
@@ -43,18 +43,19 @@ module spiral(height, radius, turns=1, sides=32, width=THICKNESS) {
    }
 }
 
-// Draw a spiral starting with max radius at z=0 and
-// spirals around the z axis turns times, reaching the
-// inersection with z-axis at height units.
-module spiralSphere(radius, turns=1, sides=32, width=THICKNESS) {
-  for (i = [0 : turns * sides - 1]) {
+// Draw a spiral along the surface of a sphere of radius.
+// Spirals around the z axis turns times, reaching the
+// intersection with z-axis at height units.
+module spiralSphere(start=0, radius, turns=1, sides=32, width=THICKNESS) {
+  begin = ceil(start * turns * sides);
+  for (i = [begin : turns * sides - 1]) {
     assign(
-      x1 = radius * cos(i * 360 / sides) * cos(90 * i / (turns * sides)),
-      y1 = radius * sin(i * 360 / sides) * cos(90 * i / (turns * sides)),
-      z1 = radius * i / (turns * sides),
-      x2 = radius * cos((i + 1) * 360 / sides) * cos(90 * (i + 1) / (turns * sides)),
-      y2 = radius * sin((i + 1) * 360 / sides) * cos(90 * (i + 1) / (turns * sides)),
-      z2 = radius * (i + 1) / (turns * sides)) {
+      x1 = radius * cos(i * 360 / sides) * sin(180 * i / (turns * sides)),
+      y1 = radius * sin(i * 360 / sides) * sin(180 * i / (turns * sides)),
+      z1 = - radius * cos(180 * i / (turns * sides)),
+      x2 = radius * cos((i + 1) * 360 / sides) * sin(180 * (i + 1) / (turns * sides)),
+      y2 = radius * sin((i + 1) * 360 / sides) * sin(180 * (i + 1) / (turns * sides)),
+      z2 = - radius * cos(180 * (i + 1) / (turns * sides))) {
         piped([x1, y1, z1], [x2, y2, z2], width=width);
      }
    }
@@ -77,28 +78,44 @@ module ring(r, thickness=THICKNESS, height=THICKNESS) {
   }
 }
 
-module treeOrnament() {
-  multiRotate()
-    spiral(HEIGHT, RADIUS, width=2);
-  multiRotate()
-    mirror([0, 1, 0])
-      spiral(HEIGHT, RADIUS, width=2);
-  translate([0, 0, THICKNESS/2])
-    ring(RADIUS+THICKNESS/2);
+// Both clockwise and counterclockwise  multiRotate.
+module rotateRevert(steps=8) {
+  multiRotate(steps)
+    child();
+  mirror([0, 1, 0])
+    multiRotate(steps)
+      child();
+}
 
+module hanger() {
   translate([0, 0, HEIGHT + 4])
     rotate(a=90, v=[1, 0, 0])
       ring(5);
 }
 
-module sphereOrnament() {
-  multiRotate()
-    spiralSphere(RADIUS, width=2);
-  multiRotate()
-    mirror([0, 0, 1])
-      spiralSphere(RADIUS, width=2);
+module treeOrnament() {
+  rotateRevert()
+    spiral(HEIGHT, RADIUS, width=THICKNESS);
 
-  translate([0, 0, RADIUS + 4])
+  translate([0, 0, THICKNESS/2])
+    ring(RADIUS+THICKNESS/2);
+
+  hanger();
+}
+
+module sphereOrnament() {
+  portion = 0.8;
+  start = 1 - portion;
+  radius = HEIGHT / (1 + cos(180 * start));
+  offset =  radius * cos(180 * start);
+  translate([0, 0, offset])
+    rotateRevert()
+      spiralSphere(start, radius, width=THICKNESS);
+
+  translate([0, 0, THICKNESS/2])
+    ring(radius * sin(180 * start) + THICKNESS/2);
+
+  translate([0, 0, HEIGHT + 4])
     rotate(a=90, v=[1, 0, 0])
       ring(5);
 }
