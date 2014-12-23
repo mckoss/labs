@@ -108,12 +108,13 @@ module sphereOrnament() {
   start = 1 - portion;
   radius = HEIGHT / (1 + cos(180 * start));
   offset =  radius * cos(180 * start);
+
   translate([0, 0, offset])
     rotateRevert()
       spiralSphere(start, radius, width=THICKNESS);
 
   translate([0, 0, THICKNESS/2])
-    ring(radius * sin(180 * start) + THICKNESS/2);
+    ring(radius * sin(180 * start) + 1.5 * THICKNESS);
 
   translate([0, 0, HEIGHT + 4])
     rotate(a=90, v=[1, 0, 0])
