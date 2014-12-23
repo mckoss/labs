@@ -1,7 +1,7 @@
 // Xmas tree ornament
 // by Mike Koss (c) 2014
 
-PART = "ball"; // [tree, ball]
+PART = "tree"; // [tree, ball]
 
 HEIGHT=75;
 RADIUS=30;
@@ -26,19 +26,21 @@ module piped(from, to, width=1) {
       cube([width, width, 1], center=true);
 }
 
+function unit2(dir) = [cos(dir), sin(dir)];
+function unit3(dir, elev) = [cos(elev) * cos(dir), cos(elev) * sin(dir), sin(elev)];
+function combine(f, x0, x1) = x0 * (1 - f) + x1 * f;
+
 // Draw a spiral starting with max radius at z=0 and
 // spirals around the z axis turns times, reaching the
 // intersection with z-axis at height units.
 module spiral(height, radius, turns=1, sides=32, width=THICKNESS) {
   for (i = [0 : turns * sides - 1]) {
     assign(
-      x1 = radius * cos(i * 360 / sides) * (turns * sides - i) / (turns * sides),
-      y1 = radius * sin(i * 360 / sides) * (turns * sides - i) / (turns * sides),
+      p1 = radius * (1 - i / (turns * sides)) * unit2(360 * i / sides),
+      p2 = radius * (1 - (i + 1) / (turns * sides)) * unit2(360 * (i + 1) / sides),
       z1 = height * i / (turns * sides),
-      x2 = radius * cos((i + 1) * 360 / sides) * (turns * sides - i - 1) / (turns * sides),
-      y2 = radius * sin((i + 1) * 360 / sides) * (turns * sides - i - 1) / (turns * sides),
       z2 = height * (i + 1) / (turns * sides)) {
-        piped([x1, y1, z1], [x2, y2, z2], width=width);
+        piped([p1[0], p1[1], z1], [p2[0], p2[1], z2], width=width);
      }
    }
 }
