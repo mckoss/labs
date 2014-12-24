@@ -107,6 +107,16 @@ yes-and-no-%.stl: yes-and-no.scad
 	openscad -o $@ -D 'PART = "$*"' $<
 
 #
+# 2014 Xmas Ornaments
+#
+XMAS_PARTS=ball tree onion ALL
+XMAS_FILES=$(foreach part, $(XMAS_PARTS), xmas-2014-$(part).stl)
+xmas-2014: $(XMAS_FILES)
+
+xmas-2014-%.stl: xmas-2014.scad
+	openscad -o $@ -D 'PART = "$*"' $<
+
+#
 # Cookie Cutters
 #
 
