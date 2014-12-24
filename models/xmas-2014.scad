@@ -53,6 +53,8 @@ function spiralPoint(radius, i, turns=1, sides=32) =
 // Draw a spiral along the surface of a sphere of radius.
 // Spirals around the z axis turns times, reaching the
 // intersection with z-axis at height units.
+//
+// Start and finish between [0..1] as percentage of whole sphere.
 module spiralSphere(radius, start=0, finish=1, turns=1, sides=32, width=THICKNESS) {
   begin = ceil(start * turns * sides);
   end = ceil(finish * turns * sides);
@@ -89,6 +91,7 @@ module rotateRevert(steps=8) {
       child();
 }
 
+// Hook to hang ornament.
 module hanger() {
   translate([0, 0, HEIGHT + 4])
     rotate(a=90, v=[1, 0, 0])
@@ -99,6 +102,7 @@ module treeOrnament() {
   rotateRevert()
     spiralCone(HEIGHT, RADIUS, width=THICKNESS);
 
+  // Bottom base.
   translate([0, 0, THICKNESS/2])
     ring(RADIUS+THICKNESS/2);
 
@@ -114,10 +118,12 @@ module sphereOrnament() {
   bottom = spiralPoint(radius, ceil(start * turns * sides), turns, sides);
   top = spiralPoint(radius, ceil(finish * turns * sides), turns, sides);
 
+  // Central sphere portion.
   translate([0, 0, -bottom[2]])
     rotateRevert(12)
       spiralSphere(radius, start=start, finish=finish, turns=turns, sides=sides, width=THICKNESS);
 
+  // Top cap (conical for printability).
   translate([0, 0, top[2] - bottom[2]])
     union () {
       ring(dist(top) + THICKNESS/2);
@@ -125,13 +131,12 @@ module sphereOrnament() {
         spiralCone(HEIGHT - (top[2] - bottom[2]), dist(top), turns=0.25, width=THICKNESS);
     }
 
+  // Bottom base.
   translate([0, 0, THICKNESS/2])
     ring(dist(bottom) + THICKNESS/2);
 
-  translate([0, 0, HEIGHT + 4])
-    rotate(a=90, v=[1, 0, 0])
-      ring(5);
+  hanger();
 }
 
 if (PART == "tree") treeOrnament();
-if (PART == "ball") sphereOrnament(RADIUS, width=2);
+if (PART == "ball") sphereOrnament();
