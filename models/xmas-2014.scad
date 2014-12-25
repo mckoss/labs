@@ -1,4 +1,4 @@
-// Xmas tree ornament
+// Xmas tree ornaments
 // by Mike Koss (c) 2014
 
 PART = "ALL"; // [tree, ball, onion, ALL]
