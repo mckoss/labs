@@ -117,6 +117,16 @@ xmas-2014-%.stl: xmas-2014.scad
 	openscad -o $@ -D 'PART = "$*"' $<
 
 #
+# Platonic solids
+#
+PLATONIC_PARTS=cube tetrahedron octahedron dodecahedron icosahedron
+PLATONIC_FILES=$(foreach part, $(PLATONIC_PARTS), platonic-$(part).stl)
+platonic: $(PLATONIC_FILES)
+
+platonic-%.stl: platonic.scad
+	openscad -o $@ -D 'PART = "$*"' $<
+
+#
 # Cookie Cutters
 #
 
