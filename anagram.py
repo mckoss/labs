@@ -29,23 +29,24 @@ def main():
 
     print("%d candidate words in dictionary (out of %d)" % (len(words), total_words))
 
-    anagrams = find_anagrams(counts, words)
-
-    def anagram_order(a, b):
-        return len(a) - len(b)
-
-    anagrams.sort(anagram_order)
-
-    for i, anagram in enumerate(anagrams):
-        print("%2d. %s" % (i + 1, ' '.join(anagram)))
+    index = 1
+    for use_words in range(1, 11):
+        print("Anagrams of %d words..." % use_words)
+        anagrams = find_anagrams(use_words, counts, words)
+        for i, anagram in enumerate(anagrams):
+            print("%2d. %s" % (index + i, ' '.join(anagram)))
+        index += len(anagrams)
 
 
-def find_anagrams(counts, words, start=0):
+def find_anagrams(use_words, counts, words, start=0):
     """
     Return array of anagrams that can by made from
     words[start:]
     """
     anagrams = []
+    if use_words <= 0:
+        return anagrams
+
     for i in range(start, len(words)):
         if not counts.contains(words[i]):
             continue
@@ -53,10 +54,11 @@ def find_anagrams(counts, words, start=0):
         sub_counts = counts.clone()
         sub_counts.subtract_word(words[i])
         if sub_counts.is_zero():
-            anagrams.append([words[i]])
+            if use_words == 1:
+                anagrams.append([words[i]])
             continue
 
-        sub_anagrams = find_anagrams(sub_counts, words, i)
+        sub_anagrams = find_anagrams(use_words - 1, sub_counts, words, i)
         for sub_anagram in sub_anagrams:
             anagram = [words[i]]
             anagram.extend(sub_anagram)
