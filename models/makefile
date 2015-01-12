@@ -127,6 +127,16 @@ platonic-%.stl: platonic.scad
 	openscad -o $@ -D 'PART = "$*"' $<
 
 #
+# Dice
+#
+DICE_PARTS=4 6 6a 8 12 20 20a ALL
+DICE_FILES=$(foreach part, $(DICE_PARTS), dice-$(part).stl)
+dice: $(DICE_FILES)
+
+dice-%.stl: dice.scad
+	openscad -o $@ -D 'PART = "$*"' $<
+
+#
 # Cookie Cutters
 #
 
