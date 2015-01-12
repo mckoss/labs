@@ -7,7 +7,7 @@ CHAR_WIDTH = 6.6;
 CHAR_HEIGHT = 10;
 
 
-SIDES = 6; // [4, 6, 8, 12, 20]
+SIDES = 20; // [4, 6, 8, 12, 20]
 
 R = 50;
 EMBOSS = 4;
@@ -29,7 +29,9 @@ if (SIDES == 6)
   die([
       [1, 0, 0], [0, 1, 0], [-1, 0, 0],
       [0, -1, 0], [0, 0, 1], [0, 0, -1]
-    ], .3);
+    ],
+    .3,
+    symbols=vowels);
 
 if (SIDES == 8)
   die([
@@ -54,13 +56,8 @@ if (SIDES == 20)
       [-1/PHI, -PHI, 0], [-1/PHI, PHI, 0], [1/PHI, -PHI, 0], [1/PHI, PHI, 0],
       [-PHI, 0, -1/PHI], [-PHI, 0, 1/PHI], [PHI, 0, -1/PHI], [PHI, 0, 1/PHI]
     ],
-    0.12);
-
-digits = [
-  "1", "2", "3", "4", "5", "6", "7", "8", "9",
-  "10", "11", "12", "13", "14", "15", "16", "17", "18", "19",
-  "20"
-];
+    0.12,
+    symbols=consonants);
 
 module die(faces, shave=0.2, r=R, symbols=digits) {
   d = dist(faces[0]);
@@ -86,3 +83,12 @@ module die(faces, shave=0.2, r=R, symbols=digits) {
 }
 
 function dist(pos) = sqrt(pos * pos);
+
+digits = [
+  "1", "2", "3", "4", "5", "6", "7", "8", "9",
+  "10", "11", "12", "13", "14", "15", "16", "17", "18", "19",
+  "20"
+];
+
+vowels = "aeiouy";
+consonants = "bcdfghjklmnpqrstvwxz";
