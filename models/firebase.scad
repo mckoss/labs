@@ -15,17 +15,22 @@ YELLOW = [1.0, 0.85, 0.19];
 //
 // Build options.
 //
-PART = "ALL"; // [connector, top-cap, middle, bottom-cap, ALL]]
+PART = "ALL";
+// [top-cap, top-connector, middle, bottom-connector,bottom-cap, ALL]
 
-if (PART == "connector") {
-  color(BLACK) hollow_connector();
+if (PART == "top-connector") {
+  color(BLACK) hollow_connector(open=true);
+}
+
+if (PART == "bottom-connector") {
+  color(BLACK) hollow_connector(open=false);
 }
 
 if (PART == "top-cap") {
   color(YELLOW) slice();
 }
 
-exploded = 20;
+exploded = 10;
 
 // Rotate part 180 degrees on z axis.
 module flip_z() {
@@ -35,11 +40,11 @@ module flip_z() {
 
 if (PART == "ALL") {
   translate([0, 0, CONNECTOR_LENGTH / 2 + WALL_THICKNESS / 2 + AIR_GAP + exploded])
-    color(BLACK) hollow_connector();
+    color(BLACK) hollow_connector(open=true);
   color(YELLOW) middle_slice();
   flip_z() {
     translate([0, 0, CONNECTOR_LENGTH / 2 + WALL_THICKNESS / 2 + AIR_GAP + exploded])
-      color(BLACK) hollow_connector();
+      color(BLACK) hollow_connector(open=false);
       }
 }
 
@@ -125,10 +130,13 @@ module slice_threads() {
                   n_starts=STARTS);
 }
 
-module hollow_connector() {
+module hollow_connector(open=true) {
   difference() {
     connector();
-    cylinder(h=CONNECTOR_LENGTH, r=INNER_DIAMETER / 2 - WALL_THICKNESS, center=true);
+    translate([0, 0, open ? 0 : WALL_THICKNESS])
+      cylinder(h=CONNECTOR_LENGTH + 2 * E,
+               r=INNER_DIAMETER / 2 - WALL_THICKNESS,
+               center=true);
   }
 }
 
