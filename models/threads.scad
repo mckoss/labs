@@ -1,20 +1,22 @@
 /*
+ * Dan Kirshner - dan_kirshner@yahoo.com
+ *
+ * You are welcome to make free use of this software.  Retention of my
+ * authorship credit would be appreciated.
+ *
+ * Version 1.4.  2014-10-17   Use "faces" instead of "triangles" for polyhedron
+ * Version 1.3.  2013-12-01   Correct loop over turns -- don't have early cut-off
  * Version 1.2.  2012-09-09   Use discrete polyhedra rather than linear_extrude()
  * Version 1.1.  2012-09-07   Corrected to right-hand threads!
  */
 
 // Examples:
-metric_thread(8, 1, 8);
-
-//english_thread(1/4, 10, 1);
+metric_thread(8, 1, 4);
+//english_thread(1/4, 20, 1);
 
 // Rohloff hub thread:
 //metric_thread(34, 1, 10, internal=true, n_starts=6);
 
-
-
-// ----------------------------------------------------------------------------
-pi = 3.14159265;
 
 
 // ----------------------------------------------------------------------------
@@ -38,7 +40,7 @@ module metric_thread(diameter=8, pitch=1, length=1, internal=false, n_starts=1)
    union() {
       intersection() {
          // Start one below z = 0.  Gives an extra turn at each end.
-         for (i=[-1*n_starts : n_turns-1]) {
+         for (i=[-1*n_starts : n_turns+1]) {
             translate([0, 0, i*pitch]) {
                metric_thread_turn(diameter, pitch, internal, n_starts);
             }
@@ -118,11 +120,11 @@ module thread_polyhedron(radius, pitch, internal, n_starts)
 
    // Make these just slightly bigger (keep in proportion) so polyhedra will
    // overlap.
-   x_incr_outer = outer_r * fraction_circle * 2 * pi * 1.005;
-   x_incr_inner = inner_r * fraction_circle * 2 * pi * 1.005;
+   x_incr_outer = outer_r * fraction_circle * 2 * PI * 1.005;
+   x_incr_inner = inner_r * fraction_circle * 2 * PI * 1.005;
    z_incr = n_starts * pitch * fraction_circle * 1.005;
 
-   /*    
+   /*
     (angles x0 and x3 inner are actually 60 deg)
 
                           /\  (x2_inner, z2_inner) [2]
@@ -132,7 +134,7 @@ module thread_polyhedron(radius, pitch, internal, n_starts)
                         |\     \ (x2_outer, z2_outer) [6]
                         | \    /
                         |  \  /|
-             z          |   \/ / (x1_outer, z1_outer) [5]
+             z          |[7]\/ / (x1_outer, z1_outer) [5]
              |          |   | /
              |   x      |   |/
              |  /       |   / (x0_outer, z0_outer) [4]
@@ -143,50 +145,45 @@ module thread_polyhedron(radius, pitch, internal, n_starts)
 
    */
 
-   x1_outer = outer_r * fraction_circle * 2 * pi;
+   x1_outer = outer_r * fraction_circle * 2 * PI;
 
    z0_outer = z_fct(outer_r, radius, pitch);
    //echo(str("z0_outer: ", z0_outer));
 
-   //polygon([[inner_r, 0], [outer_r, z0_outer], 
+   //polygon([[inner_r, 0], [outer_r, z0_outer],
    //        [outer_r, 0.5*pitch], [inner_r, 0.5*pitch]]);
    z1_outer = z0_outer + z_incr;
 
-   // Rule for triangle ordering: look at polyhedron from outside: points must
+   // Rule for face ordering: look at polyhedron from outside: points must
    // be in clockwise order.
    polyhedron(
       points = [
-                [-x_incr_inner/2, -inner_r, 0],                                    // [0]
+                [-x_incr_inner/2, -inner_r, 0],                        // [0]
                 [x_incr_inner/2, -inner_r, z_incr],                    // [1]
                 [x_incr_inner/2, -inner_r, pitch + z_incr],            // [2]
-                [-x_incr_inner/2, -inner_r, pitch],                                // [3]
+                [-x_incr_inner/2, -inner_r, pitch],                    // [3]
 
-                [-x_incr_outer/2, -outer_r, z0_outer],                             // [4]
+                [-x_incr_outer/2, -outer_r, z0_outer],                 // [4]
                 [x_incr_outer/2, -outer_r, z0_outer + z_incr],         // [5]
                 [x_incr_outer/2, -outer_r, pitch - z0_outer + z_incr], // [6]
-                [-x_incr_outer/2, -outer_r, pitch - z0_outer]                      // [7]
+                [-x_incr_outer/2, -outer_r, pitch - z0_outer]          // [7]
                ],
 
-      triangles = [
-                [0, 3, 4],  // This-side trapezoid, bottom
-                [3, 7, 4],  // This-side trapezoid, top
+      faces = [
+                [0, 3, 7, 4],  // This-side trapezoid
 
-                [1, 5, 2],  // Back-side trapezoid, bottom
-                [2, 5, 6],  // Back-side trapezoid, top
+                [1, 5, 6, 2],  // Back-side trapezoid
 
-                [0, 1, 2],  // Inner rectangle, bottom
-                [0, 2, 3],  // Inner rectangle, top
+                [0, 1, 2, 3],  // Inner rectangle
 
-                [4, 6, 5],  // Outer rectangle, bottom
-                [4, 7, 6],  // Outer rectangle, top
+                [4, 7, 6, 5],  // Outer rectangle
 
-                [7, 2, 6],  // Upper rectangle, bottom
-                [7, 3, 2],  // Upper rectangle, top
+                // These are not planar, so do with separate triangles.
+                [7, 2, 6],     // Upper rectangle, bottom
+                [7, 3, 2],     // Upper rectangle, top
 
-                [0, 5, 1],  // Lower rectangle, bottom
-                [0, 4, 5]   // Lower rectangle, top
+                [0, 5, 1],     // Lower rectangle, bottom
+                [0, 4, 5]      // Lower rectangle, top
                ]
    );
 }
-
-
