@@ -153,6 +153,20 @@ cookie-%.stl: cookie-cutter.scad %.dxf
 cookie-%-2x.stl: cookie-cutter.scad %.dxf
 	openscad -o $@ -D 'FILE = "$*.dxf"' -D 'SCALE = 2' $<
 
+#
+# Firebase logo container
+#
+FIREBASE_PARTS=top-cap top-connector middle bottom-connector bottom-cap
+FIREBASE_FILES=$(foreach part, $(FIREBASE_PARTS), firebase-$(part).stl)
+
+firebase: $(FIREBASE_FILES)
+
+firebase-lock: $(FIREBASE_FILES)
+	echo $(FIREBASE_FILES)
+
+firebase-%.stl: firebase.scad
+	openscad -o $@ -D 'PART = "$*"' $<
+
 # Generic file transformation rules
 %.stl : %.scad
 	openscad -o $@ $<

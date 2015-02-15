@@ -15,8 +15,8 @@ YELLOW = [1.0, 0.85, 0.19];
 //
 // Build options.
 //
-PART = "ALL";
-// [top-cap, top-connector, middle, bottom-connector,bottom-cap, ALL]
+PART = "all";
+// [top-cap, top-connector, middle, bottom-connector, bottom-cap, ALL]
 
 if (PART == "top-connector") {
   color(BLACK) hollow_connector(open=true);
@@ -27,25 +27,39 @@ if (PART == "bottom-connector") {
 }
 
 if (PART == "top-cap") {
-  color(YELLOW) slice();
+  color(YELLOW) top_cap();
 }
 
-exploded = 20;
+if (PART == "bottom-cap") {
+  color(YELLOW) bottom_cap();
+}
 
-// Rotate part 180 degrees on z axis.
+if (PART == "all") {
+  all();
+}
+
+// Rotate part 180 degrees on z axis - but preserve handedness.
 module flip_z() {
   rotate(a=180, v=[0, 1, 0])
     children(0);
 }
 
-if (PART == "ALL") {
-  translate([0, 0, CONNECTOR_LENGTH / 2 + WALL_THICKNESS / 2 + AIR_GAP + exploded])
+module all() {
+  exploded = 10;
+  middle_pos = 0;
+  top_connector_pos = middle_pos + exploded +
+    CONNECTOR_LENGTH / 2 + WALL_THICKNESS / 2 + AIR_GAP;
+  top_cap_pos = top_connector_pos + exploded + SLICE_GAP / 2 + SLICE_HEIGHT / 2;
+
+  translate([0, 0, top_cap_pos])
+    color(YELLOW) top_cap();
+  translate([0, 0, top_connector_pos])
     color(BLACK) hollow_connector(open=true);
   color(YELLOW) middle_slice();
-  flip_z() {
-    translate([0, 0, CONNECTOR_LENGTH / 2 + WALL_THICKNESS / 2 + AIR_GAP + exploded])
-      color(BLACK) hollow_connector(open=false);
-      }
+  translate([0, 0, -top_connector_pos])
+    color(BLACK) hollow_connector(open=false);
+  translate([0, 0, -top_cap_pos])
+    color(YELLOW) bottom_cap();
 }
 
 
@@ -69,14 +83,19 @@ PITCH = 2;
 STARTS = 3;
 AIR_GAP = 0.5;
 THREAD_LENGTH = SLICE_HEIGHT / 2  - WALL_THICKNESS / 2 - AIR_GAP;
+CONNECTOR_LENGTH = 2 * THREAD_LENGTH + SLICE_GAP;
 
-module end_cap() {
+module top_cap() {
+  rotate(180, v=[0, 1, 0])
+    bottom_cap();
+}
+
+module bottom_cap() {
   difference() {
     slice();
+    slice_threads();
     translate([0, 0, WALL_THICKNESS])
-      union() {
-      cylinder(h=SLICE_HEIGHT, r=OUTER_DIAMETER / 2 - WALL_THICKNESS - 0);
-    }
+      cylinder(h=SLICE_HEIGHT + 2 * E, r=INNER_DIAMETER / 2 - WALL_THICKNESS, center=true);
   }
 }
 
@@ -155,5 +174,3 @@ module connector_threads() {
                   pitch=PITCH,
                   n_starts=STARTS);
 }
-
-CONNECTOR_LENGTH = 2 * THREAD_LENGTH + SLICE_GAP;
