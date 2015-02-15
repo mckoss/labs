@@ -30,7 +30,7 @@ if (PART == "top-cap") {
   color(YELLOW) slice();
 }
 
-exploded = 10;
+exploded = 20;
 
 // Rotate part 180 degrees on z axis.
 module flip_z() {
@@ -67,8 +67,8 @@ WALL_THICKNESS = 3;
 //
 PITCH = 2;
 STARTS = 3;
-THREAD_LENGTH = SLICE_HEIGHT / 2  - WALL_THICKNESS / 2;
 AIR_GAP = 0.5;
+THREAD_LENGTH = SLICE_HEIGHT / 2  - WALL_THICKNESS / 2 - AIR_GAP;
 
 module end_cap() {
   difference() {
@@ -85,7 +85,7 @@ module middle_slice() {
     slice();
     slice_threads();
     flip_z() slice_threads();
-    cylinder(h=SLICE_HEIGHT, r=INNER_DIAMETER / 2 - WALL_THICKNESS, center=true);
+    cylinder(h=SLICE_HEIGHT + 2 * E, r=INNER_DIAMETER / 2 - WALL_THICKNESS, center=true);
   }
 }
 
@@ -125,7 +125,7 @@ module beveled_cylinder(r=10, h=5, bevel_radius=2, center=true) {
 module slice_threads() {
   translate([0, 0, WALL_THICKNESS / 2 + AIR_GAP])
     metric_thread(internal=true,
-                  length=THREAD_LENGTH - AIR_GAP + 2,
+                  length=THREAD_LENGTH,
                   diameter=INNER_DIAMETER, pitch=PITCH,
                   n_starts=STARTS);
 }
@@ -133,23 +133,27 @@ module slice_threads() {
 module hollow_connector(open=true) {
   difference() {
     connector();
-    translate([0, 0, open ? 0 : WALL_THICKNESS])
+    translate([0, 0, open ? -E : WALL_THICKNESS])
       cylinder(h=CONNECTOR_LENGTH + 2 * E,
                r=INNER_DIAMETER / 2 - WALL_THICKNESS,
                center=true);
   }
 }
 
+// 2-sided threaded connector - centered around origin.
 module connector() {
-  translate([0, 0, SLICE_GAP / 2 - E])
-    metric_thread(length=THREAD_LENGTH - AIR_GAP,
-                  diameter=INNER_DIAMETER, pitch=PITCH,
-                  n_starts=STARTS);
+  connector_threads();
   cylinder(h=SLICE_GAP, r=INNER_DIAMETER / 2, center=true);
-  translate([0, 0, -THREAD_LENGTH + AIR_GAP - SLICE_GAP / 2 + E])
-      metric_thread(length=THREAD_LENGTH - AIR_GAP,
-                    diameter=INNER_DIAMETER, pitch=PITCH,
-                    n_starts=STARTS);
+  flip_z()
+    connector_threads();
 }
 
-CONNECTOR_LENGTH = 2 * (THREAD_LENGTH - AIR_GAP) + SLICE_GAP;
+module connector_threads() {
+  translate([0, 0, SLICE_GAP / 2 - E])
+    metric_thread(length=THREAD_LENGTH,
+                  diameter=INNER_DIAMETER,
+                  pitch=PITCH,
+                  n_starts=STARTS);
+}
+
+CONNECTOR_LENGTH = 2 * THREAD_LENGTH + SLICE_GAP;
