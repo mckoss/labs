@@ -15,13 +15,13 @@ YELLOW = [1.0, 0.85, 0.19];
 //
 // Build options.
 //
-PART = "ALL"; // [connector, cap, middle, ALL]]
+PART = "ALL"; // [connector, top-cap, middle, bottom-cap, ALL]]
 
 if (PART == "connector") {
   color(BLACK) hollow_connector();
 }
 
-if (PART == "cap") {
+if (PART == "top-cap") {
   color(YELLOW) slice();
 }
 
@@ -86,17 +86,36 @@ module middle_slice() {
 
 module slice() {
   bevel = 2;
-  if (DEBUG) {
-    cylinder(h=SLICE_HEIGHT, r=OUTER_DIAMETER / 2, center=true);
-  } else {
-    minkowski() {
-      cylinder(h=SLICE_HEIGHT - 2 * bevel,
-               r=OUTER_DIAMETER / 2 - 2 * bevel,
-               $fa=3, center=true);
-      sphere(r=bevel, $fs=1);
-    }
-  }
+  beveled_cylinder(h=SLICE_HEIGHT, r=OUTER_DIAMETER / 2, bevel_radius=2, center=true);
 }
+
+module beveled_cylinder(r=10, h=5, bevel_radius=2, center=true) {
+  bevel=[
+         [cos(90), sin(90)],
+         [cos(68), sin(68)],
+         [cos(45), sin(45)],
+         [cos(22), sin(22)],
+         [cos(0), sin(0)]
+         ];
+  bevel_pts = [
+               [0, 0], [0, h],
+               [r, h] + (bevel[0]+[-1, -1]) * bevel_radius,
+               [r, h] + (bevel[1]+[-1, -1]) * bevel_radius,
+               [r, h] + (bevel[2]+[-1, -1]) * bevel_radius,
+               [r, h] + (bevel[3]+[-1, -1]) * bevel_radius,
+               [r, h] + (bevel[4]+[-1, -1]) * bevel_radius,
+
+               [r, 0] + ([bevel[4][0], -bevel[4][1]] + [-1, 1]) * bevel_radius,
+               [r, 0] + ([bevel[3][0], -bevel[3][1]] + [-1, 1]) * bevel_radius,
+               [r, 0] + ([bevel[2][0], -bevel[2][1]] + [-1, 1]) * bevel_radius,
+               [r, 0] + ([bevel[1][0], -bevel[1][1]] + [-1, 1]) * bevel_radius,
+               [r, 0] + ([bevel[0][0], -bevel[0][1]] + [-1, 1]) * bevel_radius
+    ];
+  translate([0, 0, center ? -h / 2 : 0])
+    rotate_extrude($fa=3)
+      polygon(points=bevel_pts);
+}
+
 
 module slice_threads() {
   translate([0, 0, WALL_THICKNESS / 2 + AIR_GAP])
