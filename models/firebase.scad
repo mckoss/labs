@@ -106,14 +106,22 @@ module bottom_cap() {
 module middle_slice() {
   difference() {
     slice();
-    cylinder(h=SLICE_HEIGHT + 2 * E, r=INNER_DIAMETER / 2 - WALL_THICKNESS, center=true);
-    slice_threads();
-    flip_z() slice_threads();
+    middle_slice_cuts();
   }
 }
 
+module middle_slice_cuts() {
+  cylinder(h=SLICE_HEIGHT + 2 * E, r=INNER_DIAMETER / 2 - WALL_THICKNESS, center=true);
+  slice_threads();
+  flip_z() slice_threads();
+}
+
 module slice() {
-  beveled_cylinder(h=SLICE_HEIGHT, r=OUTER_DIAMETER / 2, bevel_radius=2, center=true);
+  if (DEBUG) {
+    cylinder(h=SLICE_HEIGHT, r=OUTER_DIAMETER / 2, center=true);
+  } else {
+    beveled_cylinder(h=SLICE_HEIGHT, r=OUTER_DIAMETER / 2, bevel_radius=2, center=true);
+  }
 }
 
 module beveled_cylinder(r=10, h=5, bevel_radius=2, center=true) {
@@ -139,7 +147,7 @@ module beveled_cylinder(r=10, h=5, bevel_radius=2, center=true) {
                [r, 0] + ([bevel[0][0], -bevel[0][1]] + [-1, 1]) * bevel_radius
     ];
   translate([0, 0, center ? -h / 2 : 0])
-    rotate_extrude($fa=3)
+    rotate_extrude($fa=3, convexity=3)
       polygon(points=bevel_pts);
 }
 
