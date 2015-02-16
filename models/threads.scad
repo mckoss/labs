@@ -10,6 +10,13 @@
  * Version 1.1.  2012-09-07   Corrected to right-hand threads!
  */
 
+// Fraction of pitch depth to grow the negative (internal) threads.
+// This value was originally 0.05 (1/20) and was too small of a tolerance
+// to have parts mate.
+INTERNAL_PCT = 0.20;
+
+DEBUG = false;
+
 // Examples:
 metric_thread(8, 1, 4);
 //english_thread(1/4, 20, 1);
@@ -111,9 +118,10 @@ module thread_polyhedron(radius, pitch, internal, n_starts)
    fraction_circle = 1.0/n_segments;
 
    h = pitch * cos(30);
-   outer_r = radius + (internal ? h/20 : 0); // Adds internal relief.
-   //echo(str("outer_r: ", outer_r));
-
+   outer_r = radius + (internal ? h * INTERNAL_PCT : 0); // Adds internal relief.
+   if (DEBUG) {
+     echo(str("outer_r: ", outer_r));
+   }
 
    inner_r = radius - 0.875*h; // Does NOT do Dmin_truncation - do later with
                                // cylinder.

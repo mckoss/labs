@@ -3,7 +3,7 @@
 
 use <threads.scad>
 
-DEBUG = true;
+DEBUG = false;
 
 $fa=3;
 $fs=1;
@@ -15,7 +15,7 @@ YELLOW = [1.0, 0.85, 0.19];
 //
 // Build options.
 //
-PART = "middle";
+PART = "top-cap";
 // [top-cap, top-connector, middle, bottom-connector, bottom-cap, ALL]
 
 if (PART == "top-connector") {
@@ -44,7 +44,7 @@ if (PART == "all") {
 
 // Rotate part 180 degrees on z axis - but preserve handedness.
 module flip_z() {
-  rotate(a=180, v=[0, 1, 0])
+  rotate(180, v=[0, 1, 0])
     children(0);
 }
 
