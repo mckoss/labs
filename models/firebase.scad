@@ -15,7 +15,7 @@ YELLOW = [1.0, 0.85, 0.19];
 //
 // Build options.
 //
-PART = "all";
+PART = "middle";
 // [top-cap, top-connector, middle, bottom-connector, bottom-cap, ALL]
 
 if (PART == "top-connector") {
@@ -32,6 +32,10 @@ if (PART == "top-cap") {
 
 if (PART == "bottom-cap") {
   color(YELLOW) bottom_cap();
+}
+
+if (PART == "middle") {
+  color(YELLOW) middle_slice();
 }
 
 if (PART == "all") {
@@ -102,14 +106,13 @@ module bottom_cap() {
 module middle_slice() {
   difference() {
     slice();
+    cylinder(h=SLICE_HEIGHT + 2 * E, r=INNER_DIAMETER / 2 - WALL_THICKNESS, center=true);
     slice_threads();
     flip_z() slice_threads();
-    cylinder(h=SLICE_HEIGHT + 2 * E, r=INNER_DIAMETER / 2 - WALL_THICKNESS, center=true);
   }
 }
 
 module slice() {
-  bevel = 2;
   beveled_cylinder(h=SLICE_HEIGHT, r=OUTER_DIAMETER / 2, bevel_radius=2, center=true);
 }
 
@@ -144,7 +147,7 @@ module beveled_cylinder(r=10, h=5, bevel_radius=2, center=true) {
 module slice_threads() {
   translate([0, 0, WALL_THICKNESS / 2 + AIR_GAP])
     metric_thread(internal=true,
-                  length=THREAD_LENGTH,
+                  length=THREAD_LENGTH + E,
                   diameter=INNER_DIAMETER, pitch=PITCH,
                   n_starts=STARTS);
 }
