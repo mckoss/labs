@@ -1,7 +1,13 @@
 // Firebase screw-together logo.
 // by Mike Koss (c) 2015
 
-use <threads.scad>
+// OpenSCAD /CGAL is asserting on intersection with polygon faces.
+// Stubbing out this function temporarily. - v2014.03
+// use <threads.scad>
+module metric_thread(diameter=8, pitch=1, length=1, internal=false, n_starts=1) {
+  radius = diameter / 2 + (internal ? 0.5 : 0);
+  cylinder(h=length, r=radius);
+}
 
 DEBUG = false;
 
@@ -15,7 +21,7 @@ YELLOW = [1.0, 0.85, 0.19];
 //
 // Build options.
 //
-PART = "top-cap";
+PART = "ALL";
 // [top-cap, top-connector, middle, bottom-connector, bottom-cap, ALL]
 
 if (PART == "top-connector") {
@@ -38,7 +44,7 @@ if (PART == "middle") {
   color(YELLOW) middle_slice();
 }
 
-if (PART == "all") {
+if (PART == "ALL") {
   all();
 }
 
@@ -49,7 +55,7 @@ module flip_z() {
 }
 
 module all() {
-  exploded = 10;
+  exploded = 20;
   middle_pos = 0;
   top_connector_pos = middle_pos + exploded +
     CONNECTOR_LENGTH / 2 + WALL_THICKNESS / 2 + AIR_GAP;
