@@ -4,10 +4,11 @@
 // OpenSCAD /CGAL is asserting on intersection with polygon faces.
 // Stubbing out this function temporarily. - v2014.03
 // use <threads.scad>
-module metric_thread(diameter=8, pitch=1, length=1, internal=false, n_starts=1) {
-  radius = diameter / 2 + (internal ? 0.5 : 0);
-  cylinder(h=length, r=radius);
-}
+//module metric_thread(diameter=8, pitch=1, length=1, internal=false, n_starts=1) {
+//  radius = diameter / 2 + (internal ? 0.5 : 0);
+//  cylinder(h=length, r=radius);
+//}
+use <Thread_Library.scad>
 
 DEBUG = false;
 
@@ -90,8 +91,8 @@ WALL_THICKNESS = 3;
 // Thread constants
 //
 PITCH = 2;
-STARTS = 3;
 AIR_GAP = 0.5;
+THREAD_CLEARANCE = 0.2;
 THREAD_LENGTH = SLICE_HEIGHT / 2  - WALL_THICKNESS / 2 - AIR_GAP;
 CONNECTOR_LENGTH = 2 * THREAD_LENGTH + SLICE_GAP;
 
@@ -160,10 +161,11 @@ module beveled_cylinder(r=10, h=5, bevel_radius=2, center=true) {
 
 module slice_threads() {
   translate([0, 0, WALL_THICKNESS / 2 + AIR_GAP])
-    metric_thread(internal=true,
-                  length=THREAD_LENGTH + E,
-                  diameter=INNER_DIAMETER, pitch=PITCH,
-                  n_starts=STARTS);
+    trapezoidThreadNegativeSpace(length=THREAD_LENGTH + E,
+                                 pitchRadius=INNER_DIAMETER/2,
+                                 pitch=PITCH,
+                                 clearance=THREAD_CLEARANCE
+                                 );
 }
 
 module hollow_connector(open=true) {
@@ -186,8 +188,9 @@ module connector() {
 
 module connector_threads() {
   translate([0, 0, SLICE_GAP / 2 - E])
-    metric_thread(length=THREAD_LENGTH,
-                  diameter=INNER_DIAMETER,
-                  pitch=PITCH,
-                  n_starts=STARTS);
+    trapezoidThread(length=THREAD_LENGTH,
+                    pitchRadius=INNER_DIAMETER / 2,
+                    pitch=PITCH,
+                    clearance=THREAD_CLEARANCE
+                    );
 }
