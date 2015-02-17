@@ -97,8 +97,46 @@ THREAD_LENGTH = SLICE_HEIGHT / 2  - WALL_THICKNESS / 2 - AIR_GAP;
 CONNECTOR_LENGTH = 2 * THREAD_LENGTH + SLICE_GAP;
 
 module top_cap() {
-  rotate(180, v=[0, 1, 0])
-    bottom_cap();
+  flip_z()
+  difference() {
+    flip_z()
+      union() {
+        translate([0, 0, SLICE_HEIGHT/2 * 0.8])
+          multiRotate(4, 8)
+              rotate(-10, v=[0, 1, 0])
+                flame();
+        slice();
+      }
+    slice_threads();
+    translate([0, 0, WALL_THICKNESS])
+      cylinder(h=SLICE_HEIGHT + 2 * E, r=INNER_DIAMETER / 2 - WALL_THICKNESS, center=true);
+  }
+}
+
+module flame() {
+  difference() {
+    cylinder(h=SLICE_HEIGHT/2, r=OUTER_DIAMETER/2, center=true);
+    translate([OUTER_DIAMETER/4, 0, 0])
+      cylinder(h=SLICE_HEIGHT/2 + 2*E, r=OUTER_DIAMETER/2, center=true);
+    translate([0, -OUTER_DIAMETER/2, 0])
+      cube([OUTER_DIAMETER, OUTER_DIAMETER, SLICE_HEIGHT/2 + 2*E], center=true);
+  }
+}
+
+module rotate_around(angle, offset) {
+  translate(offset)
+    rotate(a=angle, v=[0, 0, 1])
+      translate(-offset)
+        children(0);
+}
+
+// Repeats a child element steps times, rotating
+// 360/steps degrees about the z axis each time.
+module multiRotate(steps=8, from=8) {
+  for (i = [0: steps - 1]) {
+    rotate(a=360 * i / from, v=[0, 0, 1])
+      children(0);
+  }
 }
 
 module bottom_cap() {
