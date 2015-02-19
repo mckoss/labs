@@ -161,9 +161,6 @@ FIREBASE_FILES=$(foreach part, $(FIREBASE_PARTS), firebase-$(part).stl)
 
 firebase: $(FIREBASE_FILES)
 
-firebase-lock: $(FIREBASE_FILES)
-	echo $(FIREBASE_FILES)
-
 firebase-%.stl: firebase.scad
 	openscad -o $@ -D 'PART = "$*"' $<
 
