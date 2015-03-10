@@ -10,8 +10,6 @@
 //}
 use <Thread_Library.scad>
 
-DEBUG = false;
-
 $fa=3;
 $fs=1;
 E = 0.1;
@@ -22,7 +20,7 @@ YELLOW = [1.0, 0.85, 0.19];
 //
 // Build options.
 //
-PART = "ALL";
+PART = "top-cap";
 // [top-cap, top-connector, middle, bottom-connector, bottom-cap, ALL]
 
 if (PART == "top-connector") {
@@ -102,7 +100,7 @@ module top_cap() {
     flip_z()
       union() {
         translate([0, 0, SLICE_HEIGHT/2 * 0.8])
-          multiRotate(4, 8)
+          multiRotate(4, 7)
               rotate(-10, v=[0, 1, 0])
                 flame();
         slice();
@@ -162,11 +160,7 @@ module middle_slice_cuts() {
 }
 
 module slice() {
-  if (DEBUG) {
-    cylinder(h=SLICE_HEIGHT, r=OUTER_DIAMETER / 2, center=true);
-  } else {
-    beveled_cylinder(h=SLICE_HEIGHT, r=OUTER_DIAMETER / 2, bevel_radius=2, center=true);
-  }
+  beveled_cylinder(h=SLICE_HEIGHT, r=OUTER_DIAMETER / 2, bevel_radius=2, center=true);
 }
 
 module beveled_cylinder(r=10, h=5, bevel_radius=2, center=true) {
