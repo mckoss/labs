@@ -20,7 +20,7 @@ YELLOW = [1.0, 0.85, 0.19];
 //
 // Build options.
 //
-PART = "top-cap";
+PART = "ALL";
 // [top-cap, top-connector, middle, bottom-connector, bottom-cap, ALL]
 
 if (PART == "top-connector") {
@@ -106,8 +106,8 @@ module top_cap() {
         slice();
       }
     slice_threads();
-    translate([0, 0, WALL_THICKNESS])
-      cylinder(h=SLICE_HEIGHT + 2 * E, r=INNER_DIAMETER / 2 - WALL_THICKNESS, center=true);
+    translate([0, 0, -SLICE_HEIGHT/2 + WALL_THICKNESS])
+      cylinder(h=SLICE_HEIGHT/2 - WALL_THICKNESS, r1=0, r2=INNER_DIAMETER/2);
   }
 }
 
@@ -138,11 +138,15 @@ module multiRotate(steps=8, from=8) {
 }
 
 module bottom_cap() {
+  echo(SLICE_HEIGHT);
+  echo(THREAD_LENGTH);
+  echo(CAMBER_LENGTH);
+  echo(WALL_THICKNESS);
   difference() {
     slice();
     slice_threads();
-    translate([0, 0, WALL_THICKNESS])
-      cylinder(h=SLICE_HEIGHT + 2 * E, r=INNER_DIAMETER / 2 - WALL_THICKNESS, center=true);
+    translate([0, 0, -SLICE_HEIGHT/2 + WALL_THICKNESS])
+      cylinder(h=SLICE_HEIGHT/2 - WALL_THICKNESS, r1=0, r2=INNER_DIAMETER/2);
   }
 }
 
