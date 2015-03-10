@@ -138,10 +138,6 @@ module multiRotate(steps=8, from=8) {
 }
 
 module bottom_cap() {
-  echo(SLICE_HEIGHT);
-  echo(THREAD_LENGTH);
-  echo(CAMBER_LENGTH);
-  echo(WALL_THICKNESS);
   difference() {
     slice();
     slice_threads();
