@@ -106,9 +106,8 @@ module top_cap() {
         slice();
       }
     slice_threads();
-    translate([0, 0, -SLICE_HEIGHT/2 + WALL_THICKNESS])
-      cylinder(h=SLICE_HEIGHT/2 - WALL_THICKNESS, r1=0, r2=INNER_DIAMETER/2);
   }
+  cylinder(h=SLICE_HEIGHT, r=INNER_DIAMETER/2 - WALL_THICKNESS - AIR_GAP, center=true);
 }
 
 module flame() {
