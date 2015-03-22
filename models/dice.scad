@@ -76,6 +76,9 @@ manifest = [
 
 build();
 
+//
+// Build one (or all) parts (according to PART global).
+//
 module build() {
   for (i = [0 : len(manifest) - 1]) {
     if (PART == "ALL" || PART == manifest[i][0]) {
@@ -98,6 +101,9 @@ module buildPart(name, faces, shave, symbols) {
   }
 }
 
+//
+// Layout n parts in a grid.
+//
 module grid(i, n, spacing) {
   d = ceil(sqrt(n));
   translate([-spacing * (d - 1) / 2, -spacing * (d - 1) / 2, 0])
@@ -105,14 +111,32 @@ module grid(i, n, spacing) {
       children();
 }
 
+//
+// Make a die given the face normals.
+//
+// shave is % of radius to truncate the basic sphere of a die.
+//
 module die(faces, shave=0.2, r=R) {
-  fontSize = 1.0 * r * sin(acos(1-shave));
   difference() {
     sphere(r=r);
     for (i = [0 : len(faces) - 1]) {
       reorient(faces[i])
         translate([0, 0, 2*r + E  - shave*r])
           cube(2*r + E, center=true);
+    }
+  }
+}
+
+//
+// Make a platonic solid circumscribing a sphere of radius r.
+//
+module solid(faces, r=R) {
+  difference() {
+    sphere(r=3*r);
+    for (i = [0 : len(faces) - 1]) {
+      reorient(faces[i])
+        translate([0, 0, 5*r + r])
+          cube(10*r + E, center=true);
     }
   }
 }
