@@ -8,14 +8,24 @@
 //  radius = diameter / 2 + (internal ? 0.5 : 0);
 //  cylinder(h=length, r=radius);
 //}
-use <Thread_Library.scad>
+use <Thread_Library.scad>;
 
 $fa=3;
 $fs=1;
 E = 0.1;
+PHI = (1 + sqrt(5))/2;
 
 BLACK = [0.3, 0.3, 0.3];
 YELLOW = [1.0, 0.85, 0.19];
+
+// Icosohedron surface normals.
+FACES_20 = [
+  [-1, -1, -1], [-1, -1, 1], [-1, 1, -1], [-1, 1, 1],
+  [1, -1, -1], [1, -1, 1], [1, 1, -1], [1, 1, 1],
+  [0, -1/PHI, -PHI], [0, -1/PHI, PHI], [0, 1/PHI, -PHI], [0, 1/PHI, PHI],
+  [-1/PHI, -PHI, 0], [-1/PHI, PHI, 0], [1/PHI, -PHI, 0], [1/PHI, PHI, 0],
+  [-PHI, 0, -1/PHI], [-PHI, 0, 1/PHI], [PHI, 0, -1/PHI], [PHI, 0, 1/PHI]
+];
 
 //
 // Build options.
@@ -107,7 +117,11 @@ module top_cap() {
       }
     slice_threads();
   }
-  cylinder(h=SLICE_HEIGHT, r=INNER_DIAMETER/2 - WALL_THICKNESS - AIR_GAP, center=true);
+  difference() {
+    cylinder(h=SLICE_HEIGHT, r=INNER_DIAMETER/2 - WALL_THICKNESS - AIR_GAP, center=true);
+    translate([0, 0, -SLICE_HEIGHT/2])
+      solid(FACES_20, r=INNER_DIAMETER/2 - 3 * WALL_THICKNESS);
+  }
 }
 
 module flame() {
@@ -225,3 +239,29 @@ module connector_threads() {
                     clearance=THREAD_CLEARANCE
                     );
 }
+
+//
+// Make a platonic solid circumscribing a sphere of radius r.
+//
+module solid(faces, r) {
+  difference() {
+    sphere(r=3*r);
+    for (i = [0 : len(faces) - 1]) {
+      reorient(faces[i])
+        translate([0, 0, 5*r + r])
+          cube(10*r + E, center=true);
+    }
+  }
+}
+
+// Re-orient child from z (up) vector to first argument.
+// Reverse the orientation if sgn == -1.
+module reorient(v, sgn=1) {
+  d = dist(v);
+  ang = acos([0, 0, 1]*v/d);
+  v = (ang > 179.9) ? [0, 1, 0] : cross([0, 0, 1], v/d);
+  rotate(a=ang*sgn, v=v)
+    children();
+}
+
+function dist(pos) = sqrt(pos * pos);
