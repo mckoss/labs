@@ -18,19 +18,10 @@ PHI = (1 + sqrt(5))/2;
 BLACK = [0.3, 0.3, 0.3];
 YELLOW = [1.0, 0.85, 0.19];
 
-// Icosohedron surface normals.
-FACES_20 = [
-  [-1, -1, -1], [-1, -1, 1], [-1, 1, -1], [-1, 1, 1],
-  [1, -1, -1], [1, -1, 1], [1, 1, -1], [1, 1, 1],
-  [0, -1/PHI, -PHI], [0, -1/PHI, PHI], [0, 1/PHI, -PHI], [0, 1/PHI, PHI],
-  [-1/PHI, -PHI, 0], [-1/PHI, PHI, 0], [1/PHI, -PHI, 0], [1/PHI, PHI, 0],
-  [-PHI, 0, -1/PHI], [-PHI, 0, 1/PHI], [PHI, 0, -1/PHI], [PHI, 0, 1/PHI]
-];
-
 //
 // Build options.
 //
-PART = "ALL";
+PART = "bottom-cap";
 // [top-cap, top-connector, middle, bottom-connector, bottom-cap, ALL]
 
 if (PART == "top-connector") {
@@ -51,6 +42,10 @@ if (PART == "bottom-cap") {
 
 if (PART == "middle") {
   color(YELLOW) middle_slice();
+}
+
+if (PART == "tea-light") {
+  tea_light();
 }
 
 if (PART == "ALL") {
@@ -95,6 +90,19 @@ TOTAL_HEIGHT = SLICES * (SLICE_GAP + SLICE_HEIGHT) + SLICE_BASE - SLICE_GAP;
 INNER_DIAMETER = OUTER_DIAMETER * 0.9;
 WALL_THICKNESS = 3;
 
+// Tea light dimensions.
+LIGHT_DIAMETER = 36;
+LIGHT_HEIGHT = 17;
+PIN_DIAMETER = 2.5;
+PIN_RADIUS = LIGHT_DIAMETER / 2 - 2.5;
+PIN_HEIGHT = 2;
+BULB_DIAMETER = 12;
+BULB_HEIGHT = 18;
+WINDOW_WIDTH = 6;
+WINDOW_LENGTH = 11;
+WINDOW_HEIGHT = 7;
+WINDOW_RADIUS = LIGHT_DIAMETER / 2 - 5.6;
+
 //
 // Thread constants
 //
@@ -120,7 +128,7 @@ module top_cap() {
   difference() {
     cylinder(h=SLICE_HEIGHT, r=INNER_DIAMETER/2 - WALL_THICKNESS - AIR_GAP, center=true);
     translate([0, 0, -SLICE_HEIGHT/2])
-      solid(FACES_20, r=INNER_DIAMETER/2 - 3 * WALL_THICKNESS);
+      sphere(r=INNER_DIAMETER/2 - 3 * WALL_THICKNESS);
   }
 }
 
@@ -156,6 +164,22 @@ module bottom_cap() {
     slice_threads();
     translate([0, 0, -SLICE_HEIGHT/2 + WALL_THICKNESS])
       cylinder(h=SLICE_HEIGHT/2 - WALL_THICKNESS, r1=0, r2=INNER_DIAMETER/2);
+    translate([0, 0, -SLICE_HEIGHT / 2 + WALL_THICKNESS])
+      tea_light();
+  }
+}
+
+module tea_light() {
+  cylinder(h=LIGHT_HEIGHT, r=LIGHT_DIAMETER / 2);
+  translate([0, 0, LIGHT_HEIGHT])
+    cylinder(h=BULB_HEIGHT, r=BULB_DIAMETER / 2);
+  rotate(a=-45, v=[0, 0, 1])
+    translate([WINDOW_RADIUS, 0, -WINDOW_HEIGHT / 2 + E])
+      cube([WINDOW_WIDTH, WINDOW_LENGTH, WINDOW_HEIGHT], center=true);
+  for (i = [0: 3]) {
+      rotate(a=360 * i / 3, v=[0, 0, 1])
+        translate([PIN_RADIUS, 0, -PIN_HEIGHT])
+          cylinder(h=PIN_HEIGHT, r=PIN_DIAMETER / 2, $fs=0.5);
   }
 }
 
@@ -239,29 +263,3 @@ module connector_threads() {
                     clearance=THREAD_CLEARANCE
                     );
 }
-
-//
-// Make a platonic solid circumscribing a sphere of radius r.
-//
-module solid(faces, r) {
-  difference() {
-    sphere(r=3*r);
-    for (i = [0 : len(faces) - 1]) {
-      reorient(faces[i])
-        translate([0, 0, 5*r + r])
-          cube(10*r + E, center=true);
-    }
-  }
-}
-
-// Re-orient child from z (up) vector to first argument.
-// Reverse the orientation if sgn == -1.
-module reorient(v, sgn=1) {
-  d = dist(v);
-  ang = acos([0, 0, 1]*v/d);
-  v = (ang > 179.9) ? [0, 1, 0] : cross([0, 0, 1], v/d);
-  rotate(a=ang*sgn, v=v)
-    children();
-}
-
-function dist(pos) = sqrt(pos * pos);
