@@ -21,7 +21,7 @@ YELLOW = [1.0, 0.85, 0.19];
 //
 // Build options.
 //
-PART = "bottom-cap";
+PART = "bottom-connector";
 // [top-cap, top-connector, middle, bottom-connector, bottom-cap, ALL]
 
 if (PART == "top-connector") {
@@ -29,7 +29,7 @@ if (PART == "top-connector") {
 }
 
 if (PART == "bottom-connector") {
-  color(BLACK) hollow_connector(open=false);
+  color(BLACK) bottom_connector();
 }
 
 if (PART == "top-cap") {
@@ -91,8 +91,8 @@ INNER_DIAMETER = OUTER_DIAMETER * 0.9;
 WALL_THICKNESS = 3;
 
 // Tea light dimensions.
-LIGHT_DIAMETER = 36;
-LIGHT_HEIGHT = 17;
+LIGHT_DIAMETER = 36 + 1;
+LIGHT_HEIGHT = 17 + 1;
 PIN_DIAMETER = 2.5;
 PIN_RADIUS = LIGHT_DIAMETER / 2 - 2.5;
 PIN_HEIGHT = 2;
@@ -235,6 +235,16 @@ module slice_threads() {
                                  pitch=PITCH,
                                  clearance=THREAD_CLEARANCE
                                  );
+}
+
+module bottom_connector() {
+  pos = CONNECTOR_LENGTH / 2 + WALL_THICKNESS / 2 + AIR_GAP +
+    SLICE_GAP / 2 + SLICE_HEIGHT / 2;
+  difference() {
+    connector();
+    translate([0, 0, -pos + WALL_THICKNESS])
+      tea_light();
+  }
 }
 
 module hollow_connector(open=true) {
