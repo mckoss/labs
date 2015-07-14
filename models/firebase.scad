@@ -21,7 +21,7 @@ YELLOW = [1.0, 0.85, 0.19];
 //
 // Build options.
 //
-PART = "bottom-connector";
+PART = "bottom-cap";
 // [top-cap, top-connector, middle, bottom-connector, bottom-cap, ALL]
 
 if (PART == "top-connector") {
@@ -98,8 +98,9 @@ PIN_RADIUS = LIGHT_DIAMETER / 2 - 2.5;
 PIN_HEIGHT = 2;
 BULB_DIAMETER = 12;
 BULB_HEIGHT = 18;
-WINDOW_WIDTH = 6;
-WINDOW_LENGTH = 11;
+WINDOW_ANGLE = -30;
+WINDOW_WIDTH = 6 + 4;
+WINDOW_LENGTH = 11 + 1;
 WINDOW_HEIGHT = 7;
 WINDOW_RADIUS = LIGHT_DIAMETER / 2 - 5.6;
 
@@ -173,7 +174,7 @@ module tea_light() {
   cylinder(h=LIGHT_HEIGHT, r=LIGHT_DIAMETER / 2);
   translate([0, 0, LIGHT_HEIGHT])
     cylinder(h=BULB_HEIGHT, r=BULB_DIAMETER / 2);
-  rotate(a=-45, v=[0, 0, 1])
+  rotate(a=WINDOW_ANGLE, v=[0, 0, 1])
     translate([WINDOW_RADIUS, 0, -WINDOW_HEIGHT / 2 + E])
       cube([WINDOW_WIDTH, WINDOW_LENGTH, WINDOW_HEIGHT], center=true);
   for (i = [0: 3]) {
