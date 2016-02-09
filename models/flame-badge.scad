@@ -13,15 +13,15 @@ X_MIN = -X_MAX;
 
 Y_MIN = -0.6 * INCH;
 
-X_MAJOR = X_MIN + 0.2 * INCH;
-Y_MAJOR = 2.2 * INCH;
+FLARE_IN = 0.3 * INCH;
+
+X_MAJOR = X_MIN + FLARE_IN;
+Y_MAJOR = 2.5 * INCH;
 Z_MAJOR = INCH / 8;
 
-X_MINOR = X_MAX - 0.2 * INCH;
-Y_MINOR = 1.8 * INCH;
-Z_MINOR = INCH / 4;
-
-Z_PEAK = INCH / 2;
+X_MINOR = X_MAX - FLARE_IN;
+Y_MINOR = 1.9 * INCH;
+Z_MINOR = INCH / 3;
 
 // Magnetic clasp dimenisions
 BACK_R = INCH / 8 + GAP;
@@ -30,7 +30,7 @@ echo("Back diameter", BACK_R * 2);
 
 difference() {
   flame();
-  translate([0, 10, 0])
+  # translate([0, 10, BACK_H / 2 - E])
     cylinder(r=BACK_R, h=BACK_H, center=true, $fn=16);
 }
 
@@ -84,7 +84,7 @@ module minor_flame() {
 
 module round_it() {
   minkowski() {
-    cylinder(r1=3, r2=0, h=2.0, $fn=16);
-    child(0);
+    cylinder(r1=2, r2=0, h=1.5, $fn=16);
+    children();
   }
 }
