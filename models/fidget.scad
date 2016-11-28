@@ -1,6 +1,8 @@
 // Fidget Spinner
 // by Mike Koss (c) 2016
 
+PART = "spinner"; // [spinner, caps]
+
 // Setup and constants
 E = 0.1;
 
@@ -10,7 +12,8 @@ BEARING_OUTER = 22;
 BEARING_HEIGHT = 7;
 
 // US Nickel - weight = 5g
-COIN_OUTER = 21.3 + 0.5;
+COIN_SLOP = 0.3;
+COIN_OUTER = 21.3 + COIN_SLOP;
 COIN_HEIGHT = 1.9;
 COIN_STACK = 3;
 
@@ -22,11 +25,48 @@ ARM_OFFSET = 1.5 * BEARING_OUTER;
 
 WALL_THICKNESS = 5;
 
-difference() {
-  spinner(true);
-  spinner(false);
+if (PART == "spinner") {
+  difference() {
+    spinner(true);
+    spinner(false);
+  }
 }
 
+if (PART == "caps") {
+  for (i = [0:1]) {
+    translate([-15 + i * 30, 0, 0]) {
+      rotate(v=[1, 0, 0], a=180) {
+        cap();
+      }
+    }
+  }
+}
+
+module cap() {
+  CAP_OUTER = BEARING_OUTER;
+  CAP_HEIGHT = BEARING_HEIGHT / 2;
+
+  RING_HEIGHT = 1;
+  RING_OUTER = BEARING_INNER + 4;
+  RING_OFFSET = -CAP_HEIGHT / 2;
+
+  AXEL_HEIGHT = BEARING_HEIGHT / 2 - 0.2;
+  AXEL_OUTER = BEARING_INNER;
+  AXEL_OFFSET = RING_OFFSET - RING_HEIGHT / 2;
+
+  union() {
+    filledTorus(CAP_HEIGHT, CAP_OUTER / 2);
+    translate([0, 0, RING_OFFSET - RING_HEIGHT / 2 + E]) {
+      cylinder(h=RING_HEIGHT + E, r=RING_OUTER / 2, center=true, $fn=32);
+    }
+    translate([0, 0, AXEL_OFFSET - AXEL_HEIGHT / 2 + E]) {
+      cylinder(h=AXEL_HEIGHT + E, r=AXEL_OUTER / 2, center=true, $fn=32);
+    }
+  }
+}
+
+// When pos == true - emit the positive parts of the model.
+// When pos == false - emit the negative (subtracted) parts.
 module spinner(pos) {
   center(pos);
 
@@ -52,7 +92,6 @@ module end(pos) {
     translate([0, 0, COIN_FLOOR_HEIGHT]) {
       cylinder(h=STACK_HEIGHT + E, r=COIN_OUTER / 2, center=true);
     }
-    cylinder(h=STACK_HEIGHT * 2, r=COIN_WINDOW / 2, center=true, $fn=32);
   }
 }
 
@@ -95,6 +134,11 @@ module enclosure(pos, height, outer, inner) {
   } else {
     cylinder(h=height + 2 * E, r=inner, center=true);
   }
+}
+
+module filledTorus(h, r) {
+  torus(h, r);
+  cylinder(h=h, r=r - h/2, center=true);
 }
 
 module torus(h, r) {

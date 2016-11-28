@@ -164,6 +164,17 @@ firebase: $(FIREBASE_FILES)
 firebase-%.stl: firebase.scad
 	openscad -o $@ -D 'PART = "$*"' $<
 
+#
+# Fidget spinner
+#
+FIDGET_PARTS=spinner caps
+FIDGET_FILES=$(foreach part, $(FIDGET_PARTS), fidget-$(part).stl)
+
+fidget: $(FIDGET_FILES)
+
+fidget-%.stl: fidget.scad
+	openscad -o $@ -D 'PART = "$*"' $<
+
 # Generic file transformation rules
 %.stl : %.scad
 	openscad -o $@ $<
