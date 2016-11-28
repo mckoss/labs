@@ -10,15 +10,15 @@ BEARING_OUTER = 22;
 BEARING_HEIGHT = 7;
 
 // US Nickel - weight = 5g
-COIN_OUTER = 21.2;
+COIN_OUTER = 21.3 + 1;
 COIN_HEIGHT = 1.9;
 COIN_STACK = 3;
-COIN_COVER_HEIGHT = 2;
-COIN_WINDOW = COIN_OUTER - 2;
 
 STACK_HEIGHT = 1.9 * COIN_STACK;
+COIN_FLOOR_HEIGHT = 1;
+COIN_WINDOW = COIN_OUTER / 2;
 
-ARM_OFFSET = 2 * BEARING_OUTER;
+ARM_OFFSET = 1.5 * BEARING_OUTER;
 
 WALL_THICKNESS = 5;
 
@@ -42,10 +42,16 @@ module center(pos) {
 }
 
 module end(pos) {
-  enclosure(pos,
-            2 * COIN_COVER_HEIGHT + STACK_HEIGHT,
-            COIN_OUTER / 2 + WALL_THICKNESS,
-            COIN_OUTER / 2);
+  if (pos) {
+    enclosure(pos,
+              STACK_HEIGHT + 2 * COIN_FLOOR_HEIGHT,
+              COIN_OUTER / 2 + WALL_THICKNESS,
+              COIN_OUTER / 2);
+    cylinder(h=STACK_HEIGHT + 2 * COIN_FLOOR_HEIGHT, r=COIN_OUTER / 2 + 1, center=true);
+  } else {
+    cylinder(h=STACK_HEIGHT, r=COIN_OUTER / 2, center=true);
+    cylinder(h=STACK_HEIGHT + 20, r=COIN_WINDOW / 2, center=true, $fn=32);
+  }
 }
 
 module arm(pos) {
@@ -66,8 +72,8 @@ module armConnector(pos) {
 
 module armConnectorHalf() {
   rBearing = BEARING_OUTER / 2 + WALL_THICKNESS;
-  rArm = BEARING_OUTER;
-  rotate(v=[0, 0, 1], a=-44) {
+  rArm = BEARING_OUTER * 0.7;
+  rotate(v=[0, 0, 1], a=-47) {
     translate([0, rBearing + rArm - BEARING_HEIGHT, 0]) {
       rotate(v=[0, 0, 1], a=180) {
         intersection() {
