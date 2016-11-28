@@ -10,7 +10,7 @@ BEARING_OUTER = 22;
 BEARING_HEIGHT = 7;
 
 // US Nickel - weight = 5g
-COIN_OUTER = 21.3 + 1;
+COIN_OUTER = 21.3 + 0.5;
 COIN_HEIGHT = 1.9;
 COIN_STACK = 3;
 
@@ -47,10 +47,12 @@ module end(pos) {
               STACK_HEIGHT + 2 * COIN_FLOOR_HEIGHT,
               COIN_OUTER / 2 + WALL_THICKNESS,
               COIN_OUTER / 2);
-    cylinder(h=STACK_HEIGHT + 2 * COIN_FLOOR_HEIGHT, r=COIN_OUTER / 2 + 1, center=true);
+    cylinder(h=STACK_HEIGHT + COIN_FLOOR_HEIGHT, r=COIN_OUTER / 2, center=true);
   } else {
-    cylinder(h=STACK_HEIGHT, r=COIN_OUTER / 2, center=true);
-    cylinder(h=STACK_HEIGHT + 20, r=COIN_WINDOW / 2, center=true, $fn=32);
+    translate([0, 0, COIN_FLOOR_HEIGHT]) {
+      cylinder(h=STACK_HEIGHT + E, r=COIN_OUTER / 2, center=true);
+    }
+    cylinder(h=STACK_HEIGHT * 2, r=COIN_WINDOW / 2, center=true, $fn=32);
   }
 }
 
