@@ -7,8 +7,9 @@ PART = "spinner"; // [spinner, caps]
 E = 0.1;
 
 // 608 Bearing - weight = 10g;
+BEARING_SLOP = -0.1;
 BEARING_INNER = 8;
-BEARING_OUTER = 22;
+BEARING_OUTER = 22 + BEARING_SLOP;
 BEARING_HEIGHT = 7;
 
 // US Nickel - weight = 5g
