@@ -15,15 +15,15 @@ BEARING_HEIGHT = 7;
 COIN_SLOP = 0.3;
 COIN_OUTER = 21.3 + COIN_SLOP;
 COIN_HEIGHT = 1.9;
-COIN_STACK = 3;
+STACK_COUNT = 3;
+STACK_HEIGHT = 1.9 * STACK_COUNT;
 
-STACK_HEIGHT = 1.9 * COIN_STACK;
-COIN_FLOOR_HEIGHT = 1;
+COIN_FLOOR_HEIGHT = BEARING_HEIGHT - STACK_HEIGHT;
 COIN_WINDOW = COIN_OUTER / 2;
 
-ARM_OFFSET = 1.5 * BEARING_OUTER;
-
 WALL_THICKNESS = 5;
+
+ARM_OFFSET = BEARING_OUTER + WALL_THICKNESS / 2;
 
 if (PART == "spinner") {
   difference() {
@@ -40,6 +40,10 @@ if (PART == "caps") {
       }
     }
   }
+}
+
+if (PART == "torus120") {
+  torus120(BEARING_HEIGHT, BEARING_OUTER / 2 + WALL_THICKNESS);
 }
 
 module cap() {
@@ -75,70 +79,69 @@ module spinner(pos) {
       arm(pos);
     }
   }
+
+  for (i = [0:3]) {
+    rotate(v=[0, 0, 1], a=120*i + 60) {
+      connector(pos);
+    }
+  }
 }
 
 module center(pos) {
   enclosure(pos, BEARING_HEIGHT, BEARING_OUTER / 2 + WALL_THICKNESS, BEARING_OUTER / 2);
 }
 
-module end(pos) {
-  if (pos) {
-    enclosure(pos,
-              STACK_HEIGHT + 2 * COIN_FLOOR_HEIGHT,
-              COIN_OUTER / 2 + WALL_THICKNESS,
-              COIN_OUTER / 2);
-    cylinder(h=STACK_HEIGHT + COIN_FLOOR_HEIGHT, r=COIN_OUTER / 2, center=true);
-  } else {
-    translate([0, 0, COIN_FLOOR_HEIGHT]) {
-      cylinder(h=STACK_HEIGHT + E, r=COIN_OUTER / 2, center=true);
-    }
-  }
-}
-
 module arm(pos) {
-  armConnector(pos);
   translate([0, ARM_OFFSET, 0]) {
     end(pos);
   }
 }
 
-module armConnector(pos) {
-  if (pos) {
-    armConnectorHalf();
-    mirror([1, 0, 0]) {
-      armConnectorHalf();
+module end(pos) {
+  enclosure(pos,
+            BEARING_HEIGHT,
+            BEARING_OUTER / 2 + WALL_THICKNESS,
+            COIN_OUTER / 2,
+            COIN_FLOOR_HEIGHT);
+}
+
+module connector(pos) {
+  translate([0, ARM_OFFSET, ]) {
+    if (pos) {
+      torus120(BEARING_HEIGHT, BEARING_OUTER / 2 + WALL_THICKNESS);
     }
   }
 }
 
-module armConnectorHalf() {
-  rBearing = BEARING_OUTER / 2 + WALL_THICKNESS;
-  rArm = BEARING_OUTER * 0.7;
-  rotate(v=[0, 0, 1], a=-47) {
-    translate([0, rBearing + rArm - BEARING_HEIGHT, 0]) {
-      rotate(v=[0, 0, 1], a=180) {
-        intersection() {
-          torus(BEARING_HEIGHT, rArm);
-          translate([50, 50, 0]) {
-            cube([100, 100, 100], center=true);
-          }
-        }
-      }
-    }
-  }
-}
-
-module enclosure(pos, height, outer, inner) {
+module enclosure(pos, height, outer, inner, offset=0) {
   if (pos) {
-    torus(height, outer);
+    filledTorus(height, outer);
   } else {
-    cylinder(h=height + 2 * E, r=inner, center=true);
+    translate([0, 0, offset == 0 ? 0 : offset + E]) {
+      cylinder(h=height + 2 * E, r=inner, center=true);
+    }
   }
 }
 
 module filledTorus(h, r) {
   torus(h, r);
   cylinder(h=h, r=r - h/2, center=true);
+}
+
+module torus120(h, r) {
+  difference() {
+    torus(h, r);
+    for (i=[0:6]) {
+      echo(i);
+      rotate(v=[0, 0 ,1], a=30 * i - 90) {
+        translate([0, r, 0]) {
+          rotate(v=[0, 0, 1], a=30) {
+            cylinder(h=h, r=r, $fn=3, center=true);
+          }
+        }
+      }
+    }
+  }
 }
 
 module torus(h, r) {
