@@ -132,7 +132,6 @@ module torus120(h, r) {
   difference() {
     torus(h, r);
     for (i=[0:6]) {
-      echo(i);
       rotate(v=[0, 0 ,1], a=30 * i - 90) {
         translate([0, r, 0]) {
           rotate(v=[0, 0, 1], a=30) {
