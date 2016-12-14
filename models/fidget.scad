@@ -55,17 +55,17 @@ module cap() {
   RING_OUTER = BEARING_INNER + 4;
   RING_OFFSET = -CAP_HEIGHT / 2;
 
-  AXEL_HEIGHT = BEARING_HEIGHT / 2;
-  AXEL_OUTER = BEARING_INNER + 0.2;
-  AXEL_OFFSET = RING_OFFSET - RING_HEIGHT / 2;
+  AXLE_HEIGHT = BEARING_HEIGHT / 2;
+  AXLE_OUTER = BEARING_INNER + 0.2;
+  AXLE_OFFSET = RING_OFFSET - RING_HEIGHT / 2;
 
   union() {
     filledTorus(CAP_HEIGHT, CAP_OUTER / 2);
     translate([0, 0, RING_OFFSET - RING_HEIGHT / 2 + E]) {
       cylinder(h=RING_HEIGHT + E, r=RING_OUTER / 2, center=true, $fn=32);
     }
-    translate([0, 0, AXEL_OFFSET - AXEL_HEIGHT / 2 + E]) {
-      cylinder(h=AXEL_HEIGHT + E, r=AXEL_OUTER / 2, center=true, $fn=32);
+    translate([0, 0, AXLE_OFFSET - AXLE_HEIGHT / 2 + E]) {
+      cylinder(h=AXLE_HEIGHT + E, r=AXLE_OUTER / 2, center=true, $fn=32);
     }
   }
 }
