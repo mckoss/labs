@@ -1,7 +1,7 @@
 // Fidget Spinner
 // by Mike Koss (c) 2016
 
-PART = "caps"; // [spinner, caps]
+PART = "spinner"; // [spinner, caps]
 
 // Setup and constants
 E = 0.1;
@@ -56,7 +56,7 @@ module cap() {
   RING_OFFSET = -CAP_HEIGHT / 2;
 
   AXLE_HEIGHT = BEARING_HEIGHT / 2;
-  AXLE_OUTER = BEARING_INNER + 0.2;
+  AXLE_OUTER = BEARING_INNER + 0.3;
   AXLE_OFFSET = RING_OFFSET - RING_HEIGHT / 2;
 
   union() {
