@@ -8,6 +8,8 @@
 #define TRUE (1)
 #define FALSE (0)
 
+#define PRECALC_MASKS FALSE
+
 // Primes to one million.
 #define MAX_NUMBER 1000000L
 #define EXPECTED_PRIMES 78498L
@@ -41,10 +43,14 @@
 #define maskOf(n) (WORD) 1 << ((n - 1) / 2) % BITS_PER_WORD
 #define allocOf(n) indexOf(n) + 1
 
+int fPrintHotSpots = TRUE;
+
 int countPrimes(int maxNumber) {
    // Starts off zero-initialized.
    WORD *buffer = (WORD *) calloc(allocOf(maxNumber), sizeof(WORD));
    unsigned int maxFactor = sqrt(maxNumber) + 1;
+
+   unsigned int hotSpots[10] = {0};
 
    // We get 2 for "free".
    int count = 1;
@@ -52,6 +58,7 @@ int countPrimes(int maxNumber) {
 
    // Look for next prime
    for (p = 3; p <= maxFactor; p += 2) {
+      hotSpots[0]++;
       // A 1 bit means it's composite - keep searching.
       if (buffer[indexOf(p)] & maskOf(p)) {
          continue;
@@ -59,20 +66,52 @@ int countPrimes(int maxNumber) {
       count++;
       // printf("%d, ", p);
 
+      // The following loop the hotspot for this algorithm
+      // executing about 800,000 times for a scan up to 1 million.
+      // I tried pre-calculating masks - but that just slowed
+      // it down.
+#ifdef PRECALC_MASKS
+      WORD masks[BITS_PER_WORD];
+      int m = p * p;
+      for (int i = 0; i < BITS_PER_WORD; i++, m += 2 * p) {
+         masks[i] = maskOf(m);
+      }
+#endif
+
       // No need to start less than p^2 since all those
       // multiples have already been marked.
+
+#ifdef PRECALC_MASKS
+      unsigned int i = 0;
+#endif
       for (unsigned int m = p * p; m < maxNumber; m += 2 * p) {
+         hotSpots[1]++;
+#ifdef PRECALC_MASKS
+         buffer[indexOf(m)] |= masks[i];
+         if (++i == BITS_PER_WORD) {
+            i = 0;
+         }
+#else
          buffer[indexOf(m)] |= maskOf(m);
+#endif
       }
    }
 
    // Add all the remaining primes above sqrt(maxNumber)
    for (unsigned int q = p; q < maxNumber; q += 2) {
+      hotSpots[2]++;
       if (buffer[indexOf(q)] & maskOf(q)) {
          continue;
       }
       count++;
       // printf("%d, ", q);
+   }
+
+   if (fPrintHotSpots) {
+      fPrintHotSpots = FALSE;
+      for (int i = 0; i < 3; i++) {
+         printf("Hot spot #%d: %d times\n", i, hotSpots[i]);
+      }
    }
 
    return count;
