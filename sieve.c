@@ -4,16 +4,62 @@
 #include <assert.h>     // assert
 #include <math.h>       // sqrt
 
-#define MEASUREMENT_SECS (1)
+#define MEASUREMENT_SECS (5)
 #define TRUE (1)
 #define FALSE (0)
 
 #define WORD unsigned long
 #define BITS_PER_WORD (sizeof(WORD) * 8)
+#define BYTE unsigned char
 
 // Primes to one million.
 #define MAX_NUMBER 1000000L
 #define EXPECTED_PRIMES 78498L
+
+//
+// Simple prime number sieve - one byte per number.
+//
+// maxNumber - find all primes strictly LESS than this number.
+//
+int countPrimesBytes(int maxNumber, int fNeedCount) {
+   // Starts off zero-initialized.
+   BYTE *buffer = (BYTE *) calloc(maxNumber + 1, 1);
+   unsigned int maxFactor = sqrt(maxNumber) + 1;
+
+   // We get 2 for "free" since we ignore even numbers.
+   int count = 1;
+   unsigned int p;
+
+   // Look for next prime
+   for (p = 3; p <= maxFactor; p += 2) {
+      // A 1 means it's composite - keep searching.
+      if (buffer[p]) {
+         continue;
+      }
+      count++;
+      // printf("%d, ", p);
+
+      // No need to start less than p^2 since all those
+      // multiples have already been marked.
+      for (unsigned int m = p * p; m < maxNumber; m += 2 * p) {
+         buffer[m] = TRUE;
+      }
+   }
+
+   // Add all the remaining primes above sqrt(maxNumber)
+   if (fNeedCount) {
+      for (; p < maxNumber; p += 2) {
+         if (buffer[p] == 0) {
+            count++;
+            // printf("%d, ", q);
+         }
+      }
+   }
+
+   free(buffer);
+   
+   return count;
+}
 
 //
 // Simple prime number sieve - bitmapped.
@@ -38,12 +84,12 @@
 #define indexOf(n) n / BITS_PER_WORD
 #define maskOf(n) (WORD) 1 << n % BITS_PER_WORD
 #define allocOf(n) indexOf(n) + 1
-int countPrimes(int maxNumber) {
+int countPrimes(int maxNumber, int fNeedCount) {
    // Starts off zero-initialized.
    WORD *buffer = (WORD *) calloc(allocOf(maxNumber), sizeof(WORD));
    unsigned int maxFactor = sqrt(maxNumber) + 1;
 
-   // We get 2 for "free".
+   // We get 2 for "free" since we ignore even numbers.
    int count = 1;
    unsigned int p;
 
@@ -68,13 +114,15 @@ int countPrimes(int maxNumber) {
       }
    }
 
-   // Add all the remaining primes above sqrt(maxNumber)
-   for (unsigned int q = p; q < maxNumber; q += 2) {
-      if (buffer[indexOf(q)] & maskOf(q)) {
-         continue;
+   // Count all the remaining primes above sqrt(maxNumber)
+   if (fNeedCount) {
+      for (; p < maxNumber; p += 2) {
+         if (buffer[indexOf(p)] & maskOf(p)) {
+            continue;
+         }
+         count++;
+         // printf("%d, ", q);
       }
-      count++;
-      // printf("%d, ", q);
    }
 
    free(buffer);
@@ -101,7 +149,7 @@ int countPrimes(int maxNumber) {
 #define indexOf2(n) (n) / 2 / BITS_PER_WORD
 #define maskOf2(n) (WORD) 1 << ((n) / 2) % BITS_PER_WORD
 #define allocOf2(n) indexOf2(n) + 1
-int countPrimesMod2(int maxNumber) {
+int countPrimesMod2(int maxNumber, int fNeedCount) {
    // Starts off zero-initialized.
    WORD *buffer = (WORD *) calloc(allocOf2(maxNumber), sizeof(WORD));
    unsigned int maxFactor = sqrt(maxNumber) + 1;
@@ -132,12 +180,14 @@ int countPrimesMod2(int maxNumber) {
    }
 
    // Add all the remaining primes above sqrt(maxNumber)
-   for (unsigned int q = p; q < maxNumber; q += 2) {
-      if (buffer[indexOf2(q)] & maskOf2(q)) {
-         continue;
+   if (fNeedCount) {
+      for (unsigned int q = p; q < maxNumber; q += 2) {
+         if (buffer[indexOf2(q)] & maskOf2(q)) {
+            continue;
+         }
+         count++;
+         // printf("%d, ", q);
       }
-      count++;
-      // printf("%d, ", q);
    }
 
    free(buffer);
@@ -167,7 +217,7 @@ int countPrimesMod2(int maxNumber) {
 #define indexOf6(n) (n/3) / BITS_PER_WORD
 #define maskOf6(n) (WORD) 1 << (n/3) % BITS_PER_WORD
 #define allocOf6(n) indexOf6(n) + 1
-int countPrimesMod6(int maxNumber) {
+int countPrimesMod6(int maxNumber, int fNeedCount) {
    // Starts off zero-initialized.
    WORD *buffer = (WORD *) calloc(allocOf6(maxNumber), sizeof(WORD));
    unsigned int maxFactor = sqrt(maxNumber) + 1;
@@ -202,12 +252,15 @@ int countPrimesMod6(int maxNumber) {
    }
 
    // Add all the remaining primes above sqrt(maxNumber)
-   for (unsigned int q = p; q < maxNumber; q += step, step = 6 - step) {
-      if (buffer[indexOf6(q)] & maskOf6(q)) {
-         continue;
+   // Since this is our hotspot - unroll every other loop iteration.
+   if (fNeedCount) {
+      for (; p < maxNumber; p += step, step = 6 - step) {
+         if (buffer[indexOf6(p)] & maskOf6(p)) {
+            continue;
+         }
+         count++;
+         // printf("%d, ", q);
       }
-      count++;
-      // printf("%d, ", q);
    }
 
    free(buffer);
@@ -215,14 +268,22 @@ int countPrimesMod6(int maxNumber) {
    return count;
 }
 
-void timedTest(int primeFinder(int), char *title) {
+void timedTest(int primeFinder(int, int), char *title) {
    clock_t startTicks;
    clock_t currentTicks;
-   int passes = 0;
+   int passes = 1;
 
    startTicks = clock();
 
    long limitTicks = MEASUREMENT_SECS * CLOCKS_PER_SEC + startTicks;
+
+   // Check first for accuracy.
+   int primeCount = primeFinder(MAX_NUMBER, TRUE);
+   if (primeCount != EXPECTED_PRIMES) {
+      printf("%s Expected %ld primes - but found %ld!\n",
+               title, EXPECTED_PRIMES, primeCount);
+      assert(FALSE);
+   }
 
    while (TRUE) {
       currentTicks = clock();
@@ -230,12 +291,9 @@ void timedTest(int primeFinder(int), char *title) {
          break;
       }
       passes++;
-      int primeCount = primeFinder(MAX_NUMBER);
-      if (primeCount != EXPECTED_PRIMES) {
-         printf("%s Expected %ld primes - but found %ld!\n",
-                title, EXPECTED_PRIMES, primeCount);
-         assert(FALSE);
-      }
+      // Dave's Garage algos did not compute the total count
+      // in the timed loop - just implemented the sieve.
+      primeFinder(MAX_NUMBER, FALSE);
    }
 
    printf("%s %d passes completed in %d seconds (%0.3f ms per pass).\n",
@@ -243,9 +301,11 @@ void timedTest(int primeFinder(int), char *title) {
 }
 
 int main() {
+   printf("Calculate primes up to %d.\n", MAX_NUMBER);
    printf("Timer resolution: %d ticks per second.\n", CLOCKS_PER_SEC);
    printf("Word size: %d bits.\n\n", BITS_PER_WORD);
 
+   timedTest(countPrimesBytes, "One byte per number.");
    timedTest(countPrimes, "Full bitmap.");
    timedTest(countPrimesMod2, "Only odd bits.");
    timedTest(countPrimesMod6, "Only 2 out of 6 bits.");
