@@ -8,8 +8,6 @@
 #define TRUE (1)
 #define FALSE (0)
 
-#define PRECALC_MASKS FALSE
-
 // Primes to one million.
 #define MAX_NUMBER 1000000L
 #define EXPECTED_PRIMES 78498L
@@ -65,29 +63,11 @@ int countPrimes(int maxNumber) {
       // executing about 800,000 times for a scan up to 1 million.
       // I tried pre-calculating masks - but that just slowed
       // it down.
-#ifdef PRECALC_MASKS
-      WORD masks[BITS_PER_WORD];
-      int m = p * p;
-      for (int i = 0; i < BITS_PER_WORD; i++, m += 2 * p) {
-         masks[i] = maskOf(m);
-      }
-#endif
 
       // No need to start less than p^2 since all those
       // multiples have already been marked.
-
-#ifdef PRECALC_MASKS
-      unsigned int i = 0;
-#endif
       for (unsigned int m = p * p; m < maxNumber; m += 2 * p) {
-#ifdef PRECALC_MASKS
-         buffer[indexOf(m)] |= masks[i];
-         if (++i == BITS_PER_WORD) {
-            i = 0;
-         }
-#else
          buffer[indexOf(m)] |= maskOf(m);
-#endif
       }
    }
 
