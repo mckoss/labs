@@ -41,7 +41,7 @@
 #define maskOf(n) (WORD) 1 << ((n - 1) / 2) % BITS_PER_WORD
 #define allocOf(n) indexOf(n) + 1
 
-int countPrimes(int maxNumber) {
+int countPrimesMod2(int maxNumber) {
    // Starts off zero-initialized.
    WORD *buffer = (WORD *) calloc(allocOf(maxNumber), sizeof(WORD));
    unsigned int maxFactor = sqrt(maxNumber) + 1;
@@ -83,7 +83,7 @@ int countPrimes(int maxNumber) {
    return count;
 }
 
-int main () {
+void timedTest(int primeFinder(int), char *title) {
    clock_t startTicks;
    clock_t currentTicks;
    int passes = 0;
@@ -101,14 +101,19 @@ int main () {
          break;
       }
       passes++;
-      int primeCount = countPrimes(MAX_NUMBER);
+      int primeCount = primeFinder(MAX_NUMBER);
       if (primeCount != EXPECTED_PRIMES) {
          printf("Expected %ld primes - but found %ld of them.\n", EXPECTED_PRIMES, primeCount);
          assert(FALSE);
       }
    }
 
-   printf("%d passes completed in %d seconds.\n", passes, MEASUREMENT_SECS);
+   printf("%s: %d passes completed in %d seconds.\n", title, passes, MEASUREMENT_SECS);
+}
+
+int main() {
+   timedTest(countPrimesMod2, "mod2 optimization");
 
    return(0);
 }
+
