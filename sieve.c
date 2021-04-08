@@ -1,14 +1,20 @@
 /*
+Various prime sieve algorithms speed tested.
+
+April 2021
+by Mike Koss (mike@mckoss.com)
+
 Execution on Intel i8-8700K @ 3.7GHz
 Calculate primes up to 1000000.
 Timer resolution: 1000 ticks per second.
 Word size: 32 bits.
 
-      Byte-map - 1 of 2 tested:  6097 passes completed in 5 seconds (0.820 ms per pass).
-       Bit-map - 1 of 2 tested:  8367 passes completed in 5 seconds (0.598 ms per pass).
-       Bit-map - 2 of 6 tested: 10584 passes completed in 5 seconds (0.472 ms per pass).
-                   1/2 Bit-map:  7672 passes completed in 5 seconds (0.652 ms per pass).
-                   1/3 Bit-map:  6768 passes completed in 5 seconds (0.739 ms per pass).
+      Byte-map - 1 of 2 tested:  6146 passes completed in 5 seconds (0.814 ms per pass).
+       Bit-map - 1 of 2 tested:  8400 passes completed in 5 seconds (0.595 ms per pass).
+       Bit-map - 2 of 6 tested: 10572 passes completed in 5 seconds (0.473 ms per pass).
+      Bit-map - 8 of 30 tested: 12349 passes completed in 5 seconds (0.405 ms per pass).
+                   1/2 Bit-map:  7656 passes completed in 5 seconds (0.653 ms per pass).
+                   1/3 Bit-map:  6746 passes completed in 5 seconds (0.741 ms per pass).
 */
 #include <time.h>       // clock, CLOCKS_PER_SEC
 #include <stdio.h>      // printf
@@ -76,9 +82,9 @@ int countPrimesBytes(int maxNumber, int fNeedCount) {
 //
 // Simple prime number sieve - bitmapped.
 //
-// This is 20% FASTER than the mod-2 version below that allocates half
+// This is 20% FASTER than the version that allocates half
 // the memory (presumably because of inner loop code calculating bit
-// masks a little more complicated that the naive version!)
+// masks a little more complicated than the naive version!)
 //
 // maxNumber - find all primes strictly LESS than this number.
 //
@@ -108,7 +114,7 @@ int countPrimes(int maxNumber, int fNeedCount) {
       count++;
       // printf("%d, ", p);
 
-      // The following loop the hotspot for this algorithm
+      // The following loop is the hotspot for this algorithm
       // executing about 800,000 times for a scan up to 1 million.
       // I tried pre-calculating masks - but that just slowed
       // it down.
@@ -137,8 +143,8 @@ int countPrimes(int maxNumber, int fNeedCount) {
 }
 
 //
-// Prime number sieve - full bitmapped but only testing
-// numbers congrent to 1 or 5 (mod 6).
+// Prime number sieve - full bitmapped but ignoring multiples
+// of 2 and 3.  Only testing numbers congrent to 1 or 5 (mod 6).
 //
 // maxNumber - find all primes strictly LESS than this number.
 //
@@ -164,13 +170,16 @@ int countPrimes2of6(int maxNumber, int fNeedCount) {
       count++;
       // printf("%d, ", p);
 
-      // The following loop the hotspot for this algorithm
+      // The following loop is the hotspot for this algorithm
       // executing about 800,000 times for a scan up to 1 million.
       // I tried pre-calculating masks - but that just slowed
       // it down.
 
       // No need to start less than p^2 since all those
       // multiples have already been marked.
+      // Note: we are setting bits we will never test (are not
+      // congruent to 1 or 5 mod 6).  But, the extra check for
+      // mod 6 in the inner loop here would make it slower.
       for (unsigned int m = p * p; m < maxNumber; m += 2 * p) {
          buffer[indexOf(m)] |= maskOf(m);
       }
@@ -183,7 +192,80 @@ int countPrimes2of6(int maxNumber, int fNeedCount) {
             continue;
          }
          count++;
-         // printf("%d, ", q);
+         // printf("%d, ", p);
+      }
+   }
+
+   free(buffer);
+   
+   return count;
+}
+
+//
+// Prime number sieve - full bitmapped but ignoring
+// multiples of 2, 3, and 5.  Only testing numbers
+// congruent to:
+//
+//   1, 7, 11, 13, 17, 19, 23, and 29 (mod 30)
+//
+// maxNumber - find all primes strictly LESS than this number.
+//
+#define indexOf(n) n / BITS_PER_WORD
+#define maskOf(n) (WORD) 1 << n % BITS_PER_WORD
+#define allocOf(n) indexOf(n) + 1
+int countPrimes8of30(int maxNumber, int fNeedCount) {
+   // Starts off zero-initialized.
+   WORD *buffer = (WORD *) calloc(allocOf(maxNumber), sizeof(WORD));
+   unsigned int maxFactor = sqrt(maxNumber) + 1;
+
+   // Only numbers congruent to candidates mod 30 can be prime.
+   unsigned int candidates[8] = {1, 7, 11, 13, 17, 19, 23, 29};
+
+   // Build a quick-lookup map.
+   unsigned int isModCandidate[30] = {FALSE};
+   for (int i = 0; i < 8; i++) {
+      isModCandidate[i] = TRUE;
+   }
+
+   // Build a stepping map.
+   unsigned int steps[8];
+   for (int i = 0; i < 8; i++) {
+      steps[i] = (candidates[(i + 1) % 8] - candidates[i] + 30) % 30;
+   }
+
+   // We get 2, 3 and 5 for "free" since we ignore their multiples.
+   int count = 3;
+   unsigned int p;
+
+   // First step is from 7 to 11 (steps[1]).
+   unsigned int step = 1;
+
+   // Look for next prime
+   for (p = 7; p <= maxFactor; p += steps[step], step = (step + 1) % 8) {
+      // A 1 bit means it's composite - keep searching.
+      if (buffer[indexOf(p)] & maskOf(p)) {
+         continue;
+      }
+
+      count++;
+      // printf("%d, ", p);
+
+      // The following loop is the hotspot for this algorithm.
+      // No need to start less than p^2 since all those
+      // multiples have already been marked.
+      for (unsigned int m = p * p; m < maxNumber; m += 2 * p) {
+         buffer[indexOf(m)] |= maskOf(m);
+      }
+   }
+
+   // Count all the remaining primes above sqrt(maxNumber)
+   if (fNeedCount) {
+      for (; p < maxNumber; p += steps[step], step = (step + 1) % 8) {
+         if (buffer[indexOf(p)] & maskOf(p)) {
+            continue;
+         }
+         count++;
+         // printf("%d, ", p);
       }
    }
 
@@ -229,7 +311,7 @@ int countPrimesMod2(int maxNumber, int fNeedCount) {
       count++;
       // printf("%d, ", p);
 
-      // The following loop the hotspot for this algorithm
+      // The following loop is the hotspot for this algorithm
       // executing about 800,000 times for a scan up to 1 million.
       // I tried pre-calculating masks - but that just slowed
       // it down.
@@ -298,7 +380,7 @@ int countPrimesMod6(int maxNumber, int fNeedCount) {
       count++;
       // printf("%d, ", p);
 
-      // The following loop the hotspot for this algorithm
+      // The following loop is the hotspot for this algorithm
       // executing about 800,000 times for a scan up to 1 million.
       // I tried pre-calculating masks - but that just slowed
       // it down.
@@ -370,6 +452,7 @@ int main() {
    timedTest(countPrimesBytes, "Byte-map - 1 of 2 tested");
    timedTest(countPrimes, "Bit-map - 1 of 2 tested");
    timedTest(countPrimes2of6, "Bit-map - 2 of 6 tested");
+   timedTest(countPrimes8of30, "Bit-map - 8 of 30 tested");
    timedTest(countPrimesMod2, "1/2 Bit-map");
    timedTest(countPrimesMod6, "1/3 Bit-map");
 
