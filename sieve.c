@@ -1,3 +1,15 @@
+/*
+Execution on Intel i8-8700K @ 3.7GHz
+Calculate primes up to 1000000.
+Timer resolution: 1000 ticks per second.
+Word size: 32 bits.
+
+      Byte-map - 1 of 2 tested:  6097 passes completed in 5 seconds (0.820 ms per pass).
+       Bit-map - 1 of 2 tested:  8367 passes completed in 5 seconds (0.598 ms per pass).
+       Bit-map - 2 of 6 tested: 10584 passes completed in 5 seconds (0.472 ms per pass).
+                   1/2 Bit-map:  7672 passes completed in 5 seconds (0.652 ms per pass).
+                   1/3 Bit-map:  6768 passes completed in 5 seconds (0.739 ms per pass).
+*/
 #include <time.h>       // clock, CLOCKS_PER_SEC
 #include <stdio.h>      // printf
 #include <stdlib.h>     // calloc
@@ -75,12 +87,6 @@ int countPrimesBytes(int maxNumber, int fNeedCount) {
 //   0: Prime
 //   1: Composite
 //
-// Both odd and even bits are in the buffer - we just
-// ignore the even ones.
-//
-// Bits in lsb order:
-// 0, 1, 2, 3, 4, ...
-//
 #define indexOf(n) n / BITS_PER_WORD
 #define maskOf(n) (WORD) 1 << n % BITS_PER_WORD
 #define allocOf(n) indexOf(n) + 1
@@ -93,7 +99,7 @@ int countPrimes(int maxNumber, int fNeedCount) {
    int count = 1;
    unsigned int p;
 
-   // Look for next prime
+   // Look for next prime (ignore even numbers)
    for (p = 3; p <= maxFactor; p += 2) {
       // A 1 bit means it's composite - keep searching.
       if (buffer[indexOf(p)] & maskOf(p)) {
@@ -117,6 +123,62 @@ int countPrimes(int maxNumber, int fNeedCount) {
    // Count all the remaining primes above sqrt(maxNumber)
    if (fNeedCount) {
       for (; p < maxNumber; p += 2) {
+         if (buffer[indexOf(p)] & maskOf(p)) {
+            continue;
+         }
+         count++;
+         // printf("%d, ", q);
+      }
+   }
+
+   free(buffer);
+   
+   return count;
+}
+
+//
+// Prime number sieve - full bitmapped but only testing
+// numbers congrent to 1 or 5 (mod 6).
+//
+// maxNumber - find all primes strictly LESS than this number.
+//
+#define indexOf(n) n / BITS_PER_WORD
+#define maskOf(n) (WORD) 1 << n % BITS_PER_WORD
+#define allocOf(n) indexOf(n) + 1
+int countPrimes2of6(int maxNumber, int fNeedCount) {
+   // Starts off zero-initialized.
+   WORD *buffer = (WORD *) calloc(allocOf(maxNumber), sizeof(WORD));
+   unsigned int maxFactor = sqrt(maxNumber) + 1;
+
+   // We get 2 and 3 for "free" since we ignore their multiples.
+   int count = 2;
+   unsigned int p;
+   unsigned int step;
+
+   // Look for next prime
+   for (p = 5, step = 2; p <= maxFactor; p += step, step = 6 - step) {
+      // A 1 bit means it's composite - keep searching.
+      if (buffer[indexOf(p)] & maskOf(p)) {
+         continue;
+      }
+      count++;
+      // printf("%d, ", p);
+
+      // The following loop the hotspot for this algorithm
+      // executing about 800,000 times for a scan up to 1 million.
+      // I tried pre-calculating masks - but that just slowed
+      // it down.
+
+      // No need to start less than p^2 since all those
+      // multiples have already been marked.
+      for (unsigned int m = p * p; m < maxNumber; m += 2 * p) {
+         buffer[indexOf(m)] |= maskOf(m);
+      }
+   }
+
+   // Count all the remaining primes above sqrt(maxNumber)
+   if (fNeedCount) {
+      for (; p < maxNumber; p += step, step = 6 - step) {
          if (buffer[indexOf(p)] & maskOf(p)) {
             continue;
          }
@@ -296,7 +358,7 @@ void timedTest(int primeFinder(int, int), char *title) {
       primeFinder(MAX_NUMBER, FALSE);
    }
 
-   printf("%s %d passes completed in %d seconds (%0.3f ms per pass).\n",
+   printf("%30s: %5d passes completed in %d seconds (%0.3f ms per pass).\n",
           title, passes, MEASUREMENT_SECS, (float) MEASUREMENT_SECS / passes * 1000);
 }
 
@@ -305,10 +367,11 @@ int main() {
    printf("Timer resolution: %d ticks per second.\n", CLOCKS_PER_SEC);
    printf("Word size: %d bits.\n\n", BITS_PER_WORD);
 
-   timedTest(countPrimesBytes, "One byte per number.");
-   timedTest(countPrimes, "Full bitmap.");
-   timedTest(countPrimesMod2, "Only odd bits.");
-   timedTest(countPrimesMod6, "Only 2 out of 6 bits.");
+   timedTest(countPrimesBytes, "Byte-map - 1 of 2 tested");
+   timedTest(countPrimes, "Bit-map - 1 of 2 tested");
+   timedTest(countPrimes2of6, "Bit-map - 2 of 6 tested");
+   timedTest(countPrimesMod2, "1/2 Bit-map");
+   timedTest(countPrimesMod6, "1/3 Bit-map");
 
    return(0);
 }
