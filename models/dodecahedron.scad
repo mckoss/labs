@@ -1,11 +1,14 @@
 // Dodecahedron - https://en.wikipedia.org/wiki/Platonic_solid
 // http://dmccooey.com/polyhedra/Dodecahedron.txt
 
+MODEL = "full"; // ["full", "hamiltonian"]
+
 PHI = (1 + sqrt(5))/2;
 
 SCALE = 25;
 WIRE_D = 8;
 
+module end_customizer() {}
 
 // 12 * 5 / 3 = 20 vertices
 VERTICES = [
@@ -45,31 +48,74 @@ EDGES = [
  [11, 17],
  [12, 18],
  [13, 19]];
-
+ 
+ CYCLE_EDGES = [
+// [0, 8],
+ [0, 9],
+ [0, 10],
+// [1, 9],
+ [1, 11],
+ [1, 16],
+ [2, 10],
+ [2, 12],
+// [2, 14],
+// [3, 12],
+ [3, 16],
+ [3, 17],
+ [4, 8],
+// [4, 13],
+ [4, 15],
+ [5, 11],
+// [5, 15],
+ [5, 19],
+ [6, 13],
+ [6, 14],
+// [6, 18],
+ [7, 17],
+ [7, 18],
+// [7, 19],
+ [8, 14],
+ [9, 15],
+// [10, 16],
+ // [11, 17],
+ [12, 18],
+ [13, 19]];
+ 
+SUPPORT_EDGES = [
+ [0, 8],
+ [1, 9],
+ [2, 14],
+ [3, 12],
+ [5, 4],
+ [6, 18],
+ [7, 13],
+ [10, 16],
+ ];
 
 module label_plot(v) {
     for (i = [0:19]) {
         let (label = str(floor(i/10), (i % 10))) {
-        translate(VERTICES[i] * SCALE)
-            rotate([90, 0, 0])
-                text(label, 8);
+        translate(VERTICES[i] * SCALE * 1.4)
+             rotate([90, 0, 0])
+                text(label, 8, halign="center", valign="center");
         }
     }
 }
 
-// label_plot(VERTICES);
-
-module build_edge(e) {
+module build_edge(e, w) {
     v1 = VERTICES[e[0]] * SCALE;
     v2 = VERTICES[e[1]] * SCALE;
     echo(v1, v2);
-    cyl_between(v1, v2, WIRE_D / 2);
+    cyl_between(v1, v2, w / 2);
 }
 
-module build_edges() {
-    for (e = EDGES) {
-        build_edge(e);
+module build_edges(edges, w) {
+    for (e = edges) {
+        build_edge(e, w);
     }
+}
+
+module build_vertices() {
     for (v = VERTICES) {
         translate(v * SCALE)
             sphere(d = WIRE_D * 1.5, $fs=1, $fa=5);
@@ -92,5 +138,13 @@ module cyl_between(P, Q, r){
     multmatrix(M) cylinder(h=L, r=r, $fs=1);
 }
 
-rotate([0, 31, 0])
-    build_edges();
+rotate([0, 31, 0]) { 
+    % label_plot(VERTICES);
+    if (MODEL == "full") {
+        build_edges(EDGES, WIRE_D);
+    } else {
+        build_edges(CYCLE_EDGES, WIRE_D);
+        build_edges(SUPPORT_EDGES, 2);
+    }
+    build_vertices();
+}
