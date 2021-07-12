@@ -1,0 +1,3 @@
+[submodule "models/alpha"]
+	path = models/alpha
+	url = https://github.com/thestumbler/alpha.git

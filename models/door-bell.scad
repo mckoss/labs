@@ -22,8 +22,8 @@ RING_INSET = 2.25;
 RING_Y = 129;
 RING_Z = 28;
 
-RING_BUTTON_Y = 40;
-RING_BUTTON_D = 33;
+RING_BUTTON_Y = 41;
+RING_BUTTON_D = 34;
 
 RING_WINDOW_Y = RING_Y - 35;
 RING_WINDOW_D = 28;
@@ -32,7 +32,7 @@ EPSILON = 0.3;
 WALL_THICKNESS = 2;
 
 // Retention clips
-CLIP_WIDTH = WALL_THICKNESS * 1.5;
+CLIP_WIDTH = WALL_THICKNESS * 1.75;
 CLIP_HEIGHT = CLIP_WIDTH;
 CLIP_LENGTH = 2 * CLIP_WIDTH;
 
@@ -135,4 +135,6 @@ module assembly() {
     }
 }
 
-assembly();
+translate([0, 0, PLATE_Z])
+    rotate(a=[180, 0, 0])
+        assembly();
