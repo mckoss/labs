@@ -7,6 +7,7 @@ PHI = (1 + sqrt(5))/2;
 
 SCALE = 25;
 WIRE_D = 8;
+SUPPORT_D = 2.5;
 
 module end_customizer() {}
 
@@ -82,14 +83,26 @@ EDGES = [
  [13, 19]];
  
 SUPPORT_EDGES = [
+ [0, 1],
+ [0, 4],
  [0, 8],
+ [0, 14],
+ [0, 16],
  [1, 9],
+ [1, 15],
+ [2, 3],
+ [2, 6],
+ [2, 8],
  [2, 14],
+ [2, 16],
  [3, 12],
+ [3, 18],
  [5, 4],
  [6, 18],
  [7, 13],
  [10, 16],
+ [13, 18],
+ [14, 18],
  ];
 
 module label_plot(v) {
@@ -144,7 +157,7 @@ rotate([0, 31, 0]) {
         build_edges(EDGES, WIRE_D);
     } else {
         build_edges(CYCLE_EDGES, WIRE_D);
-        build_edges(SUPPORT_EDGES, 2);
+        build_edges(SUPPORT_EDGES, SUPPORT_D);
     }
     build_vertices();
 }
