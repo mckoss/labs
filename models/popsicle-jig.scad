@@ -7,7 +7,7 @@ STICK_L = 150;
 STICK_TH = 1.7;
 STICK_L_C = STICK_L - STICK_W;
 
-MODEL = "block"; // ["block", "synth"]
+MODEL = "block"; // ["block", "synth", "clip"]
 SHOW_SAMPLE = true;
 
 module stick(orient, extra) {
@@ -28,10 +28,9 @@ module stick_i(i, extra, offset) {
     xlate = floor(i / 2);
     OFF_X = orient == "h" ? STICK_L_C/6 : 0;
     OFF_Y = orient == "v" ? -STICK_L_C/6 : -STICK_L_C/3;
-    OFF_Z = orient == "h" ? offset : 0;
     translate([xlate * STICK_L_C/3 + OFF_X,
                -xlate * STICK_L_C/3 + OFF_Y,
-               OFF_Z])
+               offset])
         stick(orient, extra);
 }
 
@@ -45,7 +44,7 @@ module initial(extra, offset, rot) {
 module sample() {
     rotate([0, 0, 45]) {
         % for (i=[0:10]) {
-            stick_i(i, 2 * E, STICK_TH + E);
+            stick_i(i, 2 * E, i % 2 == 1 ? STICK_TH + E : 0);
         }
     }
 }
@@ -69,7 +68,55 @@ module block_holder() {
 }
 
 module synth_holder() {
-    initial(5, 0, 45);
+    rotate([0, 0, 45])
+    difference() {
+        union() {
+            initial(5, 0, 0);
+            difference() {
+                stick_i(2, 5, 0);
+                translate([STICK_W, -STICK_L/2 - STICK_W/2, 0])
+                    cube([100, STICK_L + STICK_W, 10], center=true);
+            }
+            difference() {
+                stick_i(3, 5, 0);
+                translate([STICK_L/2 + STICK_W + 2.5, -STICK_W - 5, 0])
+                    cube([STICK_L + STICK_W, STICK_L + STICK_W, 10], center=true);
+            }
+            difference() {
+                stick_i(4, 5, 0);
+                translate([STICK_L/2 + STICK_W + 2.5, -STICK_L + STICK_W - 5, 0])
+                    cube([STICK_L + STICK_W, STICK_L + STICK_W, 10], center=true);
+            }
+        }
+        translate([-50 - STICK_W/2 - 2.5, -20, 0])
+            cube([100, 100, 10], center=true);
+        translate([-STICK_W - 2 * E, STICK_L/3 + STICK_W/2 + 2.5, 0])
+            cube([100, 100, 10], center=true);
+        
+        difference() {
+            stick_i(2, GAP, -GAP);
+            translate([STICK_W, -STICK_L/2, 0])
+                cube([100, 100, 10], center=true);
+        }
+        difference() {
+            stick_i(2, 5, 1.5 * STICK_TH);
+            translate([STICK_W, 50 - STICK_W, 0])
+                cube([100, 100, 10], center=true);
+        }
+        stick_i(3, GAP, -GAP);
+        stick_i(4, GAP, -GAP);
+    }
+}
+
+module clip() {
+    difference() {
+        stick(0, 5, 0);
+        translate([0, -STICK_L * .6, 0])
+            cube([100, STICK_L, 10], center=true);
+        translate([0, -STICK_L/3, -4])
+            cube([100, STICK_L, 10], center=true);
+        stick(0, GAP, 0);
+    }
 }
 
 if (MODEL == "block")
@@ -77,6 +124,9 @@ if (MODEL == "block")
 
 if (MODEL == "synth")
     synth_holder();
+
+if (MODEL == "clip")
+    clip();
 
 if (SHOW_SAMPLE) {
     % initial(GAP, STICK_TH + E, 45);
