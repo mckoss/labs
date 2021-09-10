@@ -37,7 +37,7 @@ included = [for (i = [0:5]) for (j = [i: 5]) for (k = [j: 5]) [i, j, k]];
 missing = [for (i = [0:5]) for (j = [i: 5]) for (k = [i: 5]) if (j > i + 1 && k > i && j > k) [i, j, k]];
 
 module arrangeTriominos(tiles) {
-    rows = floor(2 * sqrt(len(tiles)));
+    rows = floor(1.6 * sqrt(len(tiles)));
     cols = ceil(len(tiles)/rows);
     
     // Even rows are oriented baseline on x axis.
@@ -46,13 +46,14 @@ module arrangeTriominos(tiles) {
         for (col = [0: cols - 1]) {
             i = rw * cols + col;
             odd = rw % 2;
+            isOffset = (rw % 4) > 1 ? 1 : 0;
             if (i < len(tiles)) {
-                translate((col + odd) * I_SPACING + floor(rw / 2) * J_SPACING)
+                translate((col + odd) * I_SPACING + floor(rw / 2) * J_SPACING - floor((rw + 1) / 4) * I_SPACING)
                 translate([-GAP * odd, 0, 0])
                 rotate([0, 0, odd * 60])
                 union() {
                     // translate((I + J) / 3)
-                    // translate([0, 0, 20])
+                    // translate([0, 0, THICKNESS * 3])
                     // text(str(i), size=5, halign="center", valign="center");
                     trionimo(tiles[i]);
                 }
@@ -61,7 +62,7 @@ module arrangeTriominos(tiles) {
     }
 }
 
-arrangeTriominos(included);
+arrangeTriominos(concat(included, missing));
 
 module trionimo(nums) {
     difference() {
