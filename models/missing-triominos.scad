@@ -1,17 +1,17 @@
 SIZE = 20; // [39, 20]
-THICKNESS = 2; // [7, 2]
+THICKNESS = 1.5; // [7, 1.5]
 
 START = 0; // [0:75]
 END = 14; // [0:75]
 
 LABEL =  false;
 
+SYMBOLS = "DEBMIK"; // ["012345", "DEBMIK"]
+
 module __Customizer_Limit__ () {}
 
 ROUNDING = 2;
 EMBOSS = 1;
-
-BED_SIZE = 200;
 
 EPSILON = 0.1;
 
@@ -35,7 +35,6 @@ R1 = 180;
 P2 = (I + C) / 2;
 R2 = 60;
 
-
 // These are including in the Triominos box.  All non-decreasing
 // clockwise (56 of them).
 included = [for (i = [0:5]) for (j = [i: 5]) for (k = [j: 5]) [i, j, k]];
@@ -50,7 +49,7 @@ printSet = [for (i = [START:END]) all[i]];
 arrangeTriominos(printSet);
 
 module arrangeTriominos(tiles) {
-    rows = floor(1.6 * sqrt(len(tiles)));
+    rows = floor(1.8 * sqrt(len(tiles)));
     cols = ceil(len(tiles)/rows);
     
     // Even rows are oriented baseline on x axis.
@@ -78,23 +77,21 @@ module arrangeTriominos(tiles) {
 }
 
 module trionimo(nums) {
-    difference() {
         linear_extrude(THICKNESS)
         polygon([[0, 0], I, J]);
+        translate([0, 0, THICKNESS - EPSILON])
         union() {
             place_digit(nums[0], P0, R0);
             place_digit(nums[1], P1, R1);
             place_digit(nums[2], P2, R2);
         }
-    }
 }
 
 module place_digit(d, pos, rot) {
     translate(pos)
     rotate(rot)
-    translate([0, 0, THICKNESS - EMBOSS + EPSILON])
     linear_extrude(EMBOSS)
-    text(str(d), size=4, font="Arial:style=Bold", halign="center", valign="center");
+    text(SYMBOLS[d], size=8, font="Arial:style=Bold", halign="center", valign="center");
 }
 
 // ORIGINAL TRIOMINOS
