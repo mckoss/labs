@@ -1,4 +1,3 @@
-PIECE = 0; // [0:19]
 SIZE = 20; // [39, 20]
 THICKNESS = 2; // [7, 2]
 
@@ -18,14 +17,17 @@ GAP = 2;
 I_SPACING = I + [2 * GAP, 0];
 J_SPACING = J + [GAP, GAP];
 
+// Triangle Center
+C = (I + J) / 3;
+
 // Digit positions
-P0 = (I + J) / 6;
+P0 = C / 2;
 R0 = -60;
 
-P1 = J + (I - 2 * J) / 6;
+P1 = (J + C) / 2;
 R1 = 180;
 
-P2 = I + (J - 2 * I) /6;
+P2 = (I + C) / 2;
 R2 = 60;
 
 
