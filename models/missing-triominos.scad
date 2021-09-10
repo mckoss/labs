@@ -1,13 +1,89 @@
 PIECE = 0; // [0:19]
+SIZE = 20; // [39, 20]
+THICKNESS = 2; // [7, 2]
 
 module __Customizer_Limit__ () {}
 
-SIZE = 39;
-THICKNESS = 7;
 ROUNDING = 2;
 EMBOSS = 1;
 
+BED_SIZE = 200;
+
 EPSILON = 0.1;
+
+I = [SIZE, 0];
+J = [SIZE * cos(60), SIZE * sin(60)];
+
+GAP = 2;
+I_SPACING = I + [2 * GAP, 0];
+J_SPACING = J + [GAP, GAP];
+
+// Digit positions
+P0 = (I + J) / 6;
+R0 = -60;
+
+P1 = J + (I - 2 * J) / 6;
+R1 = 180;
+
+P2 = I + (J - 2 * I) /6;
+R2 = 60;
+
+
+// These are including in the Triominos box.  All non-decreasing
+// clockwise (56 of them).
+included = [for (i = [0:5]) for (j = [i: 5]) for (k = [j: 5]) [i, j, k]];
+
+// These non-clockwise Triominos are missing (20 of them).
+missing = [for (i = [0:5]) for (j = [i: 5]) for (k = [i: 5]) if (j > i + 1 && k > i && j > k) [i, j, k]];
+
+module arrangeTriominos(tiles) {
+    rows = floor(2 * sqrt(len(tiles)));
+    cols = ceil(len(tiles)/rows);
+    
+    // Even rows are oriented baseline on x axis.
+    // Odd rows are rotated 60 degrees CCW (apex along axis).
+    for (rw = [0: rows - 1]) {
+        for (col = [0: cols - 1]) {
+            i = rw * cols + col;
+            odd = rw % 2;
+            if (i < len(tiles)) {
+                translate((col + odd) * I_SPACING + floor(rw / 2) * J_SPACING)
+                translate([-GAP * odd, 0, 0])
+                rotate([0, 0, odd * 60])
+                union() {
+                    // translate((I + J) / 3)
+                    // translate([0, 0, 20])
+                    // text(str(i), size=5, halign="center", valign="center");
+                    trionimo(tiles[i]);
+                }
+            }
+        }
+    }
+}
+
+arrangeTriominos(included);
+
+module trionimo(nums) {
+    difference() {
+        linear_extrude(THICKNESS)
+        polygon([[0, 0], I, J]);
+        union() {
+            place_digit(nums[0], P0, R0);
+            place_digit(nums[1], P1, R1);
+            place_digit(nums[2], P2, R2);
+        }
+    }
+}
+
+module place_digit(d, pos, rot) {
+    translate(pos)
+    rotate(rot)
+    translate([0, 0, THICKNESS - EMBOSS + EPSILON])
+    linear_extrude(EMBOSS)
+    text(str(d), size=4, font="Arial:style=Bold", halign="center", valign="center");
+}
+
+// ORIGINAL TRIOMINOS
 
 module digit(n, pos) {
     rotate([0, 0, - pos * 120])
@@ -39,23 +115,6 @@ module triangle() {
     };
 }
 
-missing = [
-    [0, 2, 1],
-    [0, 3, 1], [0, 3, 2],
-    [0, 4, 1], [0, 4, 2], [0, 4, 3],
-    [0, 5, 1], [0, 5, 2], [0, 5, 3], [0, 5, 4],
-
-    [1, 3, 2],
-    [1, 4, 2], [1, 4, 3],
-    [1, 5, 2], [1, 5, 3], [1, 5, 4],
-  
-    [2, 4, 3],
-    [2, 5, 3], [2, 5, 4],
-
-    [3, 5, 4]
-];
-    
-
-tri(missing[PIECE][0], missing[PIECE][1], missing[PIECE][2]);
+// tri(missing[PIECE][0], missing[PIECE][1], missing[PIECE][2]);
 
 
