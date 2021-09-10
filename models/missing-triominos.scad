@@ -1,6 +1,11 @@
 SIZE = 20; // [39, 20]
 THICKNESS = 2; // [7, 2]
 
+START = 0; // [0:75]
+END = 14; // [0:75]
+
+LABEL =  false;
+
 module __Customizer_Limit__ () {}
 
 ROUNDING = 2;
@@ -38,6 +43,12 @@ included = [for (i = [0:5]) for (j = [i: 5]) for (k = [j: 5]) [i, j, k]];
 // These non-clockwise Triominos are missing (20 of them).
 missing = [for (i = [0:5]) for (j = [i: 5]) for (k = [i: 5]) if (j > i + 1 && k > i && j > k) [i, j, k]];
 
+all = concat(included, missing);
+
+printSet = [for (i = [START:END]) all[i]];
+
+arrangeTriominos(printSet);
+
 module arrangeTriominos(tiles) {
     rows = floor(1.6 * sqrt(len(tiles)));
     cols = ceil(len(tiles)/rows);
@@ -54,17 +65,17 @@ module arrangeTriominos(tiles) {
                 translate([-GAP * odd, 0, 0])
                 rotate([0, 0, odd * 60])
                 union() {
-                    // translate((I + J) / 3)
-                    // translate([0, 0, THICKNESS * 3])
-                    // text(str(i), size=5, halign="center", valign="center");
+                    if (LABEL) {
+                        translate((I + J) / 3)
+                        translate([0, 0, THICKNESS * 3])
+                        # text(str(i), size=5, halign="center", valign="center");
+                    }
                     trionimo(tiles[i]);
                 }
             }
         }
     }
 }
-
-arrangeTriominos(concat(included, missing));
 
 module trionimo(nums) {
     difference() {
