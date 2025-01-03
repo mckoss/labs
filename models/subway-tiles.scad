@@ -111,18 +111,24 @@ module letter(ch, letter_forms) {
         cols = raw_tiles[0];
         rows = rows_of(letter_forms);
         blue_tiles = tail(raw_tiles);
-//        white_tiles = missing_tiles(blue_tiles, rows, cols);
+        white_tiles = missing_tiles(blue_tiles, rows, cols);
         color("blue") tiles(blue_tiles, rows, cols);
-//        color("white") tiles(white_tiles, rows, cols);
+        if (len(white_tiles) > 0) {
+            color("white") tiles(white_tiles, rows, cols);
+        }
     } else {
         echo("Unrecognized letter", ch);
     }
 }
 
+function missing_tiles(tiles, rows, cols) =
+    [for (i = [0: rows * cols - 1]) if (indexof(i, tiles) == -1) i];
+
 // List/vector helper functions
 function flatten(l) = [ for (a = l) for (b = a) b ];
 function tail(v) = len(v) > 1 ? [for (i = [1:len(v)-1]) v[i]] : [];
 function cumsum(v) = [for (a=0, b=v[0]; a < len(v); a= a+1, b=b+(v[a]==undef?0:v[a])) b];
+function indexof(v, l) = let (s = search(v, l)) len(s) == 0 ? -1 : s[0];
 
 message("ABCDEF");
 translate([0, -DX * 6, 0])
@@ -136,5 +142,8 @@ translate([0, -DX*24, 0])
 translate([0, -DX*30, 0])
     message("HELLO WORLD");
     
+echo(indexof(2, [3, 2, 1]));
+
+echo(missing_tiles(tail(tile_list("A", ALPHA5_CAPS)), 5, 3));
 
 
