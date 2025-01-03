@@ -1,10 +1,10 @@
 // Subway tile signs
 
-TILE_WIDTH = 10;
-TILE_DEPTH = 2;
+TILE_WIDTH = 20;
+TILE_DEPTH = 3;
 TILE_SPACING = 1;
-CHAMFER_RADIUS = 0.75;
-CHAMFER_STEPS = 1;
+CHAMFER_RADIUS = 1;
+CHAMFER_STEPS = 3;
 
 module T() {
     x0 = TILE_WIDTH / 2;
@@ -22,7 +22,6 @@ module T() {
                  z = z0 + dz)
             [[-x, -x, z], [x, -x, z], [x, x, z], [-x, x, z]]
         ]));
-    echo(tile_points);
     last = len(tile_points) - 1;
     tile_faces = concat(
         // Bottom and top faces
@@ -34,7 +33,6 @@ module T() {
              [base + 2, base + 6, base + 7, base + 3],
              [base + 3, base + 7, base + 4, base]]
         ]));
-    echo(tile_faces);
     polyhedron(points=tile_points, faces=tile_faces);
 }
 
@@ -43,11 +41,12 @@ module tiles(list, rows=5, cols=3) {
     for (i = [0:len(list)-1]) {
         row = floor(list[i] / cols) - (rows - 1)/2;
         col = list[i] % cols - (cols - 1)/2;
-        translate([col * DX, row * DX, 0])
+        translate([col * DX, -row * DX, 0])
             T();
     }
 }
 
-tiles([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
-   
 function flatten(l) = [ for (a = l) for (b = a) b ];
+
+tiles([0, 1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+   
