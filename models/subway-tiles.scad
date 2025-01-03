@@ -48,6 +48,13 @@ module tiles(list, rows=5, cols=3) {
     }
 }
 
+module tile_line(cols) {
+    for (i = [0: cols - 1]) {
+        translate([i * DX, 0, 0])
+            T();
+    }
+}
+
 // Mostly 3x5 but a couple of 4x5
 // First number is columns used
 // Remaining are indicies starting with 0 at top left.
@@ -112,21 +119,31 @@ function tile_list(ch, letter_forms) = letter_forms[2][index_of(ch, letter_forms
 module message(s, letter_forms=ALPHA5_CAPS) {
     DX = TILE_WIDTH + TILE_SPACING;
     offsets = message_offsets(s, letter_forms);
+    rows = rows_of(letter_forms);
     for (i = [0:len(s)-1]) {
         translate([offsets[i] * DX, 0, 0])
             letter(s[i], letter_forms);
+        // Draw white tile column between letters
+        if (i != len(s)-1) {
+            translate([(offsets[i+1] - 1) * DX, 0, 0]) {
+                    color("white") tiles([for (row = [0: rows - 1]) row], rows, 1);
+            }
+        }
     }
 }
 
 function message_offsets(s, letter_forms) =
-    cumsum([0, for (i = [0:len(s)-2])
+    cumsum([0, for (i = [0:len(s)-1])
         is_member(s[i], letter_forms) ? tile_list(s[i], letter_forms)[0] + 1 : 2]);
+    
+function measure_message(s, letter_forms) =
+    let (offsets = message_offsets(s, letter_forms)) offsets[len(offsets) - 1] - 1;
 
 module letter(ch, letter_forms) {
+    rows = rows_of(letter_forms);
     if (is_member(ch, letter_forms)) {
         raw_tiles = tile_list(ch, letter_forms);
         cols = raw_tiles[0];
-        rows = rows_of(letter_forms);
         blue_tiles = tail(raw_tiles);
         white_tiles = missing_tiles(blue_tiles, rows, cols);
         color("blue") tiles(blue_tiles, rows, cols);
@@ -134,7 +151,8 @@ module letter(ch, letter_forms) {
             color("white") tiles(white_tiles, rows, cols);
         }
     } else {
-        echo("Unrecognized letter", ch);
+        // Treat unknown character as a space - a single blank column.
+        color("white") tiles([for (row = [0: rows - 1]) row], rows, 1);
     }
 }
 
@@ -147,6 +165,11 @@ function tail(v) = len(v) > 1 ? [for (i = [1:len(v)-1]) v[i]] : [];
 function cumsum(v) = [for (a=0, b=v[0]; a < len(v); a= a+1, b=b+(v[a]==undef?0:v[a])) b];
 function indexof(v, l) = let (s = search(v, l)) len(s) == 0 ? -1 : s[0];
 
+MAX_LINE = measure_message("HELLO WORLD", ALPHA5_CAPS);
+for (i = [0:7]) {
+    translate([0, 9*DX - 6*i*DX, 0])
+        color("white") tile_line(MAX_LINE);
+}
 translate([0, DX*6, 0])
     message("0123456789", NUMERIC5);
 message("ABCDEF");
@@ -164,5 +187,6 @@ translate([0, -DX*30, 0])
 echo(indexof(2, [3, 2, 1]));
 
 echo(missing_tiles(tail(tile_list("A", ALPHA5_CAPS)), 5, 3));
+
 
 
