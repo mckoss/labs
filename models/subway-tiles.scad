@@ -1,22 +1,41 @@
 // Subway tile signs
 
-TILE_WIDTH = 15;
-TILE_DEPTH = 1.5;
+TILE_WIDTH = 10;
+TILE_DEPTH = 2;
 TILE_SPACING = 1;
 CHAMFER_RADIUS = 0.75;
-CHAMFER_STEPS = 3;
+CHAMFER_STEPS = 1;
 
 module T() {
-    X = TILE_WIDTH / 2;
-    D = TILE_DEPTH;
-    X1 = X - CHAMFER_RADIUS;
-    polyhedron(
-        points=[
-            [-X, -X, 0], [X, -X, 0], [X, X, 0], [-X, X, 0],
-            [-X1, -X1, D], [X1, -X1, D], [X1, X1, D], [-X1, X1, D]],
-        faces=[[0, 1, 2, 3], [7, 6, 5, 4],
-               [0, 4, 5, 1], [1, 5, 6, 2], [2, 6, 7, 3], [3, 7, 4, 0] ]
-    );
+    x0 = TILE_WIDTH / 2;
+    d = TILE_DEPTH;
+    r = CHAMFER_RADIUS;
+    z0 = d - r;
+    
+    tile_points = concat(
+        [[-x0, -x0, 0], [x0, -x0, 0], [x0, x0, 0], [-x0, x0, 0]],
+        flatten([for (i = [0 : CHAMFER_STEPS])
+            let (theta = i * 90 / CHAMFER_STEPS,
+                 dx = r * (1 - cos(theta)),
+                 dz = r * sin(theta),
+                 x = x0 - dx,
+                 z = z0 + dz)
+            [[-x, -x, z], [x, -x, z], [x, x, z], [-x, x, z]]
+        ]));
+    echo(tile_points);
+    last = len(tile_points) - 1;
+    tile_faces = concat(
+        // Bottom and top faces
+        [[0, 1, 2, 3], [last, last - 1, last - 2, last - 3]],
+        flatten([for (i = [0 : CHAMFER_STEPS])
+            let (base = i * 4)
+            [[base, base + 4, base + 5, base + 1],
+             [base + 1, base + 5, base + 6, base + 2],
+             [base + 2, base + 6, base + 7, base + 3],
+             [base + 3, base + 7, base + 4, base]]
+        ]));
+    echo(tile_faces);
+    polyhedron(points=tile_points, faces=tile_faces);
 }
 
 module tiles(list, rows=5, cols=3) {
@@ -30,3 +49,5 @@ module tiles(list, rows=5, cols=3) {
 }
 
 tiles([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+   
+function flatten(l) = [ for (a = l) for (b = a) b ];
