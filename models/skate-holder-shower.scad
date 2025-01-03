@@ -33,12 +33,10 @@ module radial_text(
 
   step_angle = (stop_angle - start_angle) / (len(text) - 1);
   text_height = step_angle / 180 * PI * radius;
-  echo(step_angle);
   for (i = [0 : len(text) - 1]) {
       angle = start_angle + i * step_angle;
       x = radius * cos(angle);
       y = radius * sin(angle);
-      echo(text[i], angle, x, y);
       translate([x, y, H / 2 - 1])
         rotate(a=90 + angle, v=[0, 0, 1])
         rotate(a=90, v=[1, 0, 0])
