@@ -1,14 +1,20 @@
-// Subway tile signs
+// NY Subway tiled sign generator.
+
+// This module uses colors as:
+//
+// blue - Letter tiles
+// white - Background tiles
+// black - Base layer (and border tiles).
+COLOR_FILTER = "all";
 
 TILE_WIDTH = 20;
 TILE_DEPTH = 3;
 TILE_SPACING = 1;
 CHAMFER_RADIUS = 1;
 CHAMFER_STEPS = 3;
+BASE_THICKNESS = 1;
 
 DX = TILE_WIDTH + TILE_SPACING;
-
-COLOR_FILTER = "all";
 
 module T() {
     x0 = TILE_WIDTH / 2;
@@ -45,7 +51,7 @@ module tiles(list, rows=5, cols=3) {
     for (i = [0:len(list)-1]) {
         row = floor(list[i] / cols) - (rows - 1)/2;
         col = list[i] % cols;
-        translate([col * DX, -row * DX, 0])
+        translate([col * DX, -row * DX, BASE_THICKNESS])
             T();
     }
 }
@@ -74,15 +80,15 @@ ALPHA5_CAPS = [
         [3, 0, 2, 3, 5, 6, 7, 8, 9, 11, 12, 14], // H
         [1, 0, 1, 2, 3, 4], // I
         [3, 2, 5, 8, 9, 11, 12, 13, 14], // J
-        [3, 0, 2, 3, 4, 6, 9, 10, 12, 14], // K
+        [3, 0, 2, 3, 5, 6, 7, 9, 11, 12, 14], // K
         [3, 0, 3, 6, 9, 12, 13, 14], // L
         [4, 0, 3, 4, 5, 7, 8, 10, 11, 12, 15, 16, 19], // M
         [3, 0, 2, 3, 4, 5, 6, 8, 9, 11, 12, 14], // N
-        [3, 0, 1, 2, 3, 5, 6, 8, 9, 11, 12, 13, 14], // O
+        [3, 1, 3, 5, 6, 8, 9, 11, 13], // O
         [3, 0, 1, 2, 3, 5, 6, 7, 8, 9, 12], // P
         [3, 0, 1, 2, 3, 5, 6, 8, 9, 10, 11, 12, 13, 14], // Q
         [3, 0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 12, 14], // R
-        [3, 0, 1, 2, 3, 6, 7, 8, 11, 12, 13, 14], // S
+        [3, 1, 2, 3, 7, 11, 12, 13], // S
         [3, 0, 1, 2, 4, 7, 10, 13], // T
         [3, 0, 2, 3, 5, 6, 8, 9, 11, 12, 13, 14], // U
         [3, 0, 2, 3, 5, 6, 8, 10, 13], // V
@@ -158,6 +164,12 @@ module letter(ch, letter_forms) {
     }
 }
 
+module base_layer(rows, cols) {
+    color_part("black")
+        translate([-DX/2, -rows*DX/2, 0])
+            cube([cols * DX, rows * DX, BASE_THICKNESS]);
+}
+
 function missing_tiles(tiles, rows, cols) =
     [for (i = [0: rows * cols - 1]) if (indexof(i, tiles) == -1) i];
 
@@ -201,6 +213,7 @@ module all_character_test() {
 
 module quick_test() {
     message("KOSS");
+    base_layer(5, 15);
 }
 
 //all_character_test();
