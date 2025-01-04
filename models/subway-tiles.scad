@@ -7,14 +7,16 @@
 // black - Base layer (and border tiles).
 COLOR_FILTER = "all";
 
-TILE_WIDTH = 20;
+TILE_WIDTH = 10;
 TILE_DEPTH = 3;
-TILE_SPACING = 1;
-CHAMFER_RADIUS = 1;
+TILE_SPACING = 0.5;
+CHAMFER_RADIUS = 0.5;
 CHAMFER_STEPS = 3;
 BASE_THICKNESS = 1;
 
 DX = TILE_WIDTH + TILE_SPACING;
+
+include <fonts-3x5.scad>;
 
 module T() {
     x0 = TILE_WIDTH / 2;
@@ -62,59 +64,6 @@ module tile_line(cols) {
             T();
     }
 }
-
-// Mostly 3x5 but a couple of 4x5
-// First number is columns used
-// Remaining are indicies starting with 0 at top left.
-ALPHA5_CAPS = [
-    5, // Count of Rows for all letters
-    ord("A"), // First letter in list
-    [
-        [3, 1, 3, 5, 6, 7, 8, 9, 11, 12, 14], // A
-        [3, 0, 1, 2, 3, 5, 6, 7, 8, 9, 11, 12, 13, 14], // B
-        [3, 0, 1, 2, 3, 6, 9, 12, 13, 14], // C
-        [3, 0, 1, 3, 5, 6, 8, 9, 11, 12, 13], // D
-        [3, 0, 1, 2, 3, 6, 7, 8, 9, 12, 13, 14], // E
-        [3, 0, 1, 2, 3, 6, 7, 8, 9, 12], // F
-        [3, 0, 1, 2, 3, 6, 8, 9, 11, 12, 13, 14], // G
-        [3, 0, 2, 3, 5, 6, 7, 8, 9, 11, 12, 14], // H
-        [1, 0, 1, 2, 3, 4], // I
-        [3, 2, 5, 8, 9, 11, 12, 13, 14], // J
-        [3, 0, 2, 3, 5, 6, 7, 9, 11, 12, 14], // K
-        [3, 0, 3, 6, 9, 12, 13, 14], // L
-        [4, 0, 3, 4, 5, 7, 8, 10, 11, 12, 15, 16, 19], // M
-        [3, 0, 2, 3, 4, 5, 6, 8, 9, 11, 12, 14], // N
-        [3, 1, 3, 5, 6, 8, 9, 11, 13], // O
-        [3, 0, 1, 2, 3, 5, 6, 7, 8, 9, 12], // P
-        [3, 0, 1, 2, 3, 5, 6, 8, 9, 10, 11, 12, 13, 14], // Q
-        [3, 0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 12, 14], // R
-        [3, 1, 2, 3, 7, 11, 12, 13], // S
-        [3, 0, 1, 2, 4, 7, 10, 13], // T
-        [3, 0, 2, 3, 5, 6, 8, 9, 11, 12, 13, 14], // U
-        [3, 0, 2, 3, 5, 6, 8, 10, 13], // V
-        [4, 0, 3, 4, 7, 8, 10, 11, 12, 13, 15, 16, 19], // W
-        [3, 0, 2, 4, 7, 10, 12, 14], // X
-        [3, 0, 2, 4, 7, 10, 13], // Y
-        [3, 0, 1, 2, 5, 7, 9, 12, 13, 14] // Z
-    ]
-];
-
-NUMERIC5 = [
-    5, // Number of rows
-    ord("0"), // First digit in the list ('0')
-    [
-        [3, 0, 1, 2, 3, 5, 6, 8, 9, 11, 12, 13, 14], // 0
-        [3, 1, 3, 4, 7, 10, 12, 13, 14], // 1
-        [3, 0, 1, 2, 5, 6, 7, 8, 9, 12, 13, 14], // 2
-        [3, 0, 1, 2, 5, 6, 7, 8, 11, 12, 13, 14], // 3
-        [3, 0, 2, 3, 5, 6, 7, 8, 11, 14], // 4
-        [3, 0, 1, 2, 3, 6, 7, 8, 11, 12, 13, 14], // 5
-        [3, 0, 1, 2, 3, 6, 7, 8, 9, 11, 12, 13, 14], // 6
-        [3, 0, 1, 2, 5, 8, 11, 14], // 7
-        [3, 0, 1, 2, 3, 5, 6, 7, 8, 9, 11, 12, 13, 14], // 8
-        [3, 0, 1, 2, 3, 5, 6, 7, 8, 11, 14] // 9
-    ]
-];
 
 function rows_of(letter_forms) = letter_forms[0];
 function index_of(ch, letter_forms) = ord(ch) - letter_forms[1];
@@ -178,6 +127,7 @@ function flatten(l) = [ for (a = l) for (b = a) b ];
 function tail(v) = len(v) > 1 ? [for (i = [1:len(v)-1]) v[i]] : [];
 function cumsum(v) = [for (a=0, b=v[0]; a < len(v); a= a+1, b=b+(v[a]==undef?0:v[a])) b];
 function indexof(v, l) = let (s = search(v, l)) len(s) == 0 ? -1 : s[0];
+function maxvalue(v) = let (a = [for (i=0, m=v[0]; i < len(v); i= i+1, m=max(m,v[i]==undef?m:v[i])) m]) a[len(a)-1];
 
 // Need to be able to conditionally render parts based on color (for
 // export to Bambu Studio for slicing.
@@ -186,8 +136,6 @@ module color_part(c) {
         color(c) children();
     }
 }
-
-
 
 module all_character_test() {
     MAX_LINE = measure_message("HELLO WORLD", ALPHA5_CAPS);
@@ -218,4 +166,7 @@ module quick_test() {
 
 //all_character_test();
 quick_test();
+echo([4,5,6][-1]);
+echo(maxvalue([1,7,3]));
+
 
