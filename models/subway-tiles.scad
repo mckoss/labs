@@ -51,10 +51,10 @@ module T() {
     polyhedron(points=tile_points, faces=tile_faces);
 }
 
-// Center rows - but left align columns
+// Top align rows and left align columns
 module tiles(list, rows=5, cols=3) {
     for (i = [0:len(list)-1]) {
-        row = floor(list[i] / cols) - (rows - 1)/2;
+        row = floor(list[i] / cols);
         col = list[i] % cols;
         translate([col * DX, -row * DX, BASE_THICKNESS])
             T();
@@ -112,14 +112,11 @@ module sign(lines, letter_forms=ALPHA5_CAPS) {
     
     // Horizontal inter-line background
     for (i = [0:len(lines)-2]) {
-        translate([0, -DX * ((rows + 1)/2 + (rows + 1) * i), 0])
+        translate([0, -DX * ((rows + 1) * (i + 1) - 1), 0])
             color_part("white") tile_line(max_width);
     }
     
-    base_height = (rows + 1) * len(lines) - 1;
-    // The first line is centered vertically on the x axis (y = 0).
-    translate([0, DX * (rows/2 - base_height), 0])
-        base_layer(base_height, max_width);
+    base_layer((rows + 1) * len(lines) - 1, max_width);
 }
 
 module message(s, letter_forms=ALPHA5_CAPS) {
@@ -164,9 +161,10 @@ module letter(ch, letter_forms) {
 }
 
 module base_layer(rows, cols) {
+    height = rows * DX - TILE_SPACING;
     color_part("black")
-        translate([-DX/2, 0, 0])
-            cube([cols * DX, rows * DX, BASE_THICKNESS]);
+        translate([-TILE_WIDTH/2, TILE_WIDTH/2 - height, 0])
+            cube([cols * DX - TILE_SPACING, height, BASE_THICKNESS]);
 }
 
 function missing_tiles(tiles, rows, cols) =
