@@ -115,6 +115,11 @@ module sign(lines, letter_forms=ALPHA5_CAPS) {
         translate([0, -DX * ((rows + 1)/2 + (rows + 1) * i), 0])
             color_part("white") tile_line(max_width);
     }
+    
+    base_height = (rows + 1) * len(lines) - 1;
+    // The first line is centered vertically on the x axis (y = 0).
+    translate([0, DX * (rows/2 - base_height), 0])
+        base_layer(base_height, max_width);
 }
 
 module message(s, letter_forms=ALPHA5_CAPS) {
@@ -160,7 +165,7 @@ module letter(ch, letter_forms) {
 
 module base_layer(rows, cols) {
     color_part("black")
-        translate([-DX/2, -rows*DX/2, 0])
+        translate([-DX/2, 0, 0])
             cube([cols * DX, rows * DX, BASE_THICKNESS]);
 }
 
@@ -204,13 +209,7 @@ module all_character_test() {
         message("HELLO WORLD");
 }
 
-module quick_test() {
-    message("KOSS");
-    base_layer(5, 15);
-}
-
 //all_character_test();
-//quick_test();
 
 sign(["SWEET", "HOME", "ALABAMA"]);
 
