@@ -56,15 +56,32 @@ module tiles(list, rows=5, cols=3) {
     for (i = [0:len(list)-1]) {
         row = floor(list[i] / cols);
         col = list[i] % cols;
-        translate([col * DX, -row * DX, BASE_THICKNESS])
-            T();
+        tile_at(row, col);
     }
+}
+
+module tile_at(row, col) {
+    translate([col * DX, -row * DX, BASE_THICKNESS])
+        T();
 }
 
 module tile_line(cols) {
     for (i = [0: cols - 1]) {
         translate([i * DX, 0, BASE_THICKNESS])
             T();
+    }
+}
+
+// rect = [left, top, right, bottom]
+module tile_box(rect) {
+    // Horizontal parts
+    for (col = [rect[0]:rect[2]]) {
+        tile_at(rect[1], col);
+        tile_at(rect[3], col);
+    }
+    for (row = [rect[1]:rect[3]]) {
+        tile_at(row, rect[0]);
+        tile_at(row, rect[2]);
     }
 }
 
@@ -116,7 +133,18 @@ module sign(lines, letter_forms=ALPHA5_CAPS) {
             color_part("white") tile_line(max_width);
     }
     
-    base_layer((rows + 1) * len(lines) - 1, max_width);
+    text_rows = (rows + 1) * len(lines) - 1;
+    border = SURROUND_TILES + BORDER_TILES;
+    translate([-DX * border, DX * border, 0])
+        base_layer(text_rows + 2 * border, max_width + 2 * border);
+    
+    for (i = [0: SURROUND_TILES - 1]) {
+        color_part("white") tile_box([-i-1, -i-1, max_width+i, text_rows+i]);
+    }
+    
+    for (i = [SURROUND_TILES: SURROUND_TILES + BORDER_TILES -1]) {
+        color_part("black") tile_box([-i-1, -i-1, max_width+i, text_rows+i]);
+    }
 }
 
 module message(s, letter_forms=ALPHA5_CAPS) {
@@ -209,7 +237,4 @@ module all_character_test() {
 
 //all_character_test();
 
-sign(["SWEET", "HOME", "ALABAMA"]);
-
-
-
+sign(["CAROL", "KOSS"]);
