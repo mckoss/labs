@@ -8,6 +8,8 @@ CHAMFER_STEPS = 3;
 
 DX = TILE_WIDTH + TILE_SPACING;
 
+COLOR_FILTER = "all";
+
 module T() {
     x0 = TILE_WIDTH / 2;
     d = TILE_DEPTH;
@@ -126,7 +128,7 @@ module message(s, letter_forms=ALPHA5_CAPS) {
         // Draw white tile column between letters
         if (i != len(s)-1) {
             translate([(offsets[i+1] - 1) * DX, 0, 0]) {
-                    color("white") tiles([for (row = [0: rows - 1]) row], rows, 1);
+                    color_part("white") tiles([for (row = [0: rows - 1]) row], rows, 1);
             }
         }
     }
@@ -146,13 +148,13 @@ module letter(ch, letter_forms) {
         cols = raw_tiles[0];
         blue_tiles = tail(raw_tiles);
         white_tiles = missing_tiles(blue_tiles, rows, cols);
-        color("blue") tiles(blue_tiles, rows, cols);
+        color_part("blue") tiles(blue_tiles, rows, cols);
         if (len(white_tiles) > 0) {
-            color("white") tiles(white_tiles, rows, cols);
+            color_part("white") tiles(white_tiles, rows, cols);
         }
     } else {
         // Treat unknown character as a space - a single blank column.
-        color("white") tiles([for (row = [0: rows - 1]) row], rows, 1);
+        color_part("white") tiles([for (row = [0: rows - 1]) row], rows, 1);
     }
 }
 
@@ -165,28 +167,42 @@ function tail(v) = len(v) > 1 ? [for (i = [1:len(v)-1]) v[i]] : [];
 function cumsum(v) = [for (a=0, b=v[0]; a < len(v); a= a+1, b=b+(v[a]==undef?0:v[a])) b];
 function indexof(v, l) = let (s = search(v, l)) len(s) == 0 ? -1 : s[0];
 
-MAX_LINE = measure_message("HELLO WORLD", ALPHA5_CAPS);
-for (i = [0:7]) {
-    translate([0, 9*DX - 6*i*DX, 0])
-        color("white") tile_line(MAX_LINE);
+// Need to be able to conditionally render parts based on color (for
+// export to Bambu Studio for slicing.
+module color_part(c) {
+    if (COLOR_FILTER == "all" || c == COLOR_FILTER) {
+        color(c) children();
+    }
 }
-translate([0, DX*6, 0])
-    message("0123456789", NUMERIC5);
-message("ABCDEF");
-translate([0, -DX * 6, 0])
-    message("GHIJKL");
-translate([0, -DX * 12, 0])
-    message("MNOPQR");
-translate([0, -DX * 18, 0])
-    message("STUVWX");
-translate([0, -DX*24, 0])
-    message("YZ");
-translate([0, -DX*30, 0])
-    message("HELLO WORLD");
+
+
+
+module all_character_test() {
+    MAX_LINE = measure_message("HELLO WORLD", ALPHA5_CAPS);
+    for (i = [0:7]) {
+        translate([0, 9*DX - 6*i*DX, 0])
+            color_part("white") tile_line(MAX_LINE);
+    }
     
-echo(indexof(2, [3, 2, 1]));
+    translate([0, DX*6, 0])
+        message("0123456789", NUMERIC5);
+    message("ABCDEF");
+    translate([0, -DX * 6, 0])
+        message("GHIJKL");
+    translate([0, -DX * 12, 0])
+        message("MNOPQR");
+    translate([0, -DX * 18, 0])
+        message("STUVWX");
+    translate([0, -DX*24, 0])
+        message("YZ");
+    translate([0, -DX*30, 0])
+        message("HELLO WORLD");
+}
 
-echo(missing_tiles(tail(tile_list("A", ALPHA5_CAPS)), 5, 3));
+module quick_test() {
+    message("KOSS");
+}
 
-
+//all_character_test();
+quick_test();
 
