@@ -85,19 +85,11 @@ module tile_box(rect) {
     }
 }
 
-function rows_of(letter_forms) = letter_forms[0];
-function index_of(ch, letter_forms) = ord(ch) - letter_forms[1];
-function is_member(ch, letter_forms) =
-    let (index = index_of(ch, letter_forms))
-    index >= 0 && index < len(letter_forms[2]);
-function tile_list(ch, letter_forms) = letter_forms[2][index_of(ch, letter_forms)];
-
 // Generate a sign with a order and background surround.
 module sign(lines, letter_forms=ALPHA5_CAPS) {
     line_widths = [for (m = lines) measure_message(m, letter_forms)];
     rows = rows_of(letter_forms);
     max_width = maxvalue(line_widths);
-    echo(line_widths, max_width);
     
     // Text lines (centered)
     for (i = [0:len(lines)-1]) {
@@ -195,6 +187,34 @@ module base_layer(rows, cols) {
             cube([cols * DX - TILE_SPACING, height, BASE_THICKNESS]);
 }
 
+// Letter-form data structure utilities.
+function rows_of(letter_forms) = letter_forms[0];
+function index_of(ch, letter_forms) = ord(ch) - letter_forms[1];
+function is_member(ch, letter_forms) =
+    let (index = index_of(ch, letter_forms))
+    index >= 0 && index < len(letter_forms[2]);
+function tile_list(ch, letter_forms) = letter_forms[2][index_of(ch, letter_forms)];
+
+module font_sampler(letter_forms=ALPHA5_CAPS) {
+    num_symbols = len(letter_forms[2]);
+    start_code = letter_forms[1];
+    end_code = start_code + num_symbols - 1;
+    
+    // Favor more width - since letters are generally taller.
+    cols = floor(sqrt(num_symbols) * 1.5);
+    rows = ceil(num_symbols / cols);
+    
+    echo(rows, cols, num_symbols);
+    
+    lines = [for (row = [0: rows - 1])
+        let (start = start_code + cols * row,
+             end = min(end_code, start_code + cols * (row + 1) - 1))
+            [for (c = [start: end]) chr(c)]
+        ];
+    sign(lines);
+}
+
+// Compute the negative space of a letter matrix.
 function missing_tiles(tiles, rows, cols) =
     [for (i = [0: rows * cols - 1]) if (indexof(i, tiles) == -1) i];
 
@@ -213,28 +233,6 @@ module color_part(c) {
     }
 }
 
-module all_character_test() {
-    MAX_LINE = measure_message("HELLO WORLD", ALPHA5_CAPS);
-    for (i = [0:7]) {
-        translate([0, 9*DX - 6*i*DX, 0])
-            color_part("white") tile_line(MAX_LINE);
-    }
-    
-    translate([0, DX*6, 0])
-        message("0123456789", NUMERIC5);
-    message("ABCDEF");
-    translate([0, -DX * 6, 0])
-        message("GHIJKL");
-    translate([0, -DX * 12, 0])
-        message("MNOPQR");
-    translate([0, -DX * 18, 0])
-        message("STUVWX");
-    translate([0, -DX*24, 0])
-        message("YZ");
-    translate([0, -DX*30, 0])
-        message("HELLO WORLD");
-}
+font_sampler(ALPHA5_CAPS);
 
-//all_character_test();
-
-sign(["CAROL", "KOSS"]);
+//sign(["CAROL", "KOSS"]);
