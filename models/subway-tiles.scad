@@ -14,6 +14,9 @@ CHAMFER_RADIUS = 0.5;
 CHAMFER_STEPS = 3;
 BASE_THICKNESS = 1;
 
+BORDER_TILES = 1;
+SURROUND_TILES = 1;
+
 DX = TILE_WIDTH + TILE_SPACING;
 
 include <fonts-3x5.scad>;
@@ -60,7 +63,7 @@ module tiles(list, rows=5, cols=3) {
 
 module tile_line(cols) {
     for (i = [0: cols - 1]) {
-        translate([i * DX, 0, 0])
+        translate([i * DX, 0, BASE_THICKNESS])
             T();
     }
 }
@@ -72,11 +75,53 @@ function is_member(ch, letter_forms) =
     index >= 0 && index < len(letter_forms[2]);
 function tile_list(ch, letter_forms) = letter_forms[2][index_of(ch, letter_forms)];
 
+// Generate a sign with a order and background surround.
+module sign(lines, letter_forms=ALPHA5_CAPS) {
+    line_widths = [for (m = lines) measure_message(m, letter_forms)];
+    rows = rows_of(letter_forms);
+    max_width = maxvalue(line_widths);
+    echo(line_widths, max_width);
+    
+    // Text lines (centered)
+    for (i = [0:len(lines)-1]) {
+        width = line_widths[i];
+        extra = max_width - width;
+        left = floor(extra/2);
+        right = extra - left;
+        translate([0, -(rows + 1) * i * DX, 0]) {
+            translate([left * DX, 0, 0])
+                message(lines[i], letter_forms);
+        
+            // Left padding
+            if (left > 0) {
+                for (j = [0:left - 1]) {
+                    translate([DX * j, 0, 0])
+                        color_part("white") tiles([for (row = [0: rows - 1]) row], rows, 1);
+                }
+            }
+            
+            // Right padding
+            if (right > 0) {
+                for (j = [0:right - 1]) {
+                    translate([DX * (left + width + j), 0, 0])
+                        color_part("white") tiles([for (row = [0: rows - 1]) row], rows, 1);
+                }
+            }
+        }
+    }
+    
+    // Horizontal inter-line background
+    for (i = [0:len(lines)-2]) {
+        translate([0, -DX * ((rows + 1)/2 + (rows + 1) * i), 0])
+            color_part("white") tile_line(max_width);
+    }
+}
 
 module message(s, letter_forms=ALPHA5_CAPS) {
     DX = TILE_WIDTH + TILE_SPACING;
     offsets = message_offsets(s, letter_forms);
     rows = rows_of(letter_forms);
+
     for (i = [0:len(s)-1]) {
         translate([offsets[i] * DX, 0, 0])
             letter(s[i], letter_forms);
@@ -165,8 +210,9 @@ module quick_test() {
 }
 
 //all_character_test();
-quick_test();
-echo([4,5,6][-1]);
-echo(maxvalue([1,7,3]));
+//quick_test();
+
+sign(["SWEET", "HOME", "ALABAMA"]);
+
 
 
