@@ -195,7 +195,7 @@ function is_member(ch, letter_forms) =
     index >= 0 && index < len(letter_forms[2]);
 function tile_list(ch, letter_forms) = letter_forms[2][index_of(ch, letter_forms)];
 
-module font_sampler(letter_forms=ALPHA5_CAPS) {
+module font_sampler(letter_forms) {
     num_symbols = len(letter_forms[2]);
     start_code = letter_forms[1];
     end_code = start_code + num_symbols - 1;
@@ -211,7 +211,7 @@ module font_sampler(letter_forms=ALPHA5_CAPS) {
              end = min(end_code, start_code + cols * (row + 1) - 1))
             [for (c = [start: end]) chr(c)]
         ];
-    sign(lines);
+    sign(lines, letter_forms);
 }
 
 // Compute the negative space of a letter matrix.
@@ -233,6 +233,6 @@ module color_part(c) {
     }
 }
 
-font_sampler(ALPHA5_CAPS);
+font_sampler(ASCII_3X5);
 
 //sign(["CAROL", "KOSS"]);
