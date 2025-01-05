@@ -86,7 +86,7 @@ module tile_box(rect) {
 }
 
 // Generate a sign with a order and background surround.
-module sign(lines, letter_forms=ALPHA5_CAPS) {
+module sign(lines, letter_forms=ASCII_3X5) {
     line_widths = [for (m = lines) measure_message(m, letter_forms)];
     rows = rows_of(letter_forms);
     max_width = maxvalue(line_widths);
@@ -139,7 +139,7 @@ module sign(lines, letter_forms=ALPHA5_CAPS) {
     }
 }
 
-module message(s, letter_forms=ALPHA5_CAPS) {
+module message(s, letter_forms=ASCII_3X5) {
     DX = TILE_WIDTH + TILE_SPACING;
     offsets = message_offsets(s, letter_forms);
     rows = rows_of(letter_forms);
