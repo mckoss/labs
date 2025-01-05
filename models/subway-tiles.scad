@@ -5,6 +5,7 @@
 // blue - Letter tiles
 // white - Background tiles
 // black - Base layer (and border tiles).
+// all - Display all colors.
 COLOR_FILTER = "all";
 
 TILE_WIDTH = 10;
@@ -233,6 +234,6 @@ module color_part(c) {
     }
 }
 
-font_sampler(ASCII_3X5);
+//font_sampler(ASCII_3X5);
 
-//sign(["CAROL", "KOSS"]);
+sign(["HOME", "SWEET", "SAMPLE"]);
