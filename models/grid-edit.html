@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grid Editor</title>
+    <style>
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .controls label, .controls input, .controls button {
+            margin-right: 10px;
+        }
+        .output {
+            margin-top: 10px;
+            white-space: pre-wrap;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <label for="rows">Rows:</label>
+        <input type="number" id="rows" name="rows" value="5" min="1">
+        <label for="columns">Columns:</label>
+        <input type="number" id="columns" name="columns" value="3" min="1">
+        <button id="updateGrid">Update Grid</button>
+    </div>
+    <svg width="300" height="500" id="gridSvg">
+        <defs>
+            <pattern id="smallGrid" width="100" height="100" patternUnits="userSpaceOnUse">
+                <path d="M 100 0 L 0 0 0 100" fill="none" stroke="gray" stroke-width="2"/>
+                <path d="M 0 0 L 100 100 M 100 0 L 0 100" fill="none" stroke="black" stroke-width="2"/>
+            </pattern>
+            <pattern id="grid" width="300" height="500" patternUnits="userSpaceOnUse">
+                <rect width="300" height="500" fill="url(#smallGrid)"/>
+                <path d="M 300 0 L 0 0 0 500 M 0 500 L 300 500 M 300 0 L 300 500" fill="none" stroke="black" stroke-width="2"/>
+            </pattern>
+        </defs>
+        <rect width="300" height="500" fill="url(#grid)" />
+        <g id="triangles">
+            <!-- Generate triangles dynamically using JavaScript -->
+        </g>
+    </svg>
+    <div class="output" id="output"></div>
+    <textarea id="jsonInput" class="output" rows="4" placeholder="Paste JSON here to reset grid"></textarea>
+    <button id="resetGrid">Reset Grid</button>
+    <script>
+        const svgNS = "http://www.w3.org/2000/svg";
+        const trianglesGroup = document.getElementById('triangles');
+        const gridSvg = document.getElementById('gridSvg');
+        const rowsInput = document.getElementById('rows');
+        const columnsInput = document.getElementById('columns');
+        const updateGridButton = document.getElementById('updateGrid');
+        const output = document.getElementById('output');
+        const jsonInput = document.getElementById('jsonInput');
+        const resetGridButton = document.getElementById('resetGrid');
+
+        function updateOutput() {
+            const blueSquares = [];
+            const triangles = trianglesGroup.querySelectorAll('polygon');
+            const rows = parseInt(rowsInput.value);
+            const columns = parseInt(columnsInput.value);
+
+            blueSquares.push(columns); // Add columns as the first element
+
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < columns; col++) {
+                    const index = row * columns + col;
+                    const triangleIndex = index * 4;
+                    const triangleColors = Array.from(triangles).slice(triangleIndex, triangleIndex + 4).map(triangle => triangle.getAttribute('fill'));
+                    const blueCount = triangleColors.filter(color => color === 'blue').length;
+
+                    if (blueCount === 4) {
+                        blueSquares.push(index);
+                    } else if (blueCount === 2) {
+                        const directions = [1, 3, 5, 7];
+                        const direction = directions[triangleColors.findIndex((color, i) => color === 'blue' && triangleColors[(i + 1) % 4] === 'blue')];
+                        blueSquares.push([index, direction]);
+                    }
+                }
+            }
+
+            output.textContent = JSON.stringify(blueSquares);
+        }
+
+        function createGrid(rows, columns) {
+            trianglesGroup.innerHTML = '';
+            const width = columns * 100;
+            const height = rows * 100;
+            gridSvg.setAttribute('width', width);
+            gridSvg.setAttribute('height', height);
+
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < columns; col++) {
+                    const x = col * 100;
+                    const y = row * 100;
+
+                    const points = [
+                        `${x},${y} ${x + 50},${y + 50} ${x + 100},${y}`,
+                        `${x + 100},${y} ${x + 50},${y + 50} ${x + 100},${y + 100}`,
+                        `${x},${y + 100} ${x + 50},${y + 50} ${x + 100},${y + 100}`,
+                        `${x},${y} ${x + 50},${y + 50} ${x},${y + 100}`
+                    ];
+
+                    const triangles = points.map(pointStr => {
+                        const triangle = document.createElementNS(svgNS, 'polygon');
+                        triangle.setAttribute('points', pointStr);
+                        triangle.setAttribute('fill', 'white');
+                        triangle.setAttribute('stroke', 'black');
+                        triangle.setAttribute('stroke-width', '2');
+                        triangle.addEventListener('click', (event) => {
+                            const newColor = triangle.getAttribute('fill') === 'white' ? 'blue' : 'white';
+                            if (event.shiftKey) {
+                                triangles.forEach(tri => tri.setAttribute('fill', newColor));
+                            } else {
+                                triangle.setAttribute('fill', newColor);
+                            }
+                            updateOutput();
+                        });
+                        trianglesGroup.appendChild(triangle);
+                        return triangle;
+                    });
+                }
+            }
+            updateOutput();
+        }
+
+        function resetGridFromJson(json) {
+            try {
+                const blueSquares = JSON.parse(json);
+                const columns = blueSquares.shift(); // Extract columns from the first element
+                columnsInput.value = columns; // Update columns input
+                const rows = parseInt(rowsInput.value); // Preserve the current number of rows
+                createGrid(rows, columns);
+
+                const triangles = trianglesGroup.querySelectorAll('polygon');
+                triangles.forEach(triangle => triangle.setAttribute('fill', 'white'));
+
+                blueSquares.forEach(item => {
+                    if (typeof item === 'number') {
+                        const triangleIndex = item * 4;
+                        for (let i = 0; i < 4; i++) {
+                            triangles[triangleIndex + i].setAttribute('fill', 'blue');
+                        }
+                    } else if (Array.isArray(item) && item.length === 2) {
+                        const [index, direction] = item;
+                        const triangleIndex = index * 4;
+                        const directions = [1, 3, 5, 7];
+                        const trianglePos = directions.indexOf(direction);
+                        if (trianglePos !== -1) {
+                            triangles[triangleIndex + trianglePos].setAttribute('fill', 'blue');
+                            triangles[triangleIndex + (trianglePos + 1) % 4].setAttribute('fill', 'blue');
+                        }
+                    }
+                });
+                updateOutput();
+            } catch (e) {
+                alert('Invalid JSON');
+            }
+        }
+
+        updateGridButton.addEventListener('click', () => {
+            const rows = parseInt(rowsInput.value);
+            const columns = parseInt(columnsInput.value);
+            createGrid(rows, columns);
+        });
+
+        resetGridButton.addEventListener('click', () => {
+            const json = jsonInput.value;
+            resetGridFromJson(json);
+        });
+
+        createGrid(5, 3); // Initial grid
+    </script>
+</body>
+</html>
