@@ -15,6 +15,9 @@
 // where C is the number of columns of width used by the character
 // and the indices are the row-major sequential index into the character
 // array (starting at zero for the uper left).
+//
+// Use the grid editor at https://mckoss.com/labs/models/grid-edit.html
+// to modify individual letters.
 ASCII_3X5 = [
     5,         // Number of rows
     33,        // ASCII code of first character ('!')
@@ -227,10 +230,10 @@ ASCII_5_T = [
         [3,6,8,[9,1],10,[11,7],[12,3],[13,7]], // 121 'y'
         [2,4,5,[6,3],[7,7],8,9], // 122 'z'
 
-        [3, 1,2,4,6,7,10,13,14], // 123 '{'
+        [3,[1,3],2,4,6,7,10,[13,1],14], // 123 '{'
         [1, 0,1,3,4], // 124 '|'
-        [3, 0,1,4,7,8,10,12,13], // 125 '}'
-        [3, 2,3,4,5,6] // 126 '~'
+        [3,0,[1,5],4,7,8,10,12,[13,7]], // 125 '}'
+        [3,[2,5],[3,3],4,[5,7],[6,1]] // 126 '~'
     ]
 ];
 
