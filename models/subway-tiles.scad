@@ -55,15 +55,36 @@ module T() {
 // Top align rows and left align columns
 module tiles(list, rows=5, cols=3) {
     for (i = [0:len(list)-1]) {
-        row = floor(list[i] / cols);
-        col = list[i] % cols;
-        tile_at(row, col);
+        if (is_num(list[i])) {
+            row = floor(list[i] / cols);
+            col = list[i] % cols;
+            tile_at(row, col);
+        } else {
+            row = floor(list[i][0] / cols);
+            col = list[i][0] % cols;
+            half_tile_at(row, col, list[i][1]);
+        }
     }
 }
 
 module tile_at(row, col) {
     translate([col * DX, -row * DX, BASE_THICKNESS])
         T();
+}
+
+// Triangular halves (clockwise) at rot 1, 3, 5, and 7.
+module half_tile_at(row, col, rot) {
+    translate([col * DX, -row * DX, BASE_THICKNESS])
+        // Force a render here - because openscad will otherwise bleed the
+        // color in the subtracted region to unrelated parts!
+        render()
+        difference() {
+            T();
+            rotate(180 - 45 * rot)
+                translate([0, TILE_WIDTH - TILE_SPACING / 2, TILE_DEPTH / 2])
+                    cube([2 * TILE_WIDTH, 2 * TILE_WIDTH, 2 * TILE_DEPTH], center=true);
+        }
+            
 }
 
 module tile_line(cols) {
@@ -73,6 +94,9 @@ module tile_line(cols) {
     }
 }
 
+// Draw a rectangular (1 tile wide) rectangle
+// at the given coordinates.
+//
 // rect = [left, top, right, bottom]
 module tile_box(rect) {
     // Horizontal parts
@@ -205,8 +229,6 @@ module font_sampler(letter_forms) {
     cols = floor(sqrt(num_symbols) * 1.5);
     rows = ceil(num_symbols / cols);
     
-    echo(rows, cols, num_symbols);
-    
     lines = [for (row = [0: rows - 1])
         let (start = start_code + cols * row,
              end = min(end_code, start_code + cols * (row + 1) - 1))
@@ -217,7 +239,12 @@ module font_sampler(letter_forms) {
 
 // Compute the negative space of a letter matrix.
 function missing_tiles(tiles, rows, cols) =
-    [for (i = [0: rows * cols - 1]) if (indexof(i, tiles) == -1) i];
+    concat(
+        [for (i = [0: rows * cols - 1]) if (indexof(i, tiles) == -1) i],
+        complementary_triangles(tiles));
+        
+function complementary_triangles(tiles) =
+    [for (t = tiles) if (is_list(t)) [t[0], (t[1] + 4) % 8] ];
 
 // List/vector helper functions
 function flatten(l) = [ for (a = l) for (b = a) b ];
@@ -234,6 +261,6 @@ module color_part(c) {
     }
 }
 
-//font_sampler(ASCII_3X5);
+font_sampler(ASCII_5_T);
 
-sign(["HOME", "SWEET", "SAMPLE"]);
+//sign(["HOME", "SWEET", "SAMPLE"]);
