@@ -18,7 +18,7 @@
 //
 // Use the grid editor at https://mckoss.com/labs/models/grid-edit.html
 // to modify individual letters.
-ASCII_3X5 = [
+ASCII_3x5 = [
     5,         // Number of rows
     33,        // ASCII code of first character ('!')
     [

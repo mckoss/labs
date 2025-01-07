@@ -6,7 +6,22 @@
 // white - Background tiles
 // black - Base layer (and border tiles).
 // all - Display all colors.
-COLOR_FILTER = "all";
+COLOR_FILTER = "all"; // ["all", "black", "white", "blue"]
+
+// ASCII_3x5 is blockier and ASCII_5_T is smoothed with half-tile triangles
+FONT_CHOICE = "ASCII_5_T"; // ["ASCII_5_T", "ASCII_3x5"]
+
+// Display a font sampler instead of a sign.
+SHOW_FONT = false;
+
+// Display a sign with up to 4 lines of text.
+FIRST_LINE = "Hello";
+// Leave line black to not use it.
+SECOND_LINE = "World";
+THIRD_LINE = "";
+FOURTH_LINE = "";
+
+
 
 TILE_WIDTH = 10;
 TILE_DEPTH = 3;
@@ -22,12 +37,18 @@ DX = TILE_WIDTH + TILE_SPACING;
 
 include <fonts-3x5.scad>;
 
+// Function to select the font based on FONT_CHOICE
+function get_font_choice() =
+    FONT_CHOICE == "ASCII_5_T" ? ASCII_5_T :
+    FONT_CHOICE == "ASCII_3x5" ? ASCII_3x5 :
+    ASCII_5_T; // Default to ASCII_5_T if no match
+
 module T() {
     x0 = TILE_WIDTH / 2;
     d = TILE_DEPTH;
     r = CHAMFER_RADIUS;
     z0 = d - r;
-    
+
     tile_points = concat(
         [[-x0, -x0, 0], [x0, -x0, 0], [x0, x0, 0], [-x0, x0, 0]],
         flatten([for (i = [0 : CHAMFER_STEPS])
@@ -84,7 +105,7 @@ module half_tile_at(row, col, rot) {
                 translate([0, TILE_WIDTH - TILE_SPACING / 2, TILE_DEPTH / 2])
                     cube([2 * TILE_WIDTH, 2 * TILE_WIDTH, 2 * TILE_DEPTH], center=true);
         }
-            
+
 }
 
 module tile_line(cols) {
@@ -111,11 +132,11 @@ module tile_box(rect) {
 }
 
 // Generate a sign with a order and background surround.
-module sign(lines, letter_forms=ASCII_5_T) {
+module sign(lines, letter_forms=get_font_choice()) {
     line_widths = [for (m = lines) measure_message(m, letter_forms)];
     rows = rows_of(letter_forms);
     max_width = maxvalue(line_widths);
-    
+
     // Text lines (centered)
     for (i = [0:len(lines)-1]) {
         width = line_widths[i];
@@ -125,7 +146,7 @@ module sign(lines, letter_forms=ASCII_5_T) {
         translate([0, -(rows + 1) * i * DX, 0]) {
             translate([left * DX, 0, 0])
                 message(lines[i], letter_forms);
-        
+
             // Left padding
             if (left > 0) {
                 for (j = [0:left - 1]) {
@@ -133,7 +154,7 @@ module sign(lines, letter_forms=ASCII_5_T) {
                         color_part("white") tiles([for (row = [0: rows - 1]) row], rows, 1);
                 }
             }
-            
+
             // Right padding
             if (right > 0) {
                 for (j = [0:right - 1]) {
@@ -143,29 +164,28 @@ module sign(lines, letter_forms=ASCII_5_T) {
             }
         }
     }
-    
+
     // Horizontal inter-line background
     for (i = [0:len(lines)-2]) {
         translate([0, -DX * ((rows + 1) * (i + 1) - 1), 0])
             color_part("white") tile_line(max_width);
     }
-    
+
     text_rows = (rows + 1) * len(lines) - 1;
     border = SURROUND_TILES + BORDER_TILES;
     translate([-DX * border, DX * border, 0])
         base_layer(text_rows + 2 * border, max_width + 2 * border);
-    
+
     for (i = [0: SURROUND_TILES - 1]) {
         color_part("white") tile_box([-i-1, -i-1, max_width+i, text_rows+i]);
     }
-    
+
     for (i = [SURROUND_TILES: SURROUND_TILES + BORDER_TILES -1]) {
         color_part("black") tile_box([-i-1, -i-1, max_width+i, text_rows+i]);
     }
 }
 
-module message(s, letter_forms=ASCII_5_T) {
-    DX = TILE_WIDTH + TILE_SPACING;
+module message(s, letter_forms=get_font_choice()) {
     offsets = message_offsets(s, letter_forms);
     rows = rows_of(letter_forms);
 
@@ -184,11 +204,11 @@ module message(s, letter_forms=ASCII_5_T) {
 function message_offsets(s, letter_forms) =
     cumsum([0, for (i = [0:len(s)-1])
         is_member(s[i], letter_forms) ? tile_list(s[i], letter_forms)[0] + 1 : 2]);
-    
+
 function measure_message(s, letter_forms) =
     let (offsets = message_offsets(s, letter_forms)) offsets[len(offsets) - 1] - 1;
 
-module letter(ch, letter_forms) {
+module letter(ch, letter_forms=get_font_choice()) {
     rows = rows_of(letter_forms);
     if (is_member(ch, letter_forms)) {
         raw_tiles = tile_list(ch, letter_forms);
@@ -220,15 +240,15 @@ function is_member(ch, letter_forms) =
     index >= 0 && index < len(letter_forms[2]);
 function tile_list(ch, letter_forms) = letter_forms[2][index_of(ch, letter_forms)];
 
-module font_sampler(letter_forms) {
+module font_sampler(letter_forms=get_font_choice()) {
     num_symbols = len(letter_forms[2]);
     start_code = letter_forms[1];
     end_code = start_code + num_symbols - 1;
-    
+
     // Favor more width - since letters are generally taller.
     cols = floor(sqrt(num_symbols) * 1.5);
     rows = ceil(num_symbols / cols);
-    
+
     lines = [for (row = [0: rows - 1])
         let (start = start_code + cols * row,
              end = min(end_code, start_code + cols * (row + 1) - 1))
@@ -242,7 +262,7 @@ function missing_tiles(tiles, rows, cols) =
     concat(
         [for (i = [0: rows * cols - 1]) if (indexof(i, tiles) == -1) i],
         complementary_triangles(tiles));
-        
+
 function complementary_triangles(tiles) =
     [for (t = tiles) if (is_list(t)) [t[0], (t[1] + 4) % 8] ];
 
@@ -261,5 +281,10 @@ module color_part(c) {
     }
 }
 
-font_sampler(ASCII_5_T);
+if (SHOW_FONT) {
+    font_sampler();
+} else {
+    sign([for (t = [FIRST_LINE, SECOND_LINE, THIRD_LINE, FOURTH_LINE]) if (t != "") t]);
+}
+        
 
