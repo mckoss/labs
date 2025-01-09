@@ -9,7 +9,7 @@
 COLOR_FILTER = "all"; // ["all", "black", "white", "blue"]
 
 // ASCII_3x5 is blockier and ASCII_5_T is smoothed with half-tile triangles
-FONT_CHOICE = "ASCII_5_T"; // ["ASCII_5_T", "ASCII_3x5"]
+FONT_CHOICE = "Tiny 3x5 Bias"; // ["Tiny 3x5", "Tiny 3x5 Bias"]
 
 // Display a font sampler instead of a sign.
 SHOW_FONT = false;
@@ -21,13 +21,17 @@ SECOND_LINE = "World";
 THIRD_LINE = "";
 FOURTH_LINE = "";
 
-
-
+// Individual tile size (mm)
 TILE_WIDTH = 10;
+// Thickness of a tile (mm)
 TILE_DEPTH = 3;
+// The "grout" thickness between tiles (mm)
 TILE_SPACING = 0.5;
+// Radius of chamfer (rounded corners) (mm)
 CHAMFER_RADIUS = 0.5;
+// Resolution of curve (number of steps from top to side) (mm)
 CHAMFER_STEPS = 3;
+// Thickness of flat sheet connecting all tiles (mm)
 BASE_THICKNESS = 1;
 
 BORDER_TILES = 1;
@@ -39,9 +43,9 @@ include <fonts-3x5.scad>;
 
 // Function to select the font based on FONT_CHOICE
 function get_font_choice() =
-    FONT_CHOICE == "ASCII_5_T" ? ASCII_5_T :
-    FONT_CHOICE == "ASCII_3x5" ? ASCII_3x5 :
-    ASCII_5_T; // Default to ASCII_5_T if no match
+    FONT_CHOICE == "Tiny 3x5" ? TINY_3x5 :
+    FONT_CHOICE == "Tiny 3x5 Bias" ? TINY_3x5_BIAS :
+    TINY_3x5_BIAS; // Default to ASCII_5_T if no match
 
 module T() {
     x0 = TILE_WIDTH / 2;

@@ -1,4 +1,19 @@
-// This is a slightly modified version of the 3x5 font
+// Tiny 3x5 Fonts
+//
+// (c) 1980, 2025 Mike Koss
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+// associated documentation files (the “Software”), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all copies or substantial
+// portions of the Software.
+//
+// There are two fonts in the "Tiny 3x5" family.
+//
+// The first is a slightly modified version of the 3x5 font
 // I created in 1980 for the Apple ][.  It is no longer
 // monospaced as there are some 1 and 2 column symbols here
 // as well.
@@ -7,18 +22,19 @@
 // rounded style.  I think that improves readability and also
 // distinguishes numbers from letters more.
 //
-// This font uses only square pixels (no triangular half-tiles).
+// This font uses only square pixels.
 //
 // The encoding for each character is:
+//
 //     [C, I1, I2, ..., In]
 //
 // where C is the number of columns of width used by the character
-// and the indices are the row-major sequential index into the character
+// and the indices are the row-major sequential indices into the character
 // array (starting at zero for the uper left).
 //
 // Use the grid editor at https://mckoss.com/labs/models/grid-edit.html
 // to modify individual letters.
-ASCII_3x5 = [
+TINY_3x5 = [
     5,         // Number of rows
     33,        // ASCII code of first character ('!')
     [
@@ -125,10 +141,15 @@ ASCII_3x5 = [
     ]
 ];
 
+// Tiny 3x5 Bias
+//
 // This font expands on the previous one to increase legibility.
 // It incorporates triagular half-pixels in some letters, as well
 // as allowing for 4 column characters where needed (like, M and W).
-ASCII_5_T = [
+//
+// Thanks you to Redditor u/Stone_Age_Sculptor for suggesting improvements
+// to "1" and "f". (Jan 2025)
+TINY_3x5_BIAS = [
     5,         // Number of rows
     33,        // ASCII code of first character ('!')
     [
@@ -149,7 +170,7 @@ ASCII_5_T = [
         [3,[2,3],[4,3],5,[6,3],7,[8,7],9,[10,7],[12,7]], //  47 '/'
 
         [3,[0,3],1,[2,5],3,[4,3],5,6,7,8,9,[10,7],11,[12,1],13,[14,7]], //  48 '0'
-        [3,1,[3,3],4,7,10,13], //  49 '1'
+        [2,[0,3],1,3,5,7,9], //  49 '1'
         [3,[0,3],1,[2,5],3,5,[7,3],[8,7],[9,3],[10,7],12,13,14], //  50 '2'
         [3,[0,3],1,[2,5],5,7,8,11,[12,1],13,[14,7]], //  51 '3'
         [3, 0,2,3,5,6,7,8,11,14], //  52 '4'
@@ -206,7 +227,7 @@ ASCII_5_T = [
         [3,[6,3],7,[8,5],9,[12,1],13,[14,7]], //  99 'c'
         [3,[2,3],5,[6,3],7,8,9,11,[12,1],13,[14,7]], // 100 'd'
         [3,[6,3],7,[8,5],9,[10,3],[11,7],[12,1],13,[14,7]], // 101 'e'
-        [3, 1,2,4,6,7,8,10,13], // 102 'f'
+        [3,[1,3],2,4,6,7,8,10,13], // 102 'f'
         [3,[3,3],4,[5,5],6,8,[9,1],10,11,12,13,[14,7]], // 103 'g'
         [3,[0,5],3,6,7,[8,5],9,11,12,14], // 104 'h'
         [1,[1,7],[2,3],3,4], // 105 'i'
