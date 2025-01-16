@@ -30,7 +30,7 @@
 //
 // where C is the number of columns of width used by the character
 // and the indices are the row-major sequential indices into the character
-// array (starting at zero for the uper left).
+// array (starting at zero for the upper left).
 //
 // Use the grid editor at https://mckoss.com/labs/models/grid-edit.html
 // to modify individual letters.
