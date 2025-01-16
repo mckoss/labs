@@ -5,7 +5,7 @@ INCH = 25.4;
 D = 3 * INCH;
 H = 1 * INCH;
 
-SLOT_WIDTH = 1/8 * INCH;
+SLOT_WIDTH = 1/4 * INCH;
 
 WALL_THICKNESS = 4;
 
