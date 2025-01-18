@@ -2,26 +2,31 @@
 
 // This module uses colors as:
 //
-// blue - Letter tiles
+// blue - Letter tiles (default color)
 // white - Background tiles
 // black - Base layer (and border tiles).
+// red - Alternate letter color
+// green - Alternate letter color
 // all - Display all colors.
-COLOR_FILTER = "all"; // ["all", "black", "white", "blue"]
+COLOR_FILTER = "all"; // ["all", "black", "white", "blue", "red", "green"]
 
-// ASCII_3x5 is blockier and ASCII_5_T is smoothed with half-tile triangles
+// Tiny 3x5 is blockier and Tiny 3x5 Bias is smoothed with half-tile triangles
 FONT_CHOICE = "Tiny 3x5 Bias"; // ["Tiny 3x5", "Tiny 3x5 Bias"]
 
 // Display a font sampler instead of a sign.
 SHOW_FONT = false;
 
-// Display a sign with up to 4 lines of text.
+// Display a sign with up to 4 lines of text.  Use ~r to switch to red letters.
 FIRST_LINE = "Hello";
 // Leave line black to not use it.
-SECOND_LINE = "World";
+SECOND_LINE = "~r~~~bWorld~r~~";
 THIRD_LINE = "";
 FOURTH_LINE = "";
 
-// Individual tile size (mm)
+// Control character for color change
+// Followed by "r", "g", "b", "k", or "w" for red, green, blue, black, or white.
+COLOR_CHANGE = "~";
+
 TILE_WIDTH = 10;
 // Thickness of a tile (mm)
 TILE_DEPTH = 3;
@@ -43,9 +48,9 @@ include <fonts-3x5.scad>;
 
 // Function to select the font based on FONT_CHOICE
 function get_font_choice() =
-    FONT_CHOICE == "Tiny 3x5" ? TINY_3x5 :
     FONT_CHOICE == "Tiny 3x5 Bias" ? TINY_3x5_BIAS :
-    TINY_3x5_BIAS; // Default to ASCII_5_T if no match
+    FONT_CHOICE == "Tiny 3x5" ? TINY_3x5 :
+    TINY_3x5_BIAS; // Default to Tiny 3x5 Bias if no match
 
 module T() {
     x0 = TILE_WIDTH / 2;
@@ -189,37 +194,68 @@ module sign(lines, letter_forms=get_font_choice()) {
     }
 }
 
+// Function to map color codes to actual colors
+// The letter "i" is reserved for "invisible" color (letter skipped
+// because it is part of a color change command).
+function get_color_from_code(code) =
+    code == "r" ? "red" :
+    code == "g" ? "green" :
+    code == "b" ? "blue" :
+    code == "k" ? "black" :
+    code == "w" ? "white" :
+    "blue"; // Default color
+
 module message(s, letter_forms=get_font_choice()) {
-    offsets = message_offsets(s, letter_forms);
+    visible = visible_letters(s);
+    offsets = message_offsets(s, visible, letter_forms);
+    colors = message_colors(s, visible);
     rows = rows_of(letter_forms);
 
     for (i = [0:len(s)-1]) {
-        translate([offsets[i] * DX, 0, 0])
-            letter(s[i], letter_forms);
-        // Draw white tile column between letters
-        if (i != len(s)-1) {
-            translate([(offsets[i+1] - 1) * DX, 0, 0]) {
+        if (visible[i]) {
+            translate([offsets[i] * DX, 0, 0])
+                letter(s[i], letter_forms, get_color_from_code(colors[i]));
+            // Draw white tile column between letters
+            if (i != len(s)-1) {
+                translate([(offsets[i+1] - 1) * DX, 0, 0]) {
                     color_part("white") tiles([for (row = [0: rows - 1]) row], rows, 1);
+                }
             }
         }
     }
 }
 
-function message_offsets(s, letter_forms) =
+// Boolean array indicating whether a letter in a message string
+// is visible (vs. being a command character).
+function visible_letters(m) =
+    [for (i=0, after_prefix = false;
+          i < len(m);
+          after_prefix = !after_prefix && m[i] == COLOR_CHANGE,
+          i = i + 1)
+     after_prefix && m[i] == COLOR_CHANGE || !after_prefix && m[i] != COLOR_CHANGE];
+
+function message_offsets(s, visible, letter_forms) =
     cumsum([0, for (i = [0:len(s)-1])
+        !visible[i] ? 0 :
         is_member(s[i], letter_forms) ? tile_list(s[i], letter_forms)[0] + 1 : 2]);
 
-function measure_message(s, letter_forms) =
-    let (offsets = message_offsets(s, letter_forms)) offsets[len(offsets) - 1] - 1;
+function message_colors(s, visible) =
+    [for (i = 0, current_color = "b"; i < len(s);
+          i = i + 1,
+          current_color = i > 0 && s[i-1] == COLOR_CHANGE && !visible[i] ? s[i] : current_color)
+        current_color];
 
-module letter(ch, letter_forms=get_font_choice()) {
+function measure_message(s, letter_forms) =
+    let (offsets = message_offsets(s, visible_letters(s), letter_forms)) offsets[len(offsets) - 1] - 1;
+
+module letter(ch, letter_forms=get_font_choice(), color="blue") {
     rows = rows_of(letter_forms);
     if (is_member(ch, letter_forms)) {
         raw_tiles = tile_list(ch, letter_forms);
         cols = raw_tiles[0];
         blue_tiles = tail(raw_tiles);
         white_tiles = missing_tiles(blue_tiles, rows, cols);
-        color_part("blue") tiles(blue_tiles, rows, cols);
+        color_part(color) tiles(blue_tiles, rows, cols);
         if (len(white_tiles) > 0) {
             color_part("white") tiles(white_tiles, rows, cols);
         }
@@ -241,7 +277,7 @@ function rows_of(letter_forms) = letter_forms[0];
 function index_of(ch, letter_forms) = ord(ch) - letter_forms[1];
 function is_member(ch, letter_forms) =
     let (index = index_of(ch, letter_forms))
-    index >= 0 && index < len(letter_forms[2]);
+    index != undef && index >= 0 && index < len(letter_forms[2]);
 function tile_list(ch, letter_forms) = letter_forms[2][index_of(ch, letter_forms)];
 
 module font_sampler(letter_forms=get_font_choice()) {
@@ -275,7 +311,7 @@ function flatten(l) = [ for (a = l) for (b = a) b ];
 function tail(v) = len(v) > 1 ? [for (i = [1:len(v)-1]) v[i]] : [];
 function cumsum(v) = [for (a=0, b=v[0]; a < len(v); a= a+1, b=b+(v[a]==undef?0:v[a])) b];
 function indexof(v, l) = let (s = search(v, l)) len(s) == 0 ? -1 : s[0];
-function maxvalue(v) = let (a = [for (i=0, m=v[0]; i < len(v); i= i+1, m=max(m,v[i]==undef?m:v[i])) m]) a[len(a)-1];
+function maxvalue(v) = max(v);
 
 // Need to be able to conditionally render parts based on color (for
 // export to Bambu Studio for slicing.
@@ -290,5 +326,5 @@ if (SHOW_FONT) {
 } else {
     sign([for (t = [FIRST_LINE, SECOND_LINE, THIRD_LINE, FOURTH_LINE]) if (t != "") t]);
 }
-        
+
 
