@@ -8,7 +8,7 @@
 // red - Alternate letter color
 // green - Alternate letter color
 // all - Display all colors.
-COLOR_FILTER = "all"; // ["all", "black", "white", "blue", "red", "green"]
+COLOR_FILTER = "all"; // ["black", "white", "blue", "red", "green"];
 
 // Tiny 3x5 is blockier and Tiny 3x5 Bias is smoothed with half-tile triangles
 FONT_CHOICE = "Tiny 3x5 Bias"; // ["Tiny 3x5", "Tiny 3x5 Bias"]
@@ -316,7 +316,13 @@ function maxvalue(v) = max(v);
 // Need to be able to conditionally render parts based on color (for
 // export to Bambu Studio for slicing.
 module color_part(c) {
-    if (COLOR_FILTER == "all" || c == COLOR_FILTER) {
+    if (is_list(COLOR_FILTER)) {
+        for(color = COLOR_FILTER) {
+            if (color == c) {
+                color(c) children();
+            }
+        }
+    } else if (COLOR_FILTER == "all" || c == COLOR_FILTER) {
         color(c) children();
     }
 }
