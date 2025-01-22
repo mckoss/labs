@@ -140,7 +140,7 @@ module tile_box(rect) {
     }
 }
 
-// Generate a sign with a order and background surround.
+// Generate a sign with a border and background surround.
 module sign(lines, letter_forms=get_font_choice()) {
     line_widths = [for (m = lines) measure_message(m, letter_forms)];
     rows = rows_of(letter_forms);
@@ -175,9 +175,11 @@ module sign(lines, letter_forms=get_font_choice()) {
     }
 
     // Horizontal inter-line background
-    for (i = [0:len(lines)-2]) {
-        translate([0, -DX * ((rows + 1) * (i + 1) - 1), 0])
-            color_part("white") tile_line(max_width);
+    if (len(lines) > 1) {
+        for (i = [0:len(lines)-2]) {
+            translate([0, -DX * ((rows + 1) * (i + 1) - 1), 0])
+                color_part("white") tile_line(max_width);
+        }
     }
 
     text_rows = (rows + 1) * len(lines) - 1;
@@ -185,12 +187,16 @@ module sign(lines, letter_forms=get_font_choice()) {
     translate([-DX * border, DX * border, 0])
         base_layer(text_rows + 2 * border, max_width + 2 * border);
 
-    for (i = [0: SURROUND_TILES - 1]) {
-        color_part("white") tile_box([-i-1, -i-1, max_width+i, text_rows+i]);
+    if (SURROUND_TILES > 0) {
+        for (i = [0: SURROUND_TILES - 1]) {
+            color_part("white") tile_box([-i-1, -i-1, max_width+i, text_rows+i]);
+        }
     }
 
-    for (i = [SURROUND_TILES: SURROUND_TILES + BORDER_TILES -1]) {
-        color_part("black") tile_box([-i-1, -i-1, max_width+i, text_rows+i]);
+    if (BORDER_TILES > 0) {
+        for (i = [SURROUND_TILES: SURROUND_TILES + BORDER_TILES - 1]) {
+            color_part("black") tile_box([-i-1, -i-1, max_width+i, text_rows+i]);
+        }
     }
 }
 
