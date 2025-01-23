@@ -19,8 +19,8 @@ SHOW_FONT = false;
 // Display a sign with up to 4 lines of text.  Use ~r to switch to red letters.
 FIRST_LINE = "Hello";
 // Leave line black to not use it.
-SECOND_LINE = "~r~~~bWorld~r~~";
-THIRD_LINE = "";
+SECOND_LINE = "World";
+THIRD_LINE = "♠~r♡♢~b♣";
 FOURTH_LINE = "";
 
 // Control character for color change
@@ -46,11 +46,8 @@ DX = TILE_WIDTH + TILE_SPACING;
 
 include <fonts-3x5.scad>;
 
-// Function to select the font based on FONT_CHOICE
-function get_font_choice() =
-    FONT_CHOICE == "Tiny 3x5 Bias" ? TINY_3x5_BIAS :
-    FONT_CHOICE == "Tiny 3x5" ? TINY_3x5 :
-    TINY_3x5_BIAS; // Default to Tiny 3x5 Bias if no match
+FONT_SET = [FONT_CHOICE == "Tiny 3x5" ? TINY_3x5 : TINY_3x5_BIAS,
+            TINY_3x5_SUITS];
 
 module T() {
     x0 = TILE_WIDTH / 2;
@@ -141,9 +138,9 @@ module tile_box(rect) {
 }
 
 // Generate a sign with a border and background surround.
-module sign(lines, letter_forms=get_font_choice()) {
-    line_widths = [for (m = lines) measure_message(m, letter_forms)];
-    rows = rows_of(letter_forms);
+module sign(lines, letter_forms_list=FONT_SET) {
+    line_widths = [for (m = lines) measure_message(m, font_indices(m, visible_letters(m), letter_forms_list), letter_forms_list)];
+    rows = rows_of(letter_forms_list[0]);
     max_width = maxvalue(line_widths);
 
     // Text lines (centered)
@@ -154,7 +151,7 @@ module sign(lines, letter_forms=get_font_choice()) {
         right = extra - left;
         translate([0, -(rows + 1) * i * DX, 0]) {
             translate([left * DX, 0, 0])
-                message(lines[i], letter_forms);
+                message(lines[i], letter_forms_list);
 
             // Left padding
             if (left > 0) {
@@ -211,16 +208,18 @@ function get_color_from_code(code) =
     code == "w" ? "white" :
     "blue"; // Default color
 
-module message(s, letter_forms=get_font_choice()) {
+module message(s, letter_forms_list=FONT_SET) {
     visible = visible_letters(s);
-    offsets = message_offsets(s, visible, letter_forms);
+    fonts = font_indices(s, visible, letter_forms_list);
+    offsets = message_offsets(s, visible, fonts, letter_forms_list);
     colors = message_colors(s, visible);
-    rows = rows_of(letter_forms);
+    // Assumes all fonts have same height.
+    rows = rows_of(letter_forms_list[0]);
 
     for (i = [0:len(s)-1]) {
         if (visible[i]) {
             translate([offsets[i] * DX, 0, 0])
-                letter(s[i], letter_forms, get_color_from_code(colors[i]));
+                letter(s[i], letter_forms_list[fonts[i]], get_color_from_code(colors[i]));
             // Draw white tile column between letters
             if (i != len(s)-1) {
                 translate([(offsets[i+1] - 1) * DX, 0, 0]) {
@@ -240,10 +239,10 @@ function visible_letters(m) =
           i = i + 1)
      after_prefix && m[i] == COLOR_CHANGE || !after_prefix && m[i] != COLOR_CHANGE];
 
-function message_offsets(s, visible, letter_forms) =
+function message_offsets(s, visible, fonts, letter_forms_list) =
     cumsum([0, for (i = [0:len(s)-1])
         !visible[i] ? 0 :
-        is_member(s[i], letter_forms) ? tile_list(s[i], letter_forms)[0] + 1 : 2]);
+        is_member(s[i], letter_forms_list[fonts[i]]) ? tile_list(s[i], letter_forms_list[fonts[i]])[0] + 1 : 2]);
 
 function message_colors(s, visible) =
     [for (i = 0, current_color = "b"; i < len(s);
@@ -251,11 +250,14 @@ function message_colors(s, visible) =
           current_color = i > 0 && s[i-1] == COLOR_CHANGE && !visible[i] ? s[i] : current_color)
         current_color];
 
-function measure_message(s, letter_forms) =
-    let (offsets = message_offsets(s, visible_letters(s), letter_forms)) offsets[len(offsets) - 1] - 1;
+function measure_message(s, fonts, letter_forms_list) =
+    let (offsets = message_offsets(s, visible_letters(s), fonts, letter_forms_list))
+    len(offsets) > 0 ? offsets[len(offsets) - 1] - 1 : 0;
 
-module letter(ch, letter_forms=get_font_choice(), color="blue") {
+module letter(ch, letter_forms, color="blue") {
+    // Assumes all fonts in list have the same height.
     rows = rows_of(letter_forms);
+
     if (is_member(ch, letter_forms)) {
         raw_tiles = tile_list(ch, letter_forms);
         cols = raw_tiles[0];
@@ -286,7 +288,20 @@ function is_member(ch, letter_forms) =
     index != undef && index >= 0 && index < len(letter_forms[2]);
 function tile_list(ch, letter_forms) = letter_forms[2][index_of(ch, letter_forms)];
 
-module font_sampler(letter_forms=get_font_choice()) {
+// Find the indices of a character in a list of letter forms.
+// Returns an array in indices - one per font.
+function font_index(ch, letter_forms_list) =
+    [for (i = [0:len(letter_forms_list)-1]) is_member(ch, letter_forms_list[i]) ? i : undef ];
+
+// Returns an array of font indices, 1 per printable character in the message.
+function font_indices(m, visible, letter_forms_list) =
+    [for (i = [0:len(m)-1]) if (visible[i]) first_defined_index(font_index(m[i], letter_forms_list)) else undef];
+
+function first_defined_index(a) =
+    let (r = [for (i = [0 : len(a) - 1]) if (a[i] != undef) i])
+    len(r) > 0 ? r[0] : undef;
+
+module font_sampler(letter_forms=FONT_SET[0]) {
     num_symbols = len(letter_forms[2]);
     start_code = letter_forms[1];
     end_code = start_code + num_symbols - 1;
@@ -300,7 +315,7 @@ module font_sampler(letter_forms=get_font_choice()) {
              end = min(end_code, start_code + cols * (row + 1) - 1))
             [for (c = [start: end]) chr(c)]
         ];
-    sign(lines, letter_forms);
+    sign(lines, [letter_forms]);
 }
 
 // Compute the negative space of a letter matrix.
@@ -332,5 +347,3 @@ if (SHOW_FONT) {
 } else {
     sign([for (t = [FIRST_LINE, SECOND_LINE, THIRD_LINE, FOURTH_LINE]) if (t != "") t]);
 }
-
-

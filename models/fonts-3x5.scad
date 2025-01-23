@@ -256,3 +256,17 @@ TINY_3x5_BIAS = [
     ]
 ];
 
+// Unicode suit characters (spades, hearts, diamonds, clubs) "♠♡♢♣"
+// The heart is really the only good one here.
+// And they are all filled in, rather than outlined as in most unicode fonts.
+TINY_3x5_SUITS = [
+    5,         // Number of rows
+    9824,      // Unicode code of first character (♠)
+    [
+        [4,[1,3],[2,5],[4,3],5,6,[7,5],8,9,10,11,[12,1],13,14,[15,7],[17,3],[18,5]],            // 9824 '♠'
+        [4,[4,3],[5,5],[6,3],[7,5],[8,1],9,10,[11,7],[13,1],[14,7]], // 9825 '♡'
+        [4,[5,3],[6,5],[8,3],9,10,[11,5],[12,1],13,14,[15,7],[17,1],[18,7]],                          // 9826 '♢'
+        [4,[5,3],[6,5],[8,3],[9,3],[10,5],[11,5],[12,1],[13,1],[14,7],[15,7],[17,3],[18,5]], // 9827 '♣'
+    ]
+];
+
