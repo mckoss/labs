@@ -8,6 +8,16 @@
 // red - Alternate letter color
 // green - Alternate letter color
 // all - Display all colors.
+// [Customizer values listed for dropdown]
+
+/* [Layout and Printing Options] */
+
+// Number of rows of black tiles forming a border.
+BORDER_TILES = 1;
+// Number of rows of black tiles around lettering.
+SURROUND_TILES = 1;
+
+// Which colors to print.
 COLOR_FILTER = "all"; // ["all", "black", "white", "blue", "red", "green"]
 
 // Tiny 3x5 is blockier and Tiny 3x5 Bias is smoothed with half-tile triangles
@@ -16,33 +26,38 @@ FONT_CHOICE = "Tiny 3x5 Bias"; // ["Tiny 3x5", "Tiny 3x5 Bias"]
 // Display a font sampler instead of a sign.
 SHOW_FONT = false;
 
+/* [Text] */
+
 // Display a sign with up to 4 lines of text.  Use ~r to switch to red letters.
 FIRST_LINE = "Hello";
-// Leave line black to not use it.
+
+// Leave line blank to omit it.
 SECOND_LINE = "World";
 THIRD_LINE = "♠~r♡♢~b♣";
 FOURTH_LINE = "";
 
-// Control character for color change
-// Followed by "r", "g", "b", "k", or "w" for red, green, blue, black, or white.
-COLOR_CHANGE = "~";
+/* [Dimensions] */
 
+// Size of tile (mm)
 TILE_WIDTH = 10;
-// Thickness of a tile (mm)
+// Thickness of tiles (mm)
 TILE_DEPTH = 3;
 // The "grout" thickness between tiles (mm)
 TILE_SPACING = 0.5;
 // Radius of chamfer (rounded corners) (mm)
 CHAMFER_RADIUS = 0.5;
-// Resolution of curve (number of steps from top to side) (mm)
+// Resolution of curve (number of steps from top to side)
 CHAMFER_STEPS = 3;
 // Thickness of flat sheet connecting all tiles (mm)
-BASE_THICKNESS = 1;
-
-BORDER_TILES = 1;
-SURROUND_TILES = 1;
+BASE_THICKNESS = 1.0; // [0:0.1:5]
 
 DX = TILE_WIDTH + TILE_SPACING;
+
+/* [Hidden] */
+
+// Control character for color change
+// Followed by "r", "g", "b", "k", or "w" for red, green, blue, black, or white.
+COLOR_CHANGE = "~";
 
 include <fonts-3x5.scad>;
 
