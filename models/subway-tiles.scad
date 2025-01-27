@@ -234,7 +234,7 @@ module message(s, letter_forms_list=FONT_SET) {
     for (i = [0:len(s)-1]) {
         if (visible[i]) {
             translate([offsets[i] * DX, 0, 0])
-                letter(s[i], letter_forms_list[fonts[i]], get_color_from_code(colors[i]));
+                letter(s[i], rows, letter_forms_list[fonts[i]], get_color_from_code(colors[i]));
             // Draw white tile column between letters
             if (i != len(s)-1) {
                 translate([(offsets[i+1] - 1) * DX, 0, 0]) {
@@ -257,7 +257,8 @@ function visible_letters(m) =
 function message_offsets(s, visible, fonts, letter_forms_list) =
     cumsum([0, for (i = [0:len(s)-1])
         !visible[i] ? 0 :
-        is_member(s[i], letter_forms_list[fonts[i]]) ? tile_list(s[i], letter_forms_list[fonts[i]])[0] + 1 : 2]);
+        fonts[i] != undef && is_member(s[i], letter_forms_list[fonts[i]]) ? tile_list(s[i], letter_forms_list[fonts[i]])[0] + 1 :
+        2]);
 
 function message_colors(s, visible) =
     [for (i = 0, current_color = "b"; i < len(s);
@@ -269,10 +270,7 @@ function measure_message(s, fonts, letter_forms_list) =
     let (offsets = message_offsets(s, visible_letters(s), fonts, letter_forms_list))
     len(offsets) > 0 ? offsets[len(offsets) - 1] - 1 : 0;
 
-module letter(ch, letter_forms, color="blue") {
-    // Assumes all fonts in list have the same height.
-    rows = rows_of(letter_forms);
-
+module letter(ch, rows, letter_forms, color="blue") {
     if (is_member(ch, letter_forms)) {
         raw_tiles = tile_list(ch, letter_forms);
         cols = raw_tiles[0];
@@ -297,7 +295,7 @@ module base_layer(rows, cols) {
 
 // Letter-form data structure utilities.
 function rows_of(letter_forms) = letter_forms[0];
-function index_of(ch, letter_forms) = ord(ch) - letter_forms[1];
+function index_of(ch, letter_forms) = letter_forms != undef ? ord(ch) - letter_forms[1] : undef;
 function is_member(ch, letter_forms) =
     let (index = index_of(ch, letter_forms))
     index != undef && index >= 0 && index < len(letter_forms[2]);
