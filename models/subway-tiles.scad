@@ -29,11 +29,11 @@ SHOW_FONT = false;
 /* [Text] */
 
 // Display a sign with up to 4 lines of text.  Use ~r to switch to red letters.
-FIRST_LINE = "Hello";
+FIRST_LINE = "I~r♡~bNY";
 
 // Leave line blank to omit it.
-SECOND_LINE = "World";
-THIRD_LINE = "♠~r♡♢~b♣";
+SECOND_LINE = "";
+THIRD_LINE = "";
 FOURTH_LINE = "";
 
 /* [Dimensions] */
