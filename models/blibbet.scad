@@ -5,7 +5,7 @@ COLOR_FILTER = "all"; // ["all", "white", "black"]
 
 RADIUS = 40;
 THICKNESS = 5;
-BASE_THICKNESS = 1;
+BASE_THICKNESS = 0.8;
 
 SLICE_GAP = 1.2;
 
@@ -23,6 +23,8 @@ BEVEL_DEPTH = THICKNESS/4;
 E = 0.1;
 
 $fn = 200;
+
+FONT = "Arial";
 
 TOP_GAPS = [for (i=[0:7]) RADIUS - LARGE_SLICE_THICKNESS - i * SLICE_SPACING];
 CENTER_GAPS = [for (y=TOP_GAPS) y-SLICE_GAP/2];
@@ -82,9 +84,35 @@ module color_part(c) {
     }
 }
 
+module engrave(word, h, t, dy=0) {
+  difference() {
+    children();
+    rotate([0, 180, 0])
+      translate([0, dy, -t+E])
+        write(word, h, t);
+  }
+}
+
+module write(word, h, t){
+  linear_extrude(height=t)
+    text(word, font=FONT, size=h, halign="center", valign="center");
+}
+
 color_part("black")
-  translate([0, 0, BASE_THICKNESS])
+  translate([0, 0, 3*BASE_THICKNESS])
     blibbet();
 
 color_part("white")
-  cylinder(h=BASE_THICKNESS, r=RADIUS);
+  engrave("Excel", 10, BASE_THICKNESS+2*E, 15)
+  engrave("XL", 10, BASE_THICKNESS+2*E, -15)
+  engrave("9/30/2025", 4, BASE_THICKNESS+2*E, -30)
+  engrave("Sept. 30, 1985", 6, BASE_THICKNESS+2*E)
+    cylinder(h=BASE_THICKNESS, r=RADIUS);
+
+color_part("black")
+  translate([0, 0, BASE_THICKNESS])
+    cylinder(h=BASE_THICKNESS, r=RADIUS);
+
+color_part("white")
+  translate([0, 0, 2*BASE_THICKNESS])
+    cylinder(h=BASE_THICKNESS, r=RADIUS);
