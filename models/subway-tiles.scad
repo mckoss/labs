@@ -23,6 +23,11 @@ COLOR_FILTER = "all"; // ["all", "black", "white", "blue", "red", "green"]
 // Tiny 3x5 is blockier and Tiny 3x5 Bias is smoothed with half-tile triangles
 FONT_CHOICE = "Tiny 3x5 Bias"; // ["Tiny 3x5", "Tiny 3x5 Bias"]
 
+// Change to print a range of (tile) columns of a sign (inclusive of the border and surround tiles).
+FIRST_COLUMN = 0;
+// Negative values count back from the right edge of the sign.
+LAST_COLUMN = -1;
+
 // Display a font sampler instead of a sign.
 SHOW_FONT = false;
 
@@ -31,7 +36,7 @@ SHOW_FONT = false;
 // Display a sign with up to 4 lines of text.  Use ~r to switch to red letters.
 FIRST_LINE = "I~r♡~bNY";
 
-// Leave line blank to omit it.
+// Leave lines blank to omit them.
 SECOND_LINE = "";
 THIRD_LINE = "";
 FOURTH_LINE = "";
@@ -95,44 +100,56 @@ module T() {
 }
 
 // Top align rows and left align columns
-module tiles(list, rows=5, cols=3) {
+module tiles(list, rows=5, cols=3, col_offset=0, total_columns) {
     for (i = [0:len(list)-1]) {
         if (is_num(list[i])) {
             row = floor(list[i] / cols);
             col = list[i] % cols;
-            tile_at(row, col);
+            tile_at(row, col + col_offset, total_columns);
         } else {
             row = floor(list[i][0] / cols);
             col = list[i][0] % cols;
-            half_tile_at(row, col, list[i][1]);
+            half_tile_at(row, col + col_offset, list[i][1], total_columns);
         }
     }
 }
 
-module tile_at(row, col) {
-    translate([col * DX, -row * DX, BASE_THICKNESS])
-        T();
+// All tiles rendering goes through these two functions - so we can use
+// it to filter which columns are displayed.  Note that the text
+// columns start at 0 and so FIRST_COLUMN is relative to -border-surround.
+module tile_at(row, col, total_columns) {
+    extent = tile_column_extent(total_columns);
+    if (col >= extent[0] && col <= extent[1]) {
+        translate([col * DX, -row * DX, BASE_THICKNESS])
+            T();
+    }
 }
 
 // Triangular halves (clockwise) at rot 1, 3, 5, and 7.
-module half_tile_at(row, col, rot) {
-    translate([col * DX, -row * DX, BASE_THICKNESS])
-        // Force a render here - because openscad will otherwise bleed the
-        // color in the subtracted region to unrelated parts!
-        render()
-        difference() {
-            T();
-            rotate(180 - 45 * rot)
-                translate([0, TILE_WIDTH - TILE_SPACING / 2, TILE_DEPTH / 2])
-                    cube([2 * TILE_WIDTH, 2 * TILE_WIDTH, 2 * TILE_DEPTH], center=true);
-        }
-
+module half_tile_at(row, col, rot, total_columns) {
+    extent = tile_column_extent(total_columns);
+    if (col >= extent[0] && col <= extent[1]) {
+        translate([col * DX, -row * DX, BASE_THICKNESS])
+            // Force a render here - because openscad will otherwise bleed the
+            // color in the subtracted region to unrelated parts!
+            render()
+            difference() {
+                T();
+                rotate(180 - 45 * rot)
+                    translate([0, TILE_WIDTH - TILE_SPACING / 2, TILE_DEPTH / 2])
+                        cube([2 * TILE_WIDTH, 2 * TILE_WIDTH, 2 * TILE_DEPTH], center=true);
+            }
+    }
 }
 
-module tile_line(cols) {
+function tile_column_extent(total_columns) =
+    let (first_column = FIRST_COLUMN - BORDER_TILES - SURROUND_TILES,
+         last_column = (LAST_COLUMN - BORDER_TILES - SURROUND_TILES + total_columns) % total_columns)
+    [first_column, last_column];
+
+module tile_line(cols, total_columns) {
     for (i = [0: cols - 1]) {
-        translate([i * DX, 0, BASE_THICKNESS])
-            T();
+        tile_at(0, i, total_columns);
     }
 }
 
@@ -140,15 +157,15 @@ module tile_line(cols) {
 // at the given coordinates.
 //
 // rect = [left, top, right, bottom]
-module tile_box(rect) {
+module tile_box(rect, total_columns) {
     // Horizontal parts
     for (col = [rect[0]:rect[2]]) {
-        tile_at(rect[1], col);
-        tile_at(rect[3], col);
+        tile_at(rect[1], col, total_columns);
+        tile_at(rect[3], col, total_columns);
     }
     for (row = [rect[1]:rect[3]]) {
-        tile_at(row, rect[0]);
-        tile_at(row, rect[2]);
+        tile_at(row, rect[0], total_columns);
+        tile_at(row, rect[2], total_columns);
     }
 }
 
@@ -157,6 +174,8 @@ module sign(lines, letter_forms_list=FONT_SET) {
     line_widths = [for (m = lines) measure_message(m, font_indices(m, visible_letters(m), letter_forms_list), letter_forms_list)];
     rows = rows_of(letter_forms_list[0]);
     max_width = maxvalue(line_widths);
+    border = SURROUND_TILES + BORDER_TILES;
+    total_columns = max_width + 2 * border;
 
     // Text lines (centered)
     for (i = [0:len(lines)-1]) {
@@ -165,22 +184,19 @@ module sign(lines, letter_forms_list=FONT_SET) {
         left = floor(extra/2);
         right = extra - left;
         translate([0, -(rows + 1) * i * DX, 0]) {
-            translate([left * DX, 0, 0])
-                message(lines[i], letter_forms_list);
+            message(lines[i], letter_forms_list, left, total_columns);
 
             // Left padding
             if (left > 0) {
                 for (j = [0:left - 1]) {
-                    translate([DX * j, 0, 0])
-                        color_part("white") tiles([for (row = [0: rows - 1]) row], rows, 1);
+                    color_part("white") tiles([for (row = [0: rows - 1]) row], rows, 1, j, total_columns);
                 }
             }
 
             // Right padding
             if (right > 0) {
                 for (j = [0:right - 1]) {
-                    translate([DX * (left + width + j), 0, 0])
-                        color_part("white") tiles([for (row = [0: rows - 1]) row], rows, 1);
+                    color_part("white") tiles([for (row = [0: rows - 1]) row], rows, 1, left + width + j, total_columns);
                 }
             }
         }
@@ -190,24 +206,24 @@ module sign(lines, letter_forms_list=FONT_SET) {
     if (len(lines) > 1) {
         for (i = [0:len(lines)-2]) {
             translate([0, -DX * ((rows + 1) * (i + 1) - 1), 0])
-                color_part("white") tile_line(max_width);
+                color_part("white") tile_line(max_width, total_columns);
         }
     }
 
     text_rows = (rows + 1) * len(lines) - 1;
-    border = SURROUND_TILES + BORDER_TILES;
-    translate([-DX * border, DX * border, 0])
-        base_layer(text_rows + 2 * border, max_width + 2 * border);
+    extent = tile_column_extent(total_columns);
+    translate([DX * (FIRST_COLUMN - border), DX * border, 0])
+        base_layer(text_rows + 2 * border, extent[1] - extent[0] + 1, (extent[1] - extent[0] + 1) == total_columns);
 
     if (SURROUND_TILES > 0) {
         for (i = [0: SURROUND_TILES - 1]) {
-            color_part("white") tile_box([-i-1, -i-1, max_width+i, text_rows+i]);
+            color_part("white") tile_box([-i-1, -i-1, max_width+i, text_rows+i], total_columns);
         }
     }
 
     if (BORDER_TILES > 0) {
         for (i = [SURROUND_TILES: SURROUND_TILES + BORDER_TILES - 1]) {
-            color_part("black") tile_box([-i-1, -i-1, max_width+i, text_rows+i]);
+            color_part("black") tile_box([-i-1, -i-1, max_width+i, text_rows+i], total_columns);
         }
     }
 }
@@ -223,7 +239,7 @@ function get_color_from_code(code) =
     code == "w" ? "white" :
     "blue"; // Default color
 
-module message(s, letter_forms_list=FONT_SET) {
+module message(s, letter_forms_list=FONT_SET, col_offset=0, total_columns=100) {
     visible = visible_letters(s);
     fonts = font_indices(s, visible, letter_forms_list);
     offsets = message_offsets(s, visible, fonts, letter_forms_list);
@@ -233,13 +249,10 @@ module message(s, letter_forms_list=FONT_SET) {
 
     for (i = [0:len(s)-1]) {
         if (visible[i]) {
-            translate([offsets[i] * DX, 0, 0])
-                letter(s[i], rows, letter_forms_list[fonts[i]], get_color_from_code(colors[i]));
+            letter(s[i], rows, letter_forms_list[fonts[i]], get_color_from_code(colors[i]), offsets[i]+col_offset, total_columns);
             // Draw white tile column between letters
             if (i != len(s)-1) {
-                translate([(offsets[i+1] - 1) * DX, 0, 0]) {
-                    color_part("white") tiles([for (row = [0: rows - 1]) row], rows, 1);
-                }
+                color_part("white") tiles([for (row = [0: rows - 1]) row], rows, 1, offsets[i+1] - 1 + col_offset, total_columns);
             }
         }
     }
@@ -270,27 +283,27 @@ function measure_message(s, fonts, letter_forms_list) =
     let (offsets = message_offsets(s, visible_letters(s), fonts, letter_forms_list))
     len(offsets) > 0 ? offsets[len(offsets) - 1] - 1 : 0;
 
-module letter(ch, rows, letter_forms, color="blue") {
+module letter(ch, rows, letter_forms, color="blue", col_offset=0, total_columns) {
     if (is_member(ch, letter_forms)) {
         raw_tiles = tile_list(ch, letter_forms);
         cols = raw_tiles[0];
         blue_tiles = tail(raw_tiles);
         white_tiles = missing_tiles(blue_tiles, rows, cols);
-        color_part(color) tiles(blue_tiles, rows, cols);
+        color_part(color) tiles(blue_tiles, rows, cols, col_offset, total_columns);
         if (len(white_tiles) > 0) {
-            color_part("white") tiles(white_tiles, rows, cols);
+            color_part("white") tiles(white_tiles, rows, cols, col_offset, total_columns);
         }
     } else {
         // Treat unknown character as a space - a single blank column.
-        color_part("white") tiles([for (row = [0: rows - 1]) row], rows, 1);
+        color_part("white") tiles([for (row = [0: rows - 1]) row], rows, 1, col_offset, total_columns);
     }
 }
 
-module base_layer(rows, cols) {
+module base_layer(rows, cols, trim_spacing = true) {
     height = rows * DX - TILE_SPACING;
     color_part("black")
         translate([-TILE_WIDTH/2, TILE_WIDTH/2 - height, 0])
-            cube([cols * DX - TILE_SPACING, height, BASE_THICKNESS]);
+            cube([cols * DX - (trim_spacing ? TILE_SPACING : 0), height, BASE_THICKNESS]);
 }
 
 // Letter-form data structure utilities.
