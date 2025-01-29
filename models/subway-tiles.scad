@@ -212,8 +212,9 @@ module sign(lines, letter_forms_list=FONT_SET) {
 
     text_rows = (rows + 1) * len(lines) - 1;
     extent = tile_column_extent(total_columns);
+    echo(extent, max_width + border);
     translate([DX * (FIRST_COLUMN - border), DX * border, 0])
-        base_layer(text_rows + 2 * border, extent[1] - extent[0] + 1, (extent[1] - extent[0] + 1) == total_columns);
+        base_layer(text_rows + 2 * border, extent[1] - extent[0] + 1, extent[1] == max_width + border - 1);
 
     if (SURROUND_TILES > 0) {
         for (i = [0: SURROUND_TILES - 1]) {
