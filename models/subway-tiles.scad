@@ -28,6 +28,9 @@ FIRST_COLUMN = 0;
 // Negative values count back from the right edge of the sign.
 LAST_COLUMN = -1;
 
+// When printing in sections, include tabs and slots to join the pieces together.
+USE_JOINERY = true;
+
 // Display a font sampler instead of a sign.
 SHOW_FONT = false;
 
@@ -54,7 +57,7 @@ CHAMFER_RADIUS = 0.5;
 // Resolution of curve (number of steps from top to side)
 CHAMFER_STEPS = 3;
 // Thickness of flat sheet connecting all tiles (mm)
-BASE_THICKNESS = 1.0; // [0:0.1:5]
+BASE_THICKNESS = 1.2; // [0:0.1:5]
 
 DX = TILE_WIDTH + TILE_SPACING;
 
@@ -212,8 +215,10 @@ module sign(lines, letter_forms_list=FONT_SET) {
 
     text_rows = (rows + 1) * len(lines) - 1;
     extent = tile_column_extent(total_columns);
+    join_left_edge = extent[0] != -border;
+    join_right_edge = extent[1] != max_width + border - 1;
     translate([DX * (FIRST_COLUMN - border), DX * border, 0])
-        base_layer(text_rows + 2 * border, extent[1] - extent[0] + 1, extent[1] == max_width + border - 1);
+        base_layer(text_rows + 2 * border, extent[1] - extent[0] + 1, join_left_edge, join_right_edge);
 
     if (SURROUND_TILES > 0) {
         for (i = [0: SURROUND_TILES - 1]) {
@@ -299,11 +304,24 @@ module letter(ch, rows, letter_forms, color="blue", col_offset=0, total_columns)
     }
 }
 
-module base_layer(rows, cols, trim_spacing = true) {
+// Print the base layer under the tiles.  If the sign is printed in sections
+// then the left and right edges of the base layer will need to be
+// augmented with tabs and slots to allow them to be joined together.
+module base_layer(rows, cols, join_left_edge, join_right_edge) {
+    tab_thickness = BASE_THICKNESS * 0.8;
+    width = cols * DX - (join_right_edge ? 0 : TILE_SPACING);
     height = rows * DX - TILE_SPACING;
     color_part("black")
-        translate([-TILE_WIDTH/2, TILE_WIDTH/2 - height, 0])
-            cube([cols * DX - (trim_spacing ? TILE_SPACING : 0), height, BASE_THICKNESS]);
+        translate([-TILE_WIDTH/2, TILE_WIDTH/2 - height, 0]) {
+            if (USE_JOINERY && join_right_edge) {
+                sub_slots_right(height, width, tab_thickness)
+                    cube([width, height, BASE_THICKNESS]);
+            } else {
+                cube([width, height, BASE_THICKNESS]);
+            }
+            if (USE_JOINERY && join_left_edge)
+                add_tabs_left(height, tab_thickness);
+        }
 }
 
 // Letter-form data structure utilities.
@@ -367,6 +385,66 @@ module color_part(c) {
         color(c) children();
     }
 }
+
+//
+// Dovetail joint modules
+//
+SLOT_EXTRA_HEIGHT = 0.2;
+MIN_TAIL = 10;
+E = 0.1;
+
+// Tail oriented to the left centered at the base
+module wedge(tail, base, depth, height) {
+  linear_extrude(height)
+    polygon([[0, base/2], [-depth, tail/2],
+             [-depth, -tail/2], [0, -base/2]]);
+}
+
+// Equally spaced tabs fill an edge of length
+// edge (vertical from [0, 0, 0]) s.t. E = N(T+B)
+// where T is the max width of a tab and B
+// is the base (or min width) of the tab.
+// Use B = T / 2, so E = N * T * 3/2
+// And, T = E / N * 2/3
+// We also choose depth of tab equal to T.
+module tabs(count, edge, height) {
+  tail = edge / count * 2/3;
+  base = tail / 2;
+  spacing = tail + base;
+  for (i=[0:count-1]) {
+    translate([0, i * spacing + tail/2 + base/2, 0])
+      wedge(tail, base, tail, height);
+  }
+}
+
+// Choose a number of tabs to fill the edge equally,
+// with a max tab width is at least min_tail.
+// N = floor(E/((T+B))
+module auto_tabs(min_tail, edge, height) {
+  count = floor(edge / (min_tail * 3/2));
+  tabs(count, edge, height);
+}
+
+module add_tabs_left(edge, height) {
+  translate([E, 0, 0])
+    auto_tabs(MIN_TAIL, edge, height);
+}
+
+// Subtracts tabs from the right edge of a child
+// of the given width.
+module sub_slots_right(edge, width, height) {
+  translate([width, 0, 0])
+  difference() {
+    translate([-width, 0, 0])
+        children();
+    translate([E, 0, -E])
+      auto_tabs(MIN_TAIL, edge, height + E + SLOT_EXTRA_HEIGHT);
+  }
+}
+
+//
+// Two possible outputs - a sign or a font sampler
+//
 
 if (SHOW_FONT) {
     font_sampler();
