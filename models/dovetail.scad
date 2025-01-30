@@ -40,10 +40,9 @@ module auto_tabs(min_tail, edge, height) {
 module add_tabs_left(edge, height) {
   translate([E, 0, 0])
     auto_tabs(MIN_TAIL, edge, height);
-  children();
 }
 
-module add_slots_left(edge, height) {
+module sub_slots_left(edge, height) {
   difference() {
     children();
     translate([E, 0, -E])
@@ -51,12 +50,25 @@ module add_slots_left(edge, height) {
   }
 }
 
+// Subtracts tabs from the right edge of a child
+// of the given width.
+module sub_slots_right(edge, width, height) {
+  translate([width, 0, 0])
+  difference() {
+    translate([-width, 0, 0])
+        children();
+    translate([E, 0, -E])
+      auto_tabs(MIN_TAIL, edge, height + E + SLOT_EXTRA_HEIGHT);
+  }
+}
+
 translate([20, 0, 0]) {
-  add_tabs_left(50, 2)
+  add_tabs_left(50, 2);
+  sub_slots_right(50, 50, 2)
     cube([50, 50, 3]);
 }
 
-add_slots_left(50, 2) {
+sub_slots_left(50, 2) {
   translate([-50, 0, 0])
     cube([50, 50, 3]);
 }
