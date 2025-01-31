@@ -49,7 +49,7 @@ FOURTH_LINE = "";
 // Size of tile (mm)
 TILE_WIDTH = 10;
 // Thickness of tiles (mm)
-TILE_DEPTH = 3;
+TILE_DEPTH = 2;
 // The "grout" thickness between tiles (mm)
 TILE_SPACING = 0.5;
 // Radius of chamfer (rounded corners) (mm)
@@ -57,7 +57,7 @@ CHAMFER_RADIUS = 0.5;
 // Resolution of curve (number of steps from top to side)
 CHAMFER_STEPS = 3;
 // Thickness of flat sheet connecting all tiles (mm)
-BASE_THICKNESS = 1.2; // [0:0.1:5]
+BASE_THICKNESS = 2; // [0:0.1:5]
 
 DX = TILE_WIDTH + TILE_SPACING;
 
@@ -308,7 +308,7 @@ module letter(ch, rows, letter_forms, color="blue", col_offset=0, total_columns)
 // then the left and right edges of the base layer will need to be
 // augmented with tabs and slots to allow them to be joined together.
 module base_layer(rows, cols, join_left_edge, join_right_edge) {
-    tab_thickness = BASE_THICKNESS * 0.8;
+    tab_thickness = BASE_THICKNESS * 0.5;
     width = cols * DX - (join_right_edge ? 0 : TILE_SPACING);
     height = rows * DX - TILE_SPACING;
     color_part("black")
