@@ -5,7 +5,7 @@
 SCALE = 1.0;
 
 E = 0.1;
-FILE = "club.dxf";
+FILE = "heart.svg";
 
 // Cookie cutter cutting depth.
 DEPTH = 15;
@@ -13,10 +13,10 @@ MIN_WALL = 0.5;
 MAX_WALL = 2.0;
 
 module cookie_cutter() {
-  outline(DEPTH, MAX_WALL, MIN_WALL) child(0);
+  outline(DEPTH, MAX_WALL, MIN_WALL) children();
   intersection() {
     linear_extrude(height=2)
-      child(0);
+      children();
     grid(100 * SCALE, 100 * SCALE, 10, 2);
   }
 }
@@ -25,12 +25,12 @@ module outline(height, base, top) {
   difference() {
     minkowski() {
       linear_extrude(height=E)
-        child(0);
+        children();
       cylinder(r1=base, r2=top, h=height - E, $fn=6);
     }
     translate([0, 0, -E])
       linear_extrude(height=height + 2 * E)
-        child(0);
+        children();
   }
 }
 
