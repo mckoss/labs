@@ -3,8 +3,6 @@
 
 // preview[view:south, tilt:top diagonal]
 
-use <write/Write.scad>
-
 /* [Text] */
 TOP_TEXT = "Hello, World";
 BOTTOM_TEXT = "August 2013";
@@ -25,6 +23,8 @@ TEXT_HEIGHT = 5.0;
 SPACING = 0.8;
 // Print height (mm)
 RELIEF = 1.0;
+// Font
+FONT = "Liberation Sans";
 
 /* [Hidden] */
 
@@ -93,7 +93,7 @@ module arc_text(
   for (i = [0 : len(text) - 1]) {
     rotate(a=ang_sgn * (ang * i - start_ang), v=[0, 0, 1])
       translate([0, offset_sgn * (r - text_height / 2), height / 2])
-        write(text[i], h=text_height, t=height, center=true);
+        text(text[i], size=text_height, valign="center", halign="center", font=FONT);
   }
 }
 
