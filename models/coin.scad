@@ -22,9 +22,13 @@ TEXT_HEIGHT = 5.0;
 // ratio (1.0 is nominal)
 SPACING = 0.8;
 // Print height (mm)
-RELIEF = 1.0;
+RELIEF = 0.7;
 // Font
 FONT = "Liberation Sans";
+// Image file
+OBVERSE_IMAGE = "";
+IMAGE_CENTER = [100, 180];
+IMAGE_SCALE = 0.2;
 
 /* [Hidden] */
 
@@ -41,13 +45,14 @@ module coin(
     relief=RELIEF,           // Height of raised (relief) features
     text_height=TEXT_HEIGHT, // Height of a text letter
     spacing=SPACING,         // 1.0 == nominal spacing (ratio)
-    rim_width=0.5            // Rim edge thickness
+    rim_width=0.5,            // Rim edge thickness
+    image_file=""
     ) {
   difference() {
     union() {
       cylinder(r=size / 2, h=thickness - relief, $fa=3);
       translate([0, 0, thickness - relief - E])
-        face(top_text, bottom_text, size, relief + E, text_height, spacing, rim_width);
+        face(top_text, bottom_text, size, relief + E, text_height, spacing, rim_width, image_file=image_file);
       }
     translate([0, 0, relief])
       rotate(a=180, v=[1, 0, 0])
@@ -70,11 +75,15 @@ module face(
   if (rim) {
     ring(r=size / 2, thickness=rim_width, height=relief);
   }
-  arc_text(top_text, size / 2 - rim_width * 4, text_height, relief, spacing, true);
-  arc_text(bottom_text, size / 2 - rim_width * 4, text_height, relief, spacing, false);
+  linear_extrude(height=relief)
+    arc_text(top_text, size / 2 - rim_width * 4, text_height, relief, spacing, true);
+  linear_extrude(height=relief)
+    arc_text(bottom_text, size / 2 - rim_width * 4, text_height, relief, spacing, false);
   if (image_file != "") {
-    linear_extrude(height=relief, center=true, convexity=10)
-      import_dxf(file=image_file, layer="none");
+    linear_extrude(height=relief, convexity=10)
+      scale(IMAGE_SCALE)
+        translate([-IMAGE_CENTER[0], -IMAGE_CENTER[1], 10])
+          import(file=image_file);
   }
 }
 
@@ -90,10 +99,12 @@ module arc_text(
   start_ang = (len(text) - 1) / 2 * ang;
   ang_sgn = top ? -1 : 1;
   offset_sgn = top ? 1 : -1;
-  for (i = [0 : len(text) - 1]) {
-    rotate(a=ang_sgn * (ang * i - start_ang), v=[0, 0, 1])
-      translate([0, offset_sgn * (r - text_height / 2), height / 2])
-        text(text[i], size=text_height, valign="center", halign="center", font=FONT);
+  if (len(text) > 0) {
+    for (i = [0 : len(text) - 1]) {
+      rotate(a=ang_sgn * (ang * i - start_ang), v=[0, 0, 1])
+        translate([0, offset_sgn * (r - text_height / 2), height / 2])
+          text(text[i], size=text_height, valign="center", halign="center", font=FONT);
+    }
   }
 }
 
@@ -110,5 +121,6 @@ module ring(r, thickness, height) {
 coin(top_text=TOP_TEXT,
      bottom_text=BOTTOM_TEXT,
      rev_top_text=REVERSE_TOP,
-     rev_bottom_text=REVERSE_BOTTOM
+     rev_bottom_text=REVERSE_BOTTOM,
+     image_file=OBVERSE_IMAGE
      );
