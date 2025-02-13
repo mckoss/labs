@@ -14,14 +14,14 @@ REVERSE_BOTTOM = "Tails You Lose";
 /* [Coin Size] */
 
 // (mm)
-DIAMETER = 39;
+DIAMETER = 51;
 // (mm)
 THICKNESS = 3.2;
 
 /* [Text Properties] */
 
 // Letter height (mm)
-TEXT_HEIGHT = 4.0;
+TEXT_HEIGHT = 5.0;
 // ratio (1.0 is nominal)
 SPACING = 1.0; // [0.4:0.1:1.6]
 // Print height (mm)
