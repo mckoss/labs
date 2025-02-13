@@ -11,12 +11,16 @@ BOTTOM_TEXT = "2025";
 REVERSE_TOP = "Heads I Win";
 REVERSE_BOTTOM = "Tails You Lose";
 
-/* [Coin Size] */
+/* [Coin Size and Parts] */
 
 // (mm)
 DIAMETER = 51;
+
 // (mm)
 THICKNESS = 3.2;
+
+// Which colors to print.
+COLOR_FILTER = "all"; // ["all", "black", "gold"]
 
 /* [Text Properties] */
 
@@ -41,6 +45,9 @@ IMAGE_SCALE = 0.2;
 // Epsilon
 E = 0.01;
 
+// Typical value for layer_height
+layer_height = 0.2;
+
 module coin(
     top_text="",             // Text of centered top text
     bottom_text="",          // Text of centered bottom text
@@ -54,16 +61,33 @@ module coin(
     rim_width=0.5,            // Rim edge thickness
     image_file=""
     ) {
+  // Coin cylinder will be (from bottom up):
+  // Gold (relief height - layer_height)
+  // Black (background_height)
+  // Gold (background_height)
+  // So 2 * background_height + relief - layer_height == thickness - relief
+  // therefore:
+  background_height = (thickness - 2 * relief + layer_height) / 2;
+
   difference() {
     union() {
-      cylinder(r=size / 2, h=thickness - relief, $fa=3);
-      translate([0, 0, thickness - relief - E])
-        face(top_text, bottom_text, size, relief + E, text_height, spacing, rim_width, image_file=image_file);
-      }
-    translate([0, 0, relief])
+      color_part("gold")
+        cylinder(r=size / 2, h=relief - layer_height, $fn=180);
+      color_part("black")
+        translate([0, 0, relief - layer_height])
+          cylinder(r=size / 2, h=background_height, $fn=180);
+      color_part("gold")
+        translate([0, 0, relief - layer_height + background_height])
+          cylinder(r=size / 2, h=background_height, $fn=180);
+      color_part("black")
+        translate([0, 0, thickness - relief - E])
+          face(top_text, bottom_text, size, relief + E, text_height, spacing, rim_width,
+               image_file=image_file);
+    }
+    translate([0, 0, relief - E])
       rotate(a=180, v=[1, 0, 0])
-      face(rev_top_text, rev_bottom_text, size, relief + E, text_height, spacing, rim_width,
-           rim=false);
+        face(rev_top_text, rev_bottom_text, size, relief + 2 * E, text_height, spacing,
+             rim_width, rim=false);
   }
 }
 
@@ -123,6 +147,14 @@ module ring(r, thickness, height) {
       cylinder(h=height + 2 * E, r=r - thickness, $fa=3, center=true);
     }
   }
+}
+
+// Need to be able to conditionally render parts based on color (for
+// export to Bambu Studio for slicing.
+module color_part(c) {
+    if (COLOR_FILTER == "all" || c == COLOR_FILTER) {
+        color(c) children();
+    }
 }
 
 coin(top_text=TOP_TEXT,
