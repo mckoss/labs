@@ -24,7 +24,7 @@ SPACING = 0.8;
 // Print height (mm)
 RELIEF = 0.7;
 // Font
-FONT = "Liberation Sans";
+FONT = "Liberation Sans:style=Bold";
 // Image file
 OBVERSE_IMAGE = "";
 IMAGE_CENTER = [100, 180];
@@ -76,9 +76,9 @@ module face(
     ring(r=size / 2, thickness=rim_width, height=relief);
   }
   linear_extrude(height=relief)
-    arc_text(top_text, size / 2 - rim_width * 4, text_height, relief, spacing, true);
+    arc_text(top_text, size / 2 - rim_width * 2, text_height, spacing, true);
   linear_extrude(height=relief)
-    arc_text(bottom_text, size / 2 - rim_width * 4, text_height, relief, spacing, false);
+    arc_text(bottom_text, size / 2 - rim_width * 2, text_height, spacing, false);
   if (image_file != "") {
     linear_extrude(height=relief, convexity=10)
       scale(IMAGE_SCALE)
@@ -89,21 +89,21 @@ module face(
 
 module arc_text(
     text,
-    r,
+    r,   // Outside radius of text
     text_height=3.0,
-    height=1.0,
     spacing=1.0,
     top=true
     ) {
   ang = spacing * atan2(text_height, r);
   start_ang = (len(text) - 1) / 2 * ang;
   ang_sgn = top ? -1 : 1;
-  offset_sgn = top ? 1 : -1;
+  base_radius = top ? r - text_height : -r;
   if (len(text) > 0) {
     for (i = [0 : len(text) - 1]) {
       rotate(a=ang_sgn * (ang * i - start_ang), v=[0, 0, 1])
-        translate([0, offset_sgn * (r - text_height / 2), height / 2])
-          text(text[i], size=text_height, valign="center", halign="center", font=FONT);
+        translate([0, base_radius, 0]) {
+          text(text[i], size=text_height, halign="center", font=FONT);
+        }
     }
   }
 }
