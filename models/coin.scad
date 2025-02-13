@@ -1,15 +1,18 @@
 // Challenge coin generator.
 // All dimensions in millimeters.
+// (c) 2013 - 2025 Mike Koss
+// License: MIT (free to use with attribution)
 
 // preview[view:south, tilt:top diagonal]
 
 /* [Text] */
-TOP_TEXT = "Hello, World";
-BOTTOM_TEXT = "August 2013";
-REVERSE_TOP = "Reverse Top";
-REVERSE_BOTTOM = "Bottom";
+TOP_TEXT = "In Coin We Trust";
+BOTTOM_TEXT = "2025";
+REVERSE_TOP = "Heads I Win";
+REVERSE_BOTTOM = "Tails You Lose";
 
-/* [Coin Properties] */
+/* [Coin Size] */
+
 // (mm)
 DIAMETER = 39;
 // (mm)
@@ -18,16 +21,19 @@ THICKNESS = 3.2;
 /* [Text Properties] */
 
 // Letter height (mm)
-TEXT_HEIGHT = 5.0;
+TEXT_HEIGHT = 4.0;
 // ratio (1.0 is nominal)
-SPACING = 0.8;
+SPACING = 1.0; // [0.4:0.1:1.6]
 // Print height (mm)
 RELIEF = 0.7;
 // Font
 FONT = "Liberation Sans:style=Bold";
-// Image file
-OBVERSE_IMAGE = "";
-IMAGE_CENTER = [100, 180];
+
+/* [Image] */
+
+// Image file - typically using Inkscape DXF or SVG
+OBVERSE_IMAGE = "globe.svg";
+IMAGE_CENTER = [55, 55];
 IMAGE_SCALE = 0.2;
 
 /* [Hidden] */
@@ -76,9 +82,9 @@ module face(
     ring(r=size / 2, thickness=rim_width, height=relief);
   }
   linear_extrude(height=relief)
-    arc_text(top_text, size / 2 - rim_width * 2, text_height, spacing, true);
+    arc_text(top_text, size / 2 - rim_width * 4, text_height, spacing, true);
   linear_extrude(height=relief)
-    arc_text(bottom_text, size / 2 - rim_width * 2, text_height, spacing, false);
+    arc_text(bottom_text, size / 2 - rim_width * 4, text_height, spacing, false);
   if (image_file != "") {
     linear_extrude(height=relief, convexity=10)
       scale(IMAGE_SCALE)
@@ -97,7 +103,8 @@ module arc_text(
   ang = spacing * atan2(text_height, r);
   start_ang = (len(text) - 1) / 2 * ang;
   ang_sgn = top ? -1 : 1;
-  base_radius = top ? r - text_height : -r;
+  // Account for descender height about 20% of font height
+  base_radius = top ? r - text_height : -r + text_height / 5;
   if (len(text) > 0) {
     for (i = [0 : len(text) - 1]) {
       rotate(a=ang_sgn * (ang * i - start_ang), v=[0, 0, 1])
