@@ -45,7 +45,7 @@ module union_tile() {
 // Tile(1, 0) = "Comet"
 function tile_v(a, b) = cumvec([
     [0, b], [90, a], [30, a], [120, b], [60, b], [150, a],
-    [210, 2 * a], [270, a], [180, b], [240, b], [330, a], [30, a]
+    [210, a], [210, a], [270, a], [180, b], [240, b], [330, a], [30, a]
     ]);
     
 module tile_half(a, b) {
@@ -60,15 +60,17 @@ module tile(a=1, b=sqrt(3)) {
     color_part("red") tile_half(a, b);
 }
 
-tile(1, sqrt(3));
-translate([6 * UNIT, 0, 0])
-  tile(1, 1);
-translate([12 * UNIT, 0, 0])
-  tile(sqrt(3), 1);
-translate([0, 6 * UNIT, 0])
-  tile(0, 1);
-translate([7 * UNIT, 6 * UNIT, 0])
-  tile(1, 0);
+if (is_undef(no_side_effects)) {
+  tile(1, sqrt(3));
+  translate([6 * UNIT, 0, 0])
+    tile(1, 1);
+  translate([12 * UNIT, 0, 0])
+    tile(sqrt(3), 1);
+  translate([0, 6 * UNIT, 0])
+    tile(0, 1);
+  translate([7 * UNIT, 6 * UNIT, 0])
+    tile(1, 0);
+}
 
 function rot(a) = [[cos(a), sin(a)], [-sin(a), cos(a)]];
 function add(poly, o) = [for (p=poly) p + o];
