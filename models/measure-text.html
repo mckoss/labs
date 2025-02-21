@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Font Metrics</title>
+</head>
+<body>
+    <h1>Font Metrics</h1>
+    <label for="fontSelect">Choose a font:</label>
+    <select id="fontSelect">
+        <option value="16px Arial">Arial</option>
+        <option value="16px Verdana">Verdana</option>
+        <option value="16px Times New Roman">Times New Roman</option>
+        <option value="16px Courier New">Courier New</option>
+        <option value="16px Georgia">Georgia</option>
+    </select>
+    <button onclick="showMetrics()">Show Metrics</button>
+    <textarea id="metricsOutput" rows="20" cols="50"></textarea>
+
+    <script>
+        function measureCharacterRatios(font) {
+            // Create a temporary canvas for measuring text
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Set the font
+            ctx.font = font;
+
+            // Get font metrics
+            const metrics = ctx.measureText('M');
+            console.log(`${ctx.measureText('ii').width} vs ${ctx.measureText('i').width}`);
+            const ascent = metrics.actualBoundingBoxAscent;
+
+            // Array to store character width ratios
+            const ratios = [];
+
+            // Enumerate printable ASCII characters (32 to 126)
+            for (let charCode = 32; charCode <= 126; charCode++) {
+                const char = String.fromCharCode(charCode);
+                const width = ctx.measureText(char).width;
+
+                // Calculate ratio of width to ascent and round to 2 decimal digits
+                const ratio = (width / ascent).toFixed(2);
+                ratios.push(parseFloat(ratio));
+            }
+
+            return ratios;
+        }
+
+        function showMetrics() {
+            const font = document.getElementById('fontSelect').value;
+            const ratios = measureCharacterRatios(font);
+            document.getElementById('metricsOutput').value = JSON.stringify(ratios, null, 2);
+        }
+    </script>
+</body>
+</html>
