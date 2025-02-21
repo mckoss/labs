@@ -125,10 +125,10 @@ module arc_text(
     top=true
     ) {
   base_radius = r - text_height;
-  total_width = text_width(text, text_height);
+  total_width = text_width(text, text_height) * spacing;
   // relative pos from -1/2 to 1/2 of width
   start_pos = -total_width/2;
-  x_pos = character_pos(text, text_height);
+  x_pos = character_pos(text, text_height) * spacing;
   if (len(text) > 0) {
     for (i = [0 : len(text) - 1]) {
       // Relative pos of center of letter
