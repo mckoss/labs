@@ -124,15 +124,19 @@ module arc_text(
     spacing=1.0,
     top=true
     ) {
-  ang = spacing * atan2(text_height, r);
-  start_ang = (len(text) - 1) / 2 * ang;
-  ang_sgn = top ? -1 : 1;
-  // Account for descender height about 20% of font height
-  base_radius = top ? r - text_height : -r + text_height / 5;
+  base_radius = r - text_height;
+  total_width = text_width(text, text_height);
+  // relative pos from -1/2 to 1/2 of width
+  start_pos = -total_width/2;
+  x_pos = character_pos(text, text_height);
   if (len(text) > 0) {
     for (i = [0 : len(text) - 1]) {
-      rotate(a=ang_sgn * (ang * i - start_ang), v=[0, 0, 1])
-        translate([0, base_radius, 0]) {
+      // Relative pos of center of letter
+      pos = start_pos + x_pos[i] + char_width(text[i], text_height)/2;
+      angle = (top ? -1 : 1 ) * pos / base_radius / PI * 180;
+      rotate(angle)
+        // Account for descender height about 20% of font height
+        translate([0, top ? base_radius : -base_radius - text_height * 4 / 5, 0]) {
           text(text[i], size=text_height, halign="center", font=FONT);
         }
     }
@@ -148,6 +152,24 @@ module ring(r, thickness, height) {
     }
   }
 }
+
+// Estimator of text measurement (until textmetrics is available in OpenSCAD)
+// Based on the ratio of character width to ascent for Arial font on Windows.
+
+ascii_ratios = [ 0.37, 0.37, 0.47, 0.74, 0.74, 1.19, 0.89, 0.25, 0.44, 0.44, 0.52, 0.78, 0.37,
+  0.44, 0.37, 0.37, 0.74, 0.74, 0.74, 0.74, 0.74, 0.74, 0.74, 0.74, 0.74, 0.74,
+  0.37, 0.37, 0.78, 0.78, 0.78, 0.74, 1.35, 0.89, 0.89, 0.96, 0.96, 0.89, 0.81,
+  1.04, 0.96, 0.37, 0.67, 0.89, 0.74, 1.11, 0.96, 1.04, 0.89, 1.04, 0.96, 0.89,
+  0.81, 0.96, 0.89, 1.26, 0.89, 0.89, 0.81, 0.37, 0.37, 0.37, 0.63, 0.74, 0.44,
+  0.74, 0.74, 0.67, 0.74, 0.74, 0.37, 0.74, 0.74, 0.3, 0.3, 0.67, 0.3, 1.11,
+  0.74, 0.74, 0.74, 0.74, 0.44, 0.67, 0.37, 0.74, 0.67, 0.96, 0.67, 0.67, 0.67,
+  0.45, 0.35, 0.45, 0.78 ];
+
+function char_ratio(ch) = ord(ch) < 32 || ord(ch) > 126 ? 0.74 : ascii_ratios[ord(ch) - 32];
+function char_width(ch, size) = size * char_ratio(ch);
+function character_pos(str, size) = [0, each cumsum([for (ch=str) char_width(ch, size)])];
+function text_width(str, size) = len(str) == 0 ? 0 : character_pos(str, size)[len(str)];
+function cumsum(v) = [for (i=0, b=v[0]; i < len(v); i=i+1, b=(i<len(v)?b+v[i]:b)) b];
 
 // Need to be able to conditionally render parts based on color (for
 // export to Bambu Studio for slicing.
