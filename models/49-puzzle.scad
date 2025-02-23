@@ -31,7 +31,6 @@ P5 = [[4,0], [7,0], [7, 1], [4, 1]];
 module tile(poly, handle, position=[0, 0]) {
   pos = position * GAP;
   p = poly * UNIT;
-  echo(p, center(p));
   translate([each pos, 0]) {
     linear_extrude(THICKNESS)
       polygon(p);
@@ -47,7 +46,6 @@ module tile(poly, handle, position=[0, 0]) {
 module board() {
   inner = [SQ, SQ + (STUBY ? UNIT : 0) + UNIT/7] + [SLOP, SLOP];
   outer = inner + 2 * [BOARDER, BOARDER];
-  echo(inner, outer);
   translate([-(outer[0] + GAP), 0, 0])
     difference() {
       cube([each outer, 1.5 * THICKNESS]);
