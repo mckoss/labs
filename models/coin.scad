@@ -38,7 +38,7 @@ FONT = "Liberation Sans:style=Bold";
 // Image file - typically using Inkscape DXF or SVG
 OBVERSE_IMAGE = "globe.svg";
 IMAGE_CENTER = [55, 55];
-IMAGE_SCALE = 0.2;
+IMAGE_SCALE = 0.20; // [0.05:0.01:1.0]
 
 /* [Hidden] */
 
