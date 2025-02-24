@@ -36,9 +36,10 @@ FONT = "Liberation Sans:style=Bold";
 /* [Image] */
 
 // Image file - typically using Inkscape DXF or SVG
-OBVERSE_IMAGE = "globe.svg";
-IMAGE_CENTER = [55, 55];
-IMAGE_SCALE = 0.20; // [0.05:0.01:1.0]
+HIDE_IMAGE = false;
+yourFileName = "default.svg";
+IMAGE_CENTER = [170, 100];
+IMAGE_SCALE = 0.10; // [0.05:0.01:1.0]
 
 /* [Hidden] */
 
@@ -109,7 +110,7 @@ module face(
     arc_text(top_text, size / 2 - rim_width * 4, text_height, spacing, true);
   linear_extrude(height=relief)
     arc_text(bottom_text, size / 2 - rim_width * 4, text_height, spacing, false);
-  if (image_file != "") {
+  if (!HIDE_IMAGE && image_file != "") {
     linear_extrude(height=relief, convexity=10)
       scale(IMAGE_SCALE)
         translate([-IMAGE_CENTER[0], -IMAGE_CENTER[1], 10])
@@ -167,9 +168,14 @@ ascii_ratios = [ 0.37, 0.37, 0.47, 0.74, 0.74, 1.19, 0.89, 0.25, 0.44, 0.44, 0.5
 
 function char_ratio(ch) = ord(ch) < 32 || ord(ch) > 126 ? 0.74 : ascii_ratios[ord(ch) - 32];
 function char_width(ch, size) = size * char_ratio(ch);
-function character_pos(str, size) = [0, each cumsum([for (ch=str) char_width(ch, size)])];
+function character_pos(str, size) = concat([0], cumsum([for (ch=str) char_width(ch, size)]));
 function text_width(str, size) = len(str) == 0 ? 0 : character_pos(str, size)[len(str)];
 function cumsum(v) = [for (i=0, b=v[0]; i < len(v); i=i+1, b=(i<len(v)?b+v[i]:b)) b];
+
+// Alternate cumsum for older versions of OpenScad:
+// function cumsum(v) = len(v) == 1 ? [v[0]] : concat(v[0], sumtail(tail(v), v[0]));
+// function tail(v) = len(v) > 1 ? [for (i = [1:len(v)-1]) v[i]] : [];
+// function sumtail(v, p) = let (a = v[0] + p) len(v) == 1 ? [a] : concat([a], sumtail(tail(v), a));
 
 // Need to be able to conditionally render parts based on color (for
 // export to Bambu Studio for slicing.
@@ -183,5 +189,5 @@ coin(top_text=TOP_TEXT,
      bottom_text=BOTTOM_TEXT,
      rev_top_text=REVERSE_TOP,
      rev_bottom_text=REVERSE_BOTTOM,
-     image_file=OBVERSE_IMAGE
+     image_file=yourFileName
      );
