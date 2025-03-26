@@ -94,17 +94,54 @@ module tray() {
 // Connection at outer edge of origin
 module arm_hook(w) {
   T = 2 * THICKNESS;
+  // Extra margin for the locking bar
+  M = 14;
+  // Extra slop for height of arm.
+  S = 2;
   rotate([90, 0, 0])
   rotate([0, 90, 0])
   linear_extrude(w, center=true) {
-    polygon([[0, E], [-T, E], [-T, -10], [-T-ARM_WIDTH/2, -15],
-      [-T-ARM_WIDTH/2, -15-T], [0, -10-T]]);
-    polygon([[-T-ARM_WIDTH, E], [-2*T-ARM_WIDTH, E],
-      [-2*T-ARM_WIDTH, -3*THICKNESS],
-      [-T-ARM_WIDTH, -3*THICKNESS]]);
+    polygon([[0, E], [-T, E], [-T, -10-S], [-T-ARM_WIDTH/2, -15-S],
+      [-T-ARM_WIDTH/2, -15-T-S], [0, -10-T-S]]);
+    polygon([[-T-ARM_WIDTH-M, E], [-2*T-ARM_WIDTH-M, E],
+      [-2*T-ARM_WIDTH-M, -3*THICKNESS],
+      [-T-ARM_WIDTH-M, -3*THICKNESS]]);
   }
 }
 
+module chamfered_box(width, depth, radius, steps) {
+    x0 = width / 2;
+    d = depth;
+    r = radius;
+    z0 = d - r;
+
+    tile_points = concat(
+        [[-x0, -x0, 0], [x0, -x0, 0], [x0, x0, 0], [-x0, x0, 0]],
+        flatten([for (i = [0 : steps])
+            let (theta = i * 90 / steps,
+                 dx = r * (1 - cos(theta)),
+                 dz = r * sin(theta),
+                 x = x0 - dx,
+                 z = z0 + dz)
+            [[-x, -x, z], [x, -x, z], [x, x, z], [-x, x, z]]
+        ]));
+    last = len(tile_points) - 1;
+    tile_faces = concat(
+        // Bottom and top faces
+        [[0, 1, 2, 3], [last, last - 1, last - 2, last - 3]],
+        flatten([for (i = [0 : steps])
+            let (base = i * 4)
+            [[base, base + 4, base + 5, base + 1],
+             [base + 1, base + 5, base + 6, base + 2],
+             [base + 2, base + 6, base + 7, base + 3],
+             [base + 3, base + 7, base + 4, base]]
+        ]));
+    polyhedron(points=tile_points, faces=tile_faces);
+}
+
+function flatten(l) = [ for (a = l) for (b = a) b ];
+
 rotate([180, 0, 0])
 tray_and_cupholder();
+
 
