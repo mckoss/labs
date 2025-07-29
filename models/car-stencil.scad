@@ -1,13 +1,29 @@
 H=2;
+E=0.2;
 
-difference() {
-  translate([49, 26, 0])
-    chamfered_box(100, 57, H);
-  translate([0, 0, -1])
-    linear_extrude(height=H+2)
-      import("car-stencil.svg");
+CHAMFER = 1; // [0:.1:2]
+
+module stencil() {
+  difference() {
+    translate([49, 26, 0])
+      chamfered_box(100, 57, H);
+    car();
+  }
 }
-
+  
+module car() {
+    translate([0, 0, -E])
+    if (CHAMFER > 0) {
+      minkowski() {
+        linear_extrude(height=E)
+          import("car-stencil.svg");
+        cylinder(h=H+2*E, r1=0, r2=CHAMFER, $fn=4);
+      }
+    } else {
+      linear_extrude(H + 2*E)
+        import("car-stencil.svg");
+    }
+}
 
 
 module chamfered_box(width, height, depth, radius=1, steps=5) {
@@ -41,4 +57,8 @@ module chamfered_box(width, height, depth, radius=1, steps=5) {
         ]));
     polyhedron(points=tile_points, faces=tile_faces);
 }
+
 function flatten(l) = [ for (a = l) for (b = a) b ];
+  
+stencil();
+
