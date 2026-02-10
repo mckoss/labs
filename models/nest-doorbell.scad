@@ -1,15 +1,9 @@
 // Door-bell housing to admit a Google Nest door bell behind
-// a mounting plate.
+// a mounting plate (adapted from Ring doorbell faceplate).
 //
 // All dimensions are mm.
 //
-// The orientation of the plate is facing up with back side
-// of plate at Z=0.  The Ring box is mounting in the negative
-// Z direction.  The front face of the plate is at PLATE_Z
-// units above Z=0.
-//
-// Note that in final assembly, the box is flipped over
-// so that it rests front-side down on the build plate.
+// (c) 2026 Mike Koss <mike@mckoss.com>
 
 // Mounting plate
 PLATE_X = 110;
@@ -27,8 +21,10 @@ SCREW_HEAD_Z = 1;
 
 // Nest doorbell dimension
 BASE_WIDTH = 36;
-BASE_HEIGHT = 124;
-BASE_DEPTH = 11;
+// Add 2mm for slop for sliding the doorbell over the base plate.
+BASE_HEIGHT = 124 + 2;
+// The base was too far away from V1 prototype - change from 11 to 9.
+BASE_DEPTH = 9;
 BASE_FLOOR = 12;
 SCREW_SPACING = 58;
 WIRE_SLOT_WIDTH = 17;
