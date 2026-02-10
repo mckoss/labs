@@ -4,7 +4,7 @@
 COLOR_FILTER = "all"; // ["all", "white", "black"]
 
 RADIUS = 40;
-THICKNESS = 5;
+THICKNESS = 2;
 BASE_THICKNESS = 0.8;
 
 SLICE_GAP = 1.2;
@@ -18,7 +18,7 @@ R1= RADIUS / 3;
 R2 = RADIUS * 2 / 3;
 R_MID = (RADIUS + R2) / 2;
 
-BEVEL_DEPTH = THICKNESS/4;
+BEVEL_DEPTH = THICKNESS/2;
 
 E = 0.1;
 
