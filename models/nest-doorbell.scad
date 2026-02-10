@@ -29,8 +29,7 @@ SCREW_HEAD_Z = 1;
 BASE_WIDTH = 36;
 BASE_HEIGHT = 124;
 BASE_DEPTH = 11;
-//BASE_FLOOR = 12;
-BASE_FLOOR = 3;
+BASE_FLOOR = 12;
 SCREW_SPACING = 58;
 WIRE_SLOT_WIDTH = 17;
 WIRE_SLOT_HEIGHT = 43;
@@ -75,20 +74,17 @@ module screw_holes() {
 }
 
 module assembly() {
-    dz = -EPSILON;
-    translate([0, 0, PLATE_Z])
-    rotate(a=[180, 0, 0])
     difference() {
         union() {
-            plate();
-
+              plate();
+            base_box(true);
         }
-        screw_holes();
-
+          screw_holes();
+        base_box(false);
     }
 }
 
-//assembly();
+assembly();
 
 
 module oval_block(width, height, depth) {
@@ -101,9 +97,10 @@ module oval_block(width, height, depth) {
         cube([width, height-width, depth], center=true);
 }
 
-module base_box() {
-    difference()  {
+module base_box(vis) {
+    if (vis)  {
         oval_block(BASE_WIDTH + 2 * WALL, BASE_HEIGHT + 2 * WALL, BASE_DEPTH + BASE_FLOOR);
+    } else {
         translate([0, 0, BASE_FLOOR + EPSILON])
             oval_block(BASE_WIDTH, BASE_HEIGHT, BASE_DEPTH);
         translate([0, SCREW_SPACING/2, BASE_FLOOR + 2 * EPSILON])
@@ -118,8 +115,6 @@ module base_box() {
     }
 }
 
-base_box();
-
 module screw_hole(head, hole, transition, depth) {
     rotate(a=[180, 0, 0])
     union() {
@@ -128,5 +123,3 @@ module screw_hole(head, hole, transition, depth) {
             cylinder(h=depth, r=hole/2);
     }
 }
-
-//screw_hole(14, 2, 2, 10);
