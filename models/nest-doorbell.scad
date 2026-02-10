@@ -25,12 +25,12 @@ SCREW_HOLE_D = 4;
 SCREW_HEAD_D = 6;
 SCREW_HEAD_Z = 1;
 
-
 // Nest doorbell dimension
 BASE_WIDTH = 36;
 BASE_HEIGHT = 124;
-BASE_DEPTH = 9;
-BASE_FLOOR = 12;
+BASE_DEPTH = 11;
+//BASE_FLOOR = 12;
+BASE_FLOOR = 3;
 SCREW_SPACING = 58;
 WIRE_SLOT_WIDTH = 17;
 WIRE_SLOT_HEIGHT = 43;
@@ -106,12 +106,12 @@ module base_box() {
         oval_block(BASE_WIDTH + 2 * WALL, BASE_HEIGHT + 2 * WALL, BASE_DEPTH + BASE_FLOOR);
         translate([0, 0, BASE_FLOOR + EPSILON])
             oval_block(BASE_WIDTH, BASE_HEIGHT, BASE_DEPTH);
-        translate([0, SCREW_SPACING/2, BASE_FLOOR + EPSILON])
-            screw_hole(14, 3, 2, BASE_FLOOR);
-        translate([0, -SCREW_SPACING/2, BASE_FLOOR + EPSILON])
-            screw_hole(14, 3, 2, BASE_FLOOR);
-        translate([0, 0, WALL/2])
-            cube([WIRE_SLOT_WIDTH, WIRE_SLOT_HEIGHT, WALL + 3 * EPSILON], center=true);
+        translate([0, SCREW_SPACING/2, BASE_FLOOR + 2 * EPSILON])
+            screw_hole(14, 3, 3, BASE_FLOOR);
+        translate([0, -SCREW_SPACING/2, BASE_FLOOR + 2 * EPSILON])
+            screw_hole(14, 3, 3, BASE_FLOOR);
+        translate([0, 0, BASE_FLOOR/2])
+            cube([WIRE_SLOT_WIDTH, WIRE_SLOT_HEIGHT, BASE_FLOOR + 3 * EPSILON], center=true);
         translate([0, BASE_HEIGHT/2, BASE_DEPTH + BASE_FLOOR])
             rotate(a=[90, 0, 0])
                 cylinder(h=WALL*2, r=6, center=true);
