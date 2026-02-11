@@ -22,11 +22,15 @@ SCREW_HEAD_Z = 1;
 // Nest doorbell dimension
 BASE_WIDTH = 36;
 // Add 2mm for slop for sliding the doorbell over the base plate.
-BASE_HEIGHT = 124 + 2;
+BASE_HEIGHT = 124 + 4;
 // The base was too far away from V1 prototype - change from 11 to 9.
+// (I could have used the offset pads included in the doorbell kit!)
 BASE_DEPTH = 9;
 BASE_FLOOR = 12;
 SCREW_SPACING = 58;
+// Two "buttons" on the back of the doorbell are desinged to slide behind the base
+// plate.  But there should be a depression to accomadate that - TBD (or use the spacers).
+BUTTON_SPACING = 70;
 WIRE_SLOT_WIDTH = 17;
 WIRE_SLOT_HEIGHT = 43;
 
@@ -50,11 +54,7 @@ module plate() {
             pilot();
         }
     }
-    difference() {
-        raw_plate();
-        translate([0,0,-WALL])
-            raw_plate();
-    }
+    raw_plate();
 }
 
 module screw_holes() {
