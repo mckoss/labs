@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>11x18 Pixelator</title>
+    <style>
+        body { font-family: monospace; background: #222; color: #eee; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .container { display: flex; gap: 20px; align-items: flex-start; }
+        
+        /* Input Area */
+        .canvas-wrapper { position: relative; border: 1px solid #444; cursor: crosshair; }
+        #srcCanvas { display: block; max-width: 800px; max-height: 800px; }
+        
+        /* Output Area */
+        .output-wrapper { display: flex; flex-direction: column; align-items: center; }
+        #outCanvas { 
+            border: 1px solid #444; 
+            width: 220px; /* Scaled up for visibility */
+            height: 360px; 
+            image-rendering: pixelated; /* Critical for sharp pixel edges */
+        }
+        
+        .controls { margin-bottom: 10px; width: 100%; display: flex; justify-content: center; }
+        input[type="file"] { margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <input type="file" id="upload" accept="image/*">
+    </div>
+
+    <div class="container">
+        <div class="canvas-wrapper" id="wrapper">
+            <canvas id="srcCanvas"></canvas>
+        </div>
+        
+        <div class="output-wrapper">
+            <label>11x18 Output</label>
+            <canvas id="outCanvas" width="11" height="18"></canvas>
+            <div id="data-readout" style="margin-top: 10px; font-size: 10px;"></div>
+        </div>
+    </div>
+
+<script>
+    const upload = document.getElementById('upload');
+    const srcCanvas = document.getElementById('srcCanvas');
+    const outCanvas = document.getElementById('outCanvas');
+    const wrapper = document.getElementById('wrapper');
+    
+    const ctxSrc = srcCanvas.getContext('2d');
+    const ctxOut = outCanvas.getContext('2d');
+
+    // State
+    let img = new Image();
+    let rect = { x: 50, y: 50, w: 110, h: 180 }; // Initial selection
+    const ASPECT_RATIO = 11 / 18;
+    let isDragging = false;
+    let isResizing = false;
+    let dragStart = { x: 0, y: 0 };
+    let imageLoaded = false;
+
+    // Load Image
+    upload.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            img = new Image();
+            img.onload = () => {
+                // Resize canvas to fit image (max constrained by CSS)
+                srcCanvas.width = img.width;
+                srcCanvas.height = img.height;
+                imageLoaded = true;
+                
+                // Reset Rect
+                rect = { 
+                    x: 0, y: 0, 
+                    w: Math.min(img.width, img.height * ASPECT_RATIO) / 2, 
+                    h: (Math.min(img.width, img.height * ASPECT_RATIO) / 2) / ASPECT_RATIO 
+                };
+                
+                draw();
+                process();
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Interaction Handlers
+    srcCanvas.addEventListener('mousedown', handleMouseDown);
+    srcCanvas.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', () => {
+        isDragging = false;
+        isResizing = false;
+    });
+
+    function getMousePos(evt) {
+        const rect = srcCanvas.getBoundingClientRect();
+        const scaleX = srcCanvas.width / rect.width;
+        const scaleY = srcCanvas.height / rect.height;
+        return {
+            x: (evt.clientX - rect.left) * scaleX,
+            y: (evt.clientY - rect.top) * scaleY
+        };
+    }
+
+    function handleMouseDown(e) {
+        if (!imageLoaded) return;
+        const m = getMousePos(e);
+        
+        // Check resize handle (bottom-right corner, 20px threshold scaled)
+        const handleSize = 20 * (srcCanvas.width / srcCanvas.clientWidth); 
+        if (m.x > rect.x + rect.w - handleSize && m.x < rect.x + rect.w + handleSize &&
+            m.y > rect.y + rect.h - handleSize && m.y < rect.y + rect.h + handleSize) {
+            isResizing = true;
+            return;
+        }
+
+        // Check drag (inside rect)
+        if (m.x > rect.x && m.x < rect.x + rect.w && m.y > rect.y && m.y < rect.y + rect.h) {
+            isDragging = true;
+            dragStart = { x: m.x - rect.x, y: m.y - rect.y };
+        }
+    }
+
+    function handleMouseMove(e) {
+        if (!imageLoaded) return;
+        const m = getMousePos(e);
+
+        if (isDragging) {
+            rect.x = m.x - dragStart.x;
+            rect.y = m.y - dragStart.y;
+            draw();
+            process();
+        } else if (isResizing) {
+            // Calculate new width based on mouse pos
+            let newW = m.x - rect.x;
+            
+            // Constrain Aspect Ratio
+            let newH = newW / ASPECT_RATIO;
+            
+            // Boundary checks (optional but recommended)
+            if (newW > 11) { // Min width 11px
+                rect.w = newW;
+                rect.h = newH;
+            }
+            draw();
+            process();
+        }
+    }
+
+    // Rendering Loop
+    function draw() {
+        ctxSrc.clearRect(0, 0, srcCanvas.width, srcCanvas.height);
+        ctxSrc.drawImage(img, 0, 0);
+
+        // Darken outside
+        ctxSrc.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctxSrc.fillRect(0, 0, srcCanvas.width, srcCanvas.height);
+
+        // Clear selection area (draw image again inside rect to "cut out" the mask)
+        ctxSrc.save();
+        ctxSrc.beginPath();
+        ctxSrc.rect(rect.x, rect.y, rect.w, rect.h);
+        ctxSrc.clip();
+        ctxSrc.drawImage(img, 0, 0);
+        ctxSrc.restore();
+
+        // Draw Border
+        ctxSrc.strokeStyle = '#00ff00';
+        ctxSrc.lineWidth = 2 * (srcCanvas.width / srcCanvas.clientWidth);
+        ctxSrc.strokeRect(rect.x, rect.y, rect.w, rect.h);
+        
+        // Draw Resize Handle
+        ctxSrc.fillStyle = '#00ff00';
+        const handleSize = 10 * (srcCanvas.width / srcCanvas.clientWidth);
+        ctxSrc.fillRect(rect.x + rect.w - handleSize/2, rect.y + rect.h - handleSize/2, handleSize, handleSize);
+    }
+
+    // Image Processing
+    function process() {
+        // Clear output
+        ctxOut.clearRect(0, 0, 11, 18);
+        
+        // Downsample: Draw the selected region (rect) into the 11x18 canvas
+        // Browser interpolation handles the averaging
+        ctxOut.drawImage(
+            srcCanvas, 
+            rect.x, rect.y, rect.w, rect.h, // Source X, Y, W, H
+            0, 0, 11, 18                    // Dest X, Y, W, H
+        );
+    }
+</script>
+</body>
+</html>
