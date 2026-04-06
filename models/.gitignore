@@ -2,3 +2,4 @@
 *.gcode
 *.zip
 *.x3g
+.DS_Store

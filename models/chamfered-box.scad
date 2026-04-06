@@ -1,0 +1,35 @@
+function flatten(l) = [ for (a = l) for (b = a) b ];
+
+module chamfered_box(width, height, depth=2, radius=2, steps=5) {
+    x0 = width / 2;
+    y0 = height / 2;
+    d = depth;
+    r = radius;
+    z0 = d - r;
+
+    tile_points = concat(
+        [[-x0, -y0, 0], [x0, -y0, 0], [x0, y0, 0], [-x0, y0, 0]],
+        flatten([for (i = [0 : steps])
+            let (theta = i * 90 / steps,
+                 dx = r * (1 - cos(theta)),
+                 dz = r * sin(theta),
+                 x = x0 - dx,
+                 y = y0 - dx,
+                 z = z0 + dz)
+            [[-x, -y, z], [x, -y, z], [x, y, z], [-x, y, z]]
+        ]));
+    last = len(tile_points) - 1;
+    tile_faces = concat(
+        // Bottom and top faces
+        [[0, 1, 2, 3], [last, last - 1, last - 2, last - 3]],
+        flatten([for (i = [0 : steps])
+            let (base = i * 4)
+            [[base, base + 4, base + 5, base + 1],
+             [base + 1, base + 5, base + 6, base + 2],
+             [base + 2, base + 6, base + 7, base + 3],
+             [base + 3, base + 7, base + 4, base]]
+        ]));
+    polyhedron(points=tile_points, faces=tile_faces);
+}
+
+// chamfer_box(10, 20, steps=10);
